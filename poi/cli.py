@@ -87,7 +87,8 @@ def _maybe_update_notice():
         pass
 
 
-_RUN_FLAGS = {"--emit-python", "--trace", "--vars", "--explain", "--debug", "--safe"}
+_RUN_FLAGS = {"--emit-python", "--trace", "--vars", "--explain", "--debug",
+              "--safe", "--types"}
 
 
 def _run(args: list[str], *, force_debug: bool = False) -> int:
@@ -114,6 +115,7 @@ def _run(args: list[str], *, force_debug: bool = False) -> int:
     trace_vars = "--vars" in flags or "--debug" in flags or force_debug
     explain = "--explain" in flags or "--debug" in flags or force_debug
     safe = "--safe" in flags
+    want_types = "--types" in flags
 
     path = rest[0] if rest else _find_default_entry()
     if not path:
@@ -123,12 +125,43 @@ def _run(args: list[str], *, force_debug: bool = False) -> int:
     if not os.path.exists(path):
         print(f"파일이 없습니다: {path}", file=sys.stderr)
         return 1
+    if want_types:
+        _typecheck_file(path, block=False)
     rc = run_file(path, emit_python=emit, argv=rest[1:],
                   trace=trace, trace_vars=trace_vars, explain=explain,
                   safe=safe, time_limit=time_limit)
     if not emit and not safe:
         _maybe_update_notice()
     return rc
+
+
+def _typecheck_file(path: str, block: bool) -> int:
+    """block=True 면 오류 있을 때 exit 1. False 면 경고만 찍고 0."""
+    from .interpreter import compile_source  # 파서까지만 필요
+    from .lexer import Lexer
+    from .parser import Parser
+    from . import typecheck as tc
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            src = f.read()
+    except OSError as e:
+        print(f"파일을 열 수 없습니다: {e}", file=sys.stderr)
+        return 1
+    try:
+        ast = Parser(Lexer(src, os.path.basename(path)).tokenize(), src).parse()
+    except Exception as e:  # noqa: BLE001
+        from .errors import POIError
+        if isinstance(e, POIError):
+            print(e.render(src), file=sys.stderr)
+        return 1
+    findings = tc.check(ast)
+    if not findings:
+        if block:
+            print(f"타입 문제 없음: {path}")
+        return 0
+    print(tc.render(findings, src), file=sys.stderr)
+    errs = [f for f in findings if f.level == "error"]
+    return 1 if (block and errs) else 0
 
 
 def cmd_run(args: list[str]) -> int:
@@ -207,10 +240,12 @@ def cmd_new(args: list[str]) -> int:
 
 
 def cmd_check(args: list[str]) -> int:
-    if not args:
-        print("검사할 파일을 알려주세요: poi check <파일.poi>", file=sys.stderr)
+    want_types = "--types" in args
+    rest = [a for a in args if not a.startswith("-")]
+    if not rest:
+        print("검사할 파일을 알려주세요: poi check [--types] <파일.poi>", file=sys.stderr)
         return 1
-    path = args[0]
+    path = rest[0]
     try:
         with open(path, "r", encoding="utf-8") as f:
             src = f.read()
@@ -222,7 +257,9 @@ def cmd_check(args: list[str]) -> int:
     except POIError as e:
         print(e.render(src), file=sys.stderr)
         return 1
-    print(f"문법 OK: {path}")
+    if want_types:
+        return _typecheck_file(path, block=True)
+    print(f"문법 OK: {path}  (타입도 보려면 --types)")
     return 0
 
 

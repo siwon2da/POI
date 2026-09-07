@@ -66,10 +66,29 @@ _RUNTIME = {
 }
 
 
+_KOREAN_BUILTINS = {
+    "문자": "text", "문자열": "text", "글자": "text",
+    "숫자": "number", "정수로": "number",
+    "참거짓": "boolean",
+    "살펴보기": "inspect", "지켜보기": "watch", "멈춤": "pause",
+    "묻기값": "poi_ask",
+    "걸러내기": "filter", "골라내기": "filter",
+    "변환": "map", "매핑": "map",
+    "모으기": "reduce", "접기": "reduce",
+    "정렬기준": "sort_by", "정렬내림": "sort_desc",
+    "묶기": "group_by", "앞에서": "take", "뒤로": "drop",
+    "중복제거": "unique", "합계": "sum_of", "평균값": "avg",
+    "최댓값": "max_of", "최솟값": "min_of", "개수": "count_of",
+}
+
+
 def make_globals() -> dict:
     g = dict(_RUNTIME)
     g.update(_fn.EXPORTS)  # map/filter/reduce/sort_by/group_by/take/... (파이프라인)
     g["__builtins__"] = __import__("builtins")
+    for ko, en in _KOREAN_BUILTINS.items():
+        if en in g:
+            g[ko] = g[en]
     # 이스터에그 (사용자가 덮어쓰면 그대로 덮인다)
     g["pp청춘"] = _easter.CHUNCHEONG
     g["test"] = _easter.TEST

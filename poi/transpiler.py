@@ -114,7 +114,8 @@ class Transpiler:
 
     def _fn(self, n):
         params = []
-        for pname, default in n.params:
+        for p in n.params:
+            pname, default = p[0], p[1]
             params.append(pname if default is None else f"{pname}={self.ex(default)}")
         self.emit(f"def {n.name}({', '.join(params)}):", n.line)
         if n.is_expr_body:

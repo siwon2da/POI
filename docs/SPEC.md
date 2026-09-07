@@ -1,4 +1,4 @@
-# POI v1.4 문법 명세
+# POI v1.5 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -31,10 +31,15 @@ POI 소스 → Lexer → Parser → POI AST → POI 컴파일러 → (CPython �
 - **예약어**: `if else for in fn return const show ask use python try catch true false null is between and or not repeat as end raise assert match when`
   (`test` 는 문맥 키워드 — `test "이름" { }` 일 때만; GUI 단어도 문맥으로 인식)
 - **한국어 키워드 별칭** — 영문과 완전 호환, 한 파일에서 섞어도 됨:
-  `보여주기·출력`=show · `물어보기`=ask · `만약`=if · `아니면·그밖에`=else · `반복`=repeat ·
-  `순회`=for · `안에`=in · `마다·로`=as · `함수`=fn · `돌려주기·반환`=return ·
-  `참·거짓·없음` · `그리고·또는·아님` · `시도·잡기` · `끝`=end · `상수`=const · `사용`=use ·
-  `던지기`=raise · `분기`=match · `경우`=when · `검사`=test · `확인`=assert · `사이`=between · `파이썬`=python
+  show=`보여주기·출력·보이기·찍기·말하기` · ask=`물어보기·묻기` · if=`만약·만일·가령` ·
+  else=`아니면·아니라면·그밖에·그외` · repeat=`반복·되풀이` · for=`순회·각각·모든` · in=`안에` ·
+  as=`마다·로·으로` · fn=`함수·기능·정의` · return=`돌려주기·반환·결과·내보내기` ·
+  and=`그리고·또한·이고` · or=`또는·혹은` · not=`아님·부정` · try=`시도·해보기` · catch=`잡기·붙잡기` ·
+  end=`끝·마침` · const=`상수·불변·고정` · use=`사용·가져오기·불러오기` · raise=`던지기·발생` ·
+  match=`분기·고르기` · when=`경우·케이스` · assert=`확인·단언` · between=`사이·범위` · python=`파이썬`
+- **한국어 내장함수**: `문자`=text · `숫자`=number · `참거짓`=boolean · `걸러내기`=filter ·
+  `변환`=map · `모으기`=reduce · `합계`=sum_of · `평균값`=avg · `묶기`=group_by ·
+  `앞에서`=take · `중복제거`=unique · `살펴보기`=inspect · `지켜보기`=watch …
 
 ## 2. 값과 자료형
 
@@ -51,12 +56,32 @@ user = { name: "시원", age: 16 } # 객체 (Box - 점 접근 되는 dict)
 객체 접근은 점으로: `user.name` (파이썬처럼 `user["name"]` 안 해도 됨).
 `show` 나 문자열 보간에서 `true/false/null` 로 표시된다 (파이썬 `True/None` 아님).
 
-## 3. 변수 · 상수
+## 3. 변수 · 상수 · 선택적 정적 타입
 
 ```poi
 x = 10
-const PI = 3.14159      # 관례상 상수 (v0.1 에선 재대입 막지 않음)
-name: Text = "시원"     # 타입 표기 가능 (v0.1 에선 검사 안 함)
+const PI = 3.14159      # 관례상 상수 (아직 재대입 막지 않음)
+
+name: Text = "시원"     # 타입 표기 — 안 쓰면 무시, 쓰면 검사 가능
+나이: 정수 = 16          # 한국어 타입명도 됨
+```
+
+**타입은 옵션이다.** 안 쓰면 그냥 동적 언어. 쓰면 `poi check --types` 로 검사한다:
+
+```bash
+poi check --types 파일.poi     # 타입 오류 있으면 exit 1
+poi run --types 파일.poi       # 경고만 찍고 그냥 실행
+```
+
+- 타입명: `Int Float Number Text Bool List Map Fn Any Null` · `List<T>` · `Int?`(nullable)
+- 한국어: `정수 실수 숫자 문자 문자열 참거짓 목록 배열 사전 맵 객체 함수 아무거나`
+- 잡는 것: 선언 불일치(`x: Int = "hi"`), 반환 타입 불일치, 인자 타입·개수 불일치, `Text + Int` 등
+- **오탐 안 한다** — 양쪽 타입이 확실할 때만. `Any` 는 항상 통과.
+- 함수:
+
+```poi
+fn 세금(가격: Int, 율: Float) -> Float
+    return 가격 + 가격 * 율
 ```
 
 ## 4. 출력 · 입력

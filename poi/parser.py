@@ -194,11 +194,12 @@ class Parser:
             save = self.i
             self.advance()  # name
             self.advance()  # :
-            self._skip_type()
+            dtype = self.read_type()
             if self.check("OP", "="):
                 self.advance()
                 return Node("Assign", line=t.line, target=Node("Name", id=t.value),
-                            value=self.expression(), is_const=False)
+                            value=self.expression(), is_const=False,
+                            declared_type=dtype)
             self.i = save  # 되돌리기 (객체 접근 등 다른 문장)
 
         # 표현식 또는 대입
@@ -215,11 +216,12 @@ class Parser:
     def _const_decl(self):
         t = self.advance()
         name = self.expect("IDENT", what="상수 이름").value
+        dtype = None
         if self.match("OP", ":"):
-            self._skip_type()
+            dtype = self.read_type()
         self.expect("OP", "=")
         return Node("Assign", line=t.line, target=Node("Name", id=name),
-                    value=self.expression(), is_const=True)
+                    value=self.expression(), is_const=True, declared_type=dtype)
 
     def _fn_decl(self):
         t = self.advance()
@@ -229,26 +231,28 @@ class Parser:
         self.skip_nl()
         while not self.check("OP", ")"):
             pname = self.expect("IDENT", what="매개변수 이름").value
+            ptype = None
             if self.match("OP", ":"):
-                self._skip_type()
+                ptype = self.read_type()
             default = None
             if self.match("OP", "="):
                 default = self.expression()
-            params.append((pname, default))
+            params.append((pname, default, ptype))
             self.skip_nl()
             if not self.match("OP", ","):
                 break
             self.skip_nl()
         self.expect("OP", ")")
+        ret_type = None
         if self.match("OP", "->"):
-            self._skip_type()
+            ret_type = self.read_type()
         if self.match("OP", "=>"):
             return Node("FnDecl", line=t.line, name=name, params=params,
-                        body=self.expression(), is_expr_body=True)
+                        body=self.expression(), is_expr_body=True, ret_type=ret_type)
         body, style = self.block(opener_col=t.col)
         self._end(style)
         return Node("FnDecl", line=t.line, name=name, params=params,
-                    body=body, is_expr_body=False)
+                    body=body, is_expr_body=False, ret_type=ret_type)
 
     def _if_stmt(self):
         t = self.advance()
@@ -740,21 +744,59 @@ class Parser:
             return True
         return False
 
-    def _skip_type(self):
-        # 타입 표기는 v0.1 에서 검사하지 않고 그냥 지나간다.
-        self.expect("IDENT", what="타입 이름")
+    _KOREAN_TYPES = {
+        "정수": "Int", "실수": "Float", "숫자": "Number",
+        "문자": "Text", "문자열": "Text", "글": "Text",
+        "참거짓": "Bool", "불": "Bool", "불리언": "Bool",
+        "목록": "List", "배열": "List",
+        "사전": "Map", "맵": "Map", "객체": "Map",
+        "함수": "Fn", "기능": "Fn",
+        "아무": "Any", "아무거나": "Any", "무엇이든": "Any",
+        "없음": "Null",
+    }
+    _TYPE_NORM = {
+        "int": "Int", "integer": "Int", "Integer": "Int",
+        "float": "Float", "Float64": "Float", "double": "Float",
+        "num": "Number", "number": "Number",
+        "str": "Text", "string": "Text", "String": "Text",
+        "bool": "Bool", "boolean": "Bool", "Boolean": "Bool",
+        "list": "List", "array": "List", "Array": "List",
+        "map": "Map", "dict": "Map", "object": "Map", "Object": "Map",
+        "fn": "Fn", "function": "Fn", "Function": "Fn", "func": "Fn",
+        "any": "Any", "Any": "Any", "void": "Null", "none": "Null", "null": "Null",
+    }
+
+    def read_type(self) -> str:
+        """타입 표기를 읽어 정규화된 이름을 돌려준다. 검사(typecheck)에만 쓰인다."""
+        t = self.peek()
+        if t.type in ("IDENT", "KEYWORD"):
+            self.advance()
+            name = str(t.value)
+        else:
+            raise POIError("타입 이름이 필요합니다.", "P010", t.line, t.col)
         while self.match("OP", "."):
-            self.expect("IDENT")
-        if self.match("OP", "["):
-            depth = 1
-            while depth and not self.at_end():
-                if self.check("OP", "["):
-                    depth += 1
-                elif self.check("OP", "]"):
-                    depth -= 1
+            if self.check("IDENT"):
+                name = self.advance().value
+        # 제네릭 파라미터는 읽고 버린다:  List<T>  /  List[T]  /  Map<K, V>
+        for op_open, op_close in (("<", ">"), ("[", "]")):
+            if self.check("OP", op_open):
                 self.advance()
-        if self.match("OP", "?"):
-            pass
+                depth = 1
+                while depth and not self.at_end():
+                    if self.check("OP", op_open):
+                        depth += 1
+                    elif self.check("OP", op_close):
+                        depth -= 1
+                    self.advance()
+        nullable = bool(self.match("OP", "?"))
+        base = self._KOREAN_TYPES.get(name) or self._TYPE_NORM.get(name) or name
+        if base in ("Int", "Float", "Number", "Text", "Bool", "List", "Map",
+                    "Fn", "Any", "Null") or base[:1].isupper():
+            return base + ("?" if nullable else "")
+        return "Any"
+
+    def _skip_type(self):
+        self.read_type()
 
 
 def _tok_desc(t):
