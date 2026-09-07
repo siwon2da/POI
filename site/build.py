@@ -40,11 +40,16 @@ def _wrap(frag: str, og_desc: str, og_url: str) -> str:
 <meta name="theme-color" content="#17171c" media="(prefers-color-scheme: dark)">
 {title}
 {meta}
-<meta property="og:title" content="POI">
+<meta property="og:title" content="POI — Power Of Imagination">
 <meta property="og:description" content="{og_desc}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{og_url}">
-<link rel="icon" href="/poi/assets/poi-octopus-96.png" type="image/png">
+<meta property="og:image" content="https://hagora.kr/poi/assets/poi-og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://hagora.kr/poi/assets/poi-og.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/poi/assets/poi-octopus-32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="/poi/assets/poi-octopus-96.png">
+<link rel="icon" type="image/png" sizes="256x256" href="/poi/assets/poi-octopus-256.png">
 <link rel="apple-touch-icon" href="/poi/assets/poi-octopus-256.png">
 {chr(10).join(links)}
 <style>
