@@ -71,7 +71,9 @@ poi run examples/basics.poi
 
 ## 랜딩 페이지
 
-`site/landing.html` — 문법·동작 원리·오류 메시지·GUI·로드맵을 담은 소개 페이지 (Claude Artifact 형식).
+**라이브: https://hagora.kr/poi/**
+
+`site/landing.html` (Artifact 조각) · `site/hagora/` (배포된 독립 실행본). 문법·동작 원리·오류 메시지·GUI·로드맵.
 
 ## 상태
 
