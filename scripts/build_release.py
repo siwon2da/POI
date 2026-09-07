@@ -24,9 +24,9 @@ def _version() -> str:
     return "0.0.0"
 
 
-INCLUDE_DIRS = ["poi", "examples", "docs", "tests"]
+INCLUDE_DIRS = ["poi", "examples", "docs", "tests", "installer"]
 INCLUDE_FILES = ["README.md", "LICENSE", "pyproject.toml", "run.py", "poi.cmd",
-                 ".gitignore", ".gitattributes"]
+                 "VERSION", "CHANGELOG.md", ".gitignore", ".gitattributes"]
 SKIP = {"__pycache__", ".pyc", ".pyo"}
 
 

@@ -1,0 +1,5 @@
+u = { name: "시원", age: 16 }
+inspect(u)
+nums = [1, 2, 3]
+x = inspect(nums)
+show x.length

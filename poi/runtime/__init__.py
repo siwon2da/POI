@@ -1,6 +1,7 @@
 """트랜스파일된 파이썬 코드가 실행되는 전역 네임스페이스를 만든다."""
 from __future__ import annotations
 
+from .. import debugtools as _dbg
 from . import easter as _easter
 from . import gui as _gui
 from . import stdmods as _std
@@ -25,6 +26,11 @@ _RUNTIME = {
     "poi_error_value": poi_error_value,
     "poi_import_pyfile": poi_import_pyfile,
     "poi_std": poi_std,
+    # 디버깅 도구
+    "inspect": _dbg.inspect_value,
+    "pause": _dbg.poi_pause,
+    "watch": _dbg.poi_watch,
+    "_poi_trace": _dbg._poi_trace,
     # 표준 모듈: import 없이 바로
     "file": _std.file,
     "json": _std.json,

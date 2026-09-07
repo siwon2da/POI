@@ -1,15 +1,23 @@
-# POI v0.1 문법 명세
+# POI v1.1 문법 명세
+
+> **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
 이 문서는 **현재 구현된** POI 를 설명한다. 아직 안 된 것은 [ROADMAP](ROADMAP.md).
+디버깅 도구는 [DEBUGGING.md](DEBUGGING.md).
 
 ## 0. 실행 모델
 
+POI 는 자체 문법 · 자체 의미론 · 자체 오류 체계 · 자체 GUI 모델을 가진 **독립 언어**다.
+실행 단계에서만 세계에서 가장 검증된 런타임인 CPython 을 빌린다.
+
 ```
-POI 소스 → Lexer → Parser → POI AST → Transpiler → 파이썬 소스 → compile() → exec()
+POI 소스 → Lexer → Parser → POI AST → POI 컴파일러 → (CPython 바이트코드) → 실행
 ```
 
-- 파이썬 소스로 바뀌므로 성능은 CPython 급.
-- 실행 시 오류가 나면 파이썬 줄번호를 POI 줄번호로 되돌려(`linemap`) 사람 친화 메시지를 만든다.
+- POI 컴파일러는 POI AST 를 CPython 이 바로 실행할 수 있는 형태로 낮춘다. 성능은 CPython 급.
+- 그래서 "새 언어인데 첫날부터 라이브러리 수십만 개" — `use py:...` 한 줄로 파이썬 생태계 전부.
+- 실행 중 오류가 나면 내부 줄번호를 POI 줄번호로 되돌려(`linemap`) 사람의 말로 된 메시지를 만든다.
+- `poi run x.poi --emit-python` 으로 낮춰진 중간 표현을 직접 볼 수 있다.
 
 ## 1. 어휘 (Lexical)
 
@@ -194,7 +202,35 @@ app "제목" {
 
 `app.close()` 로 창을 닫는다. GUI 는 데스크톱 환경 + tkinter 필요.
 
-## 14. 프로젝트 구조
+## 14. 디버깅 (요약 — 자세히는 DEBUGGING.md)
+
+코드 안: `inspect(x)` (구조 출력 + x 반환) · `watch(x)` (출력하며 흘려보냄) · `pause()` (그 자리서 멈춤).
+
+실행할 때:
+
+```bash
+poi run x.poi --trace      # 문장마다 줄번호·소스
+poi run x.poi --vars       # + 변수 변화
+poi run x.poi --explain    # 오류 시 그때 값들까지
+poi debug x.poi            # 위 전부
+```
+
+## 15. 명령어
+
+| 명령 | 하는 일 |
+|---|---|
+| `poi run [파일]` | 실행 (기본 `src/main.poi` → `main.poi` → `app.poi`) |
+| `poi run 파일 --emit-python` | 낮춰진 중간 표현 출력 |
+| `poi debug 파일` | 추적 + 변수 + 사후 분석 |
+| `poi new <이름>` | 프로젝트 폴더 생성 |
+| `poi check <파일>` | 문법만 검사 |
+| `poi repl` | 대화형 셸 |
+| `poi update` | 새 버전 확인 / 올리기 |
+| `poi version` | 버전 |
+
+환경변수 `POI_NO_UPDATE_CHECK=1` — 자동 새 버전 확인 끄기.
+
+## 16. 프로젝트 구조
 
 ```
 my-app/

@@ -14,13 +14,21 @@ _STD_MODULES = {"file", "json", "web", "math", "time", "ui", "gui"}
 
 
 class Transpiler:
-    def __init__(self, compiled_name: str = "<poi>"):
+    def __init__(self, compiled_name: str = "<poi>", source: str = "",
+                 trace: bool = False):
         self.compiled_name = compiled_name
+        self.src_lines = source.splitlines()
+        self.trace = trace
         self.lines: list[str] = []
         self.linemap: dict[int, int] = {}
         self.ind = 0
         self._hcount = 0
         self._gui_states: set[str] = set()
+
+    def _src_at(self, line: int) -> str:
+        if 0 < line <= len(self.src_lines):
+            return self.src_lines[line - 1].strip()
+        return ""
 
     # -- emit --------------------------------------------------
     def emit(self, text: str, line: int = 0):
@@ -45,8 +53,13 @@ class Transpiler:
             self.stmt(s)
         self.ind -= 1
 
+    _NO_TRACE = {"PyBlock", "FnDecl", "App", "GWindow", "GText", "GButton",
+                 "GRow", "GColumn", "GCard", "GInput", "GState", "GOn"}
+
     def stmt(self, n):
         k = n.kind
+        if self.trace and n.line and k not in self._NO_TRACE:
+            self.emit(f"_poi_trace({n.line}, {self._src_at(n.line)!r}, locals())", n.line)
         if k == "Show":
             self.emit(f"poi_show({self.ex(n.value)})", n.line)
         elif k == "ExprStmt":

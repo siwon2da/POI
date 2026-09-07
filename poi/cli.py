@@ -9,15 +9,30 @@ from .errors import POIError
 from .interpreter import compile_source, run_file, run_source
 
 HELP = """\
-POI v{ver}  -  Python Powered, Human First
+POI v{ver}  -  Power Of Imagination
 
 사용법:
-  poi run [파일.poi] [--emit-python]   POI 파일 실행 (기본: src/main.poi 또는 main.poi)
+  poi run [파일.poi]                   POI 파일 실행 (기본: src/main.poi 또는 main.poi)
+       --emit-python                  변환된 중간 표현만 출력
+       --trace                        문장마다 줄번호·소스를 찍으며 실행
+       --vars                         --trace + 변수 변화까지
+       --explain                      오류가 나면 그때의 지역 변수까지 사후 분석
+       --debug                        위 세 개를 한 번에
+  poi debug <파일.poi>                 = poi run --debug
   poi new <이름>                       새 프로젝트 폴더 만들기
   poi check <파일.poi>                 문법만 검사 (실행 안 함)
   poi repl                            대화형 셸
+  poi update                          새 버전 확인 / 올리기
   poi version                        버전 출력
   poi help                          이 도움말
+
+코드 안에서 쓰는 디버깅 함수:
+  inspect(x)   값의 타입·구조·길이를 예쁘게 출력 (x 를 그대로 반환)
+  watch(x)     inspect 하고 그대로 반환 — 흐름을 안 끊음
+  pause()      그 자리에서 멈춰 지역 변수 보기 / 식 계산 / 계속
+
+환경변수:
+  POI_NO_UPDATE_CHECK=1               새 버전 자동 확인 끄기
 
 예:
   poi run examples/hello.poi
@@ -58,10 +73,30 @@ def _find_default_entry() -> str | None:
     return None
 
 
-def cmd_run(args: list[str]) -> int:
-    emit = "--emit-python" in args
-    args = [a for a in args if a != "--emit-python"]
-    path = args[0] if args else _find_default_entry()
+def _maybe_update_notice():
+    if os.environ.get("POI_NO_UPDATE_CHECK"):
+        return
+    try:
+        from .update import notice_line
+        line = notice_line()
+        if line:
+            print(line, file=sys.stderr)
+    except Exception:
+        pass
+
+
+_RUN_FLAGS = {"--emit-python", "--trace", "--vars", "--explain", "--debug"}
+
+
+def _run(args: list[str], *, force_debug: bool = False) -> int:
+    flags = {a for a in args if a in _RUN_FLAGS}
+    rest = [a for a in args if a not in _RUN_FLAGS]
+    emit = "--emit-python" in flags
+    trace = "--trace" in flags or "--debug" in flags or force_debug
+    trace_vars = "--vars" in flags or "--debug" in flags or force_debug
+    explain = "--explain" in flags or "--debug" in flags or force_debug
+
+    path = rest[0] if rest else _find_default_entry()
     if not path:
         print("실행할 .poi 파일을 못 찾았어요. `poi run 파일.poi` 처럼 지정하세요.",
               file=sys.stderr)
@@ -69,7 +104,25 @@ def cmd_run(args: list[str]) -> int:
     if not os.path.exists(path):
         print(f"파일이 없습니다: {path}", file=sys.stderr)
         return 1
-    return run_file(path, emit_python=emit, argv=args[1:])
+    rc = run_file(path, emit_python=emit, argv=rest[1:],
+                  trace=trace, trace_vars=trace_vars, explain=explain)
+    if not emit:
+        _maybe_update_notice()
+    return rc
+
+
+def cmd_run(args: list[str]) -> int:
+    return _run(args)
+
+
+def cmd_debug(args: list[str]) -> int:
+    """poi debug <파일> — 추적 + 변수 변화 + 오류 시 사후 분석까지 한 번에."""
+    return _run(args, force_debug=True)
+
+
+def cmd_update(args: list[str]) -> int:
+    from .update import run_update
+    return run_update()
 
 
 def cmd_new(args: list[str]) -> int:
@@ -188,10 +241,12 @@ def main(argv: list[str] | None = None) -> int:
     cmd, rest = argv[0], argv[1:]
     if cmd in ("version", "-v", "--version"):
         print(f"POI {__version__}")
+        _maybe_update_notice()
         return 0
     table = {
         "run": cmd_run, "new": cmd_new, "check": cmd_check,
         "repl": cmd_repl, "fmt": cmd_fmt, "build": cmd_build,
+        "update": cmd_update, "upgrade": cmd_update, "debug": cmd_debug,
     }
     if cmd in table:
         return table[cmd](rest)

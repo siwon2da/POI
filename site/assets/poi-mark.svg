@@ -1,0 +1,23 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="POI">
+  <rect x="2" y="2" width="44" height="44" rx="11" fill="#3182F6"/>
+  <g fill="#ffffff">
+    <!-- pixel P (4 x 7 grid, unit 5, origin 15,7) -->
+    <rect x="15" y="7"  width="4.4" height="4.4"/>
+    <rect x="20" y="7"  width="4.4" height="4.4"/>
+    <rect x="25" y="7"  width="4.4" height="4.4"/>
+    <rect x="30" y="7"  width="4.4" height="4.4"/>
+    <rect x="15" y="12" width="4.4" height="4.4"/>
+    <rect x="30" y="12" width="4.4" height="4.4"/>
+    <rect x="15" y="17" width="4.4" height="4.4"/>
+    <rect x="30" y="17" width="4.4" height="4.4"/>
+    <rect x="15" y="22" width="4.4" height="4.4"/>
+    <rect x="20" y="22" width="4.4" height="4.4"/>
+    <rect x="25" y="22" width="4.4" height="4.4"/>
+    <rect x="30" y="22" width="4.4" height="4.4"/>
+    <rect x="15" y="27" width="4.4" height="4.4"/>
+    <rect x="15" y="32" width="4.4" height="4.4"/>
+    <rect x="15" y="37" width="4.4" height="4.4"/>
+    <!-- prompt spark -->
+    <rect x="30.5" y="33.5" width="3.4" height="3.4" opacity="0.9"/>
+  </g>
+</svg>

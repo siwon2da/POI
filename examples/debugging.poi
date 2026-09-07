@@ -1,0 +1,24 @@
+# v1.1 디버깅 도구
+
+fn price_with_tax(base, rate) {
+    tax = base * rate
+    return base + tax
+}
+
+cart = [1200, 3400, 900]
+total = 0
+for item in cart {
+    total = total + item
+}
+
+# 값의 속을 들여다본다 (흐름은 안 끊김)
+watch(cart)
+final = watch(price_with_tax(total, 0.1))
+
+show "합계 {total}, 세금포함 {final}"
+
+# 필요하면 여기서 멈춰서 변수 확인:
+# pause()
+
+user = { name: "시원", age: 16, tags: ["a", "b"] }
+inspect(user)

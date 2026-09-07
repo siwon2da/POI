@@ -24,9 +24,7 @@ _CONT_KEYWORDS = {"and", "or", "not", "is", "between"}
 
 class Lexer:
     def __init__(self, source: str, filename: str = "<poi>"):
-        if source and source[0] == "﻿":  # BOM
-            source = source[1:]
-        self.src = source
+        self.src = source.lstrip("﻿")  # BOM(들) 제거
         self.filename = filename
         self.i = 0
         self.n = len(source)
