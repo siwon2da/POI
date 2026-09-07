@@ -1,0 +1,703 @@
+<title>POI Language</title>
+<meta name="description" content="POI — 파이썬 생태계를 그대로 쓰는 사람 중심 언어.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    --ground: #f6f2e9;
+    --surface: #fffdf7;
+    --surface-2: #f0ead9;
+    --ink: #2a2620;
+    --ink-soft: #5b5347;
+    --muted: #8c8373;
+    --line: #e0d7c4;
+    --accent: #c05f3c;      /* POI 코랄 — 번트 시에나 */
+    --accent-soft: #e8d3c6;
+    --py: #45697a;          /* 밑에 깔린 파이썬 층 — 슬레이트 틸 */
+    --py-soft: #d8e0e0;
+    --good: #5c7a52;
+    --code-bg: #fbf7ee;
+    --shadow: 0 1px 2px rgba(42,38,32,.06), 0 12px 32px -12px rgba(42,38,32,.14);
+    --maxw: 1140px;
+    --prose: 44rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #1a1613;
+      --surface: #221d18;
+      --surface-2: #2b241d;
+      --ink: #ece4d5;
+      --ink-soft: #b9ae9b;
+      --muted: #8f8571;
+      --line: #382f26;
+      --accent: #db7550;
+      --accent-soft: #4a3125;
+      --py: #86aab6;
+      --py-soft: #2b3a3f;
+      --good: #8ba97e;
+      --code-bg: #1e1a15;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 16px 40px -14px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #1a1613;
+    --surface: #221d18;
+    --surface-2: #2b241d;
+    --ink: #ece4d5;
+    --ink-soft: #b9ae9b;
+    --muted: #8f8571;
+    --line: #382f26;
+    --accent: #db7550;
+    --accent-soft: #4a3125;
+    --py: #86aab6;
+    --py-soft: #2b3a3f;
+    --good: #8ba97e;
+    --code-bg: #1e1a15;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 16px 40px -14px rgba(0,0,0,.5);
+  }
+
+  /* ---------- base ---------- */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3 { font-family: "Fraunces", Georgia, "Times New Roman", serif; font-weight: 600; line-height: 1.08; text-wrap: balance; word-break: keep-all; margin: 0; letter-spacing: -0.01em; }
+  p { margin: 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  code, pre, .mono { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 clamp(20px, 5vw, 56px); }
+  .prose { max-width: var(--prose); }
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  .lead { font-size: clamp(1.05rem, 1.6vw, 1.2rem); color: var(--ink-soft); }
+
+  /* ---------- top bar ---------- */
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--ground) 86%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .top .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+  .brand { display: flex; align-items: baseline; gap: 10px; font-family: "Fraunces", serif; font-weight: 600; font-size: 21px; letter-spacing: -0.02em; color: var(--ink); }
+  .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); align-self: center; }
+  .brand small { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .top nav { display: flex; align-items: center; gap: 22px; }
+  .top nav a { color: var(--ink-soft); font-size: 14px; font-weight: 500; }
+  .top nav a:hover { color: var(--accent); text-decoration: none; }
+  .ghost {
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+    cursor: pointer; font-size: 15px; transition: border-color .15s, color .15s;
+  }
+  .ghost:hover { border-color: var(--accent); color: var(--accent); }
+  @media (max-width: 720px) { .top nav a.navlink { display: none; } }
+
+  /* ---------- pipeline rail (signature) ---------- */
+  .layout { position: relative; }
+  .rail {
+    position: fixed; left: max(18px, calc((100vw - var(--maxw)) / 2 - 26px));
+    top: 50%; transform: translateY(-50%); z-index: 20;
+    display: flex; flex-direction: column; gap: 0; align-items: center;
+  }
+  .rail .track { position: absolute; top: 7px; bottom: 7px; width: 2px; background: var(--line); border-radius: 2px; }
+  .rail .fill { position: absolute; top: 7px; width: 2px; background: var(--accent); border-radius: 2px; height: 0; transition: height .2s linear; }
+  .rail .node {
+    position: relative; width: 14px; height: 14px; margin: 15px 0; border-radius: 50%;
+    background: var(--ground); border: 2px solid var(--line); cursor: pointer;
+    transition: border-color .2s, background .2s, transform .2s;
+  }
+  .rail .node[data-on="true"] { border-color: var(--accent); background: var(--accent); transform: scale(1.15); }
+  .rail .node[data-on="past"] { border-color: var(--accent); }
+  .rail .node::after {
+    content: attr(data-label); position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
+    font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: 0.04em;
+    color: var(--muted); white-space: nowrap; opacity: 0; transition: opacity .2s;
+  }
+  .rail .node:hover::after, .rail .node[data-on="true"]::after { opacity: 1; }
+  @media (max-width: 1180px) { .rail { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding: clamp(56px, 9vw, 104px) 0 clamp(40px, 6vw, 64px); }
+  .hero h1 { font-size: clamp(2.4rem, 5.6vw, 3.95rem); max-width: 15ch; }
+  .hero h1 .u { color: var(--accent); font-style: italic; font-weight: 500; }
+  .hero .lead { margin-top: 22px; max-width: 34rem; }
+  .hero .cta { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 10px;
+    font-weight: 600; font-size: 14.5px; cursor: pointer; border: 1px solid transparent;
+    transition: transform .12s ease, box-shadow .12s ease, background .15s;
+  }
+  .btn.primary { background: var(--accent); color: #fff; box-shadow: var(--shadow); }
+  .btn.primary:hover { transform: translateY(-1px); text-decoration: none; }
+  .btn.line { background: var(--surface); border-color: var(--line); color: var(--ink); }
+  .btn.line:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+  .runline {
+    margin-top: 22px; font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--ink-soft);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .runline .p { color: var(--accent); }
+
+  /* ---------- transpile card ---------- */
+  .transpile {
+    margin-top: clamp(40px, 6vw, 64px); background: var(--surface); border: 1px solid var(--line);
+    border-radius: 16px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .transpile .bar {
+    display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+  .transpile .lights { display: flex; gap: 6px; }
+  .transpile .lights i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+  .transpile .bar .name { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--muted); }
+  .transpile .bar .chip {
+    margin-left: auto; font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600;
+    color: var(--good); border: 1px solid color-mix(in srgb, var(--good) 40%, transparent);
+    border-radius: 999px; padding: 3px 10px; opacity: 0; transform: translateX(4px); transition: opacity .4s, transform .4s;
+  }
+  .transpile.done .bar .chip { opacity: 1; transform: none; }
+  .panes { display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 760px) { .panes { grid-template-columns: 1fr; } }
+  .pane { position: relative; padding: 20px 22px; overflow-x: auto; }
+  .pane + .pane { border-left: 1px solid var(--line); }
+  @media (max-width: 760px) { .pane + .pane { border-left: 0; border-top: 1px solid var(--line); } }
+  .pane .tag {
+    font-family: "JetBrains Mono", monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 12px; display: inline-block;
+  }
+  .pane.poi .tag { color: var(--accent); }
+  .pane.py .tag { color: var(--py); }
+  .pane.py { background: color-mix(in srgb, var(--py) 6%, var(--surface)); }
+  pre { margin: 0; font-size: 13px; line-height: 1.85; white-space: pre; }
+  .pane .sweep {
+    position: absolute; left: 0; right: 0; height: 44px; pointer-events: none; top: 0;
+    background: linear-gradient(var(--accent-soft), transparent);
+    opacity: 0; mix-blend-mode: multiply;
+  }
+  :root[data-theme="dark"] .pane .sweep, :root:not([data-theme="light"]) .pane .sweep { mix-blend-mode: screen; }
+  .transpile.run .pane.poi .sweep { animation: sweep 1s ease-in-out forwards; }
+  .transpile.run .pane.py .sweep { animation: sweep 1s ease-in-out .35s forwards; }
+  @keyframes sweep {
+    0% { opacity: .9; top: 0; }
+    85% { opacity: .7; }
+    100% { opacity: 0; top: calc(100% - 44px); }
+  }
+  @media (prefers-reduced-motion: reduce) { .transpile.run .pane .sweep { animation: none; } }
+
+  /* syntax */
+  .k { color: var(--accent); font-weight: 600; }
+  .fn { color: var(--py); font-weight: 600; }
+  .s { color: var(--good); }
+  .c { color: var(--muted); font-style: italic; }
+  .n { color: var(--ink); }
+  .call { color: var(--py); }
+
+  /* ---------- bands ---------- */
+  .band { padding: clamp(64px, 10vw, 116px) 0; border-top: 1px solid var(--line); }
+  .band.alt { background: var(--surface); }
+  .band h2 { font-size: clamp(1.75rem, 3.6vw, 2.7rem); }
+  .band > .wrap > .eyebrow { margin-bottom: 12px; }
+  .band .dek { margin-top: 16px; color: var(--ink-soft); }
+
+  /* pillars */
+  .pillars { margin-top: 46px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .pillars { grid-template-columns: 1fr; } }
+  .pillar { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s; }
+  .band.alt .pillar { background: var(--ground); }
+  .pillar:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .pillar .hd { padding: 20px 22px 0; }
+  .pillar .num { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--muted); }
+  .pillar h3 { font-size: 1.3rem; margin-top: 6px; }
+  .pillar p { padding: 8px 22px 0; color: var(--ink-soft); font-size: 15px; }
+  .pillar pre { margin: 18px 22px 22px; padding: 16px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; font-size: 12.5px; }
+
+  /* pipeline diagram */
+  .flow { margin-top: 44px; display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .flow .step {
+    flex: 1 1 150px; min-width: 128px; text-align: center; padding: 22px 12px; position: relative;
+    border: 1px solid var(--line); background: var(--surface);
+  }
+  .band.alt .flow .step { background: var(--ground); }
+  .flow .step:not(:last-child)::after {
+    content: "→"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%);
+    color: var(--accent); font-size: 15px; z-index: 2; background: var(--ground); padding: 2px;
+  }
+  .band.alt .flow .step:not(:last-child)::after { background: var(--surface); }
+  .flow .step:first-child { border-radius: 12px 0 0 12px; }
+  .flow .step:last-child { border-radius: 0 12px 12px 0; }
+  .flow .step .t { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 13px; }
+  .flow .step .d { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .flow .step.hi .t { color: var(--accent); }
+  @media (max-width: 720px) {
+    .flow { flex-direction: column; }
+    .flow .step { border-radius: 0 !important; }
+    .flow .step:first-child { border-radius: 12px 12px 0 0; }
+    .flow .step:last-child { border-radius: 0 0 12px 12px; }
+    .flow .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -11px; transform: translateX(50%); }
+  }
+
+  /* error terminal */
+  .err-grid { margin-top: 44px; display: grid; grid-template-columns: 1.05fr 1fr; gap: 28px; align-items: start; }
+  @media (max-width: 900px) { .err-grid { grid-template-columns: 1fr; } }
+  .term {
+    background: #201b16; border: 1px solid #38302733; border-radius: 13px; padding: 22px 24px;
+    font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.75; color: #d8cdb9;
+    box-shadow: var(--shadow); overflow-x: auto;
+  }
+  .term .code { color: #d98a5f; font-weight: 700; }
+  .term .msg { color: #efe6d4; }
+  .term .arrow { color: #d98a5f; }
+  .term .dim { color: #8a7d67; }
+  .term .fix { color: #9db98f; }
+  .err-note h3 { font-size: 1.35rem; }
+  .err-note p { margin-top: 12px; color: var(--ink-soft); font-size: 15px; }
+  .err-note .py-was {
+    margin-top: 16px; padding: 12px 14px; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 9px; font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--muted);
+  }
+  .err-note .py-was s { color: color-mix(in srgb, var(--ink) 50%, transparent); }
+
+  /* gui */
+  .gui-grid { margin-top: 44px; display: grid; grid-template-columns: 1fr 0.85fr; gap: 28px; align-items: center; }
+  @media (max-width: 900px) { .gui-grid { grid-template-columns: 1fr; } }
+  .gui-grid pre { padding: 20px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px; font-size: 12.5px; overflow-x: auto; }
+  .win { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .win .tb { display: flex; align-items: center; gap: 6px; padding: 10px 12px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+  .win .tb i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .win .tb span { margin-left: 8px; font-size: 11px; color: var(--muted); font-family: "JetBrains Mono", monospace; }
+  .win .body { padding: 22px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .win .body h4 { margin: 0 0 4px; font-family: "Fraunces", serif; font-size: 1.15rem; }
+  .win .field { display: flex; flex-direction: column; gap: 4px; }
+  .win .field label { font-size: 11px; color: var(--muted); }
+  .win .field div { border: 1px solid var(--line); border-radius: 7px; height: 32px; background: var(--ground); }
+  .win .wbtn { margin-top: 4px; background: var(--accent); color: #fff; text-align: center; padding: 9px; border-radius: 8px; font-weight: 600; font-size: 13px; }
+
+  /* roadmap */
+  .road { margin-top: 44px; display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; scroll-snap-type: x proximity; }
+  .road .r {
+    flex: 0 0 230px; scroll-snap-align: start; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 18px 20px;
+  }
+  .band.alt .road .r { background: var(--ground); }
+  .road .r .v { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 12px; color: var(--accent); }
+  .road .r.done .v::after { content: "  ✓ SHIPPED"; color: var(--good); }
+  .road .r h3 { font-size: 1.05rem; margin-top: 8px; }
+  .road .r ul { margin: 10px 0 0; padding-left: 16px; color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
+  .road .r.done { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+
+  /* get it */
+  .get-grid { margin-top: 44px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; }
+  @media (max-width: 900px) { .get-grid { grid-template-columns: 1fr; } }
+  .steps { display: flex; flex-direction: column; gap: 14px; }
+  .steps .st { display: flex; gap: 14px; align-items: flex-start; }
+  .steps .st b { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 13px; font-family: "JetBrains Mono", monospace; }
+  .steps .st code { display: block; margin-top: 4px; font-size: 12.5px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; color: var(--ink-soft); }
+  .steps .st .txt { font-size: 14.5px; }
+  .cmds { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .band.alt .cmds { background: var(--ground); }
+  .cmds div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .cmds div:last-child { border-bottom: 0; }
+  .cmds code { font-family: "JetBrains Mono", monospace; color: var(--accent); font-size: 12.5px; }
+  .cmds span { color: var(--muted); text-align: right; }
+
+  /* footer */
+  footer { border-top: 1px solid var(--line); padding: clamp(56px, 8vw, 88px) 0; background: var(--surface); }
+  footer .big { font-family: "Fraunces", serif; font-size: clamp(1.3rem, 3vw, 2rem); font-weight: 500; max-width: 40rem; }
+  footer .big em { color: var(--accent); font-style: italic; }
+  footer .meta { margin-top: 32px; display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; font-size: 13px; color: var(--muted); }
+  footer .meta a { color: var(--ink-soft); }
+  .egg {
+    margin-top: 26px; font-family: "JetBrains Mono", monospace; font-size: 12.5px; color: var(--ink-soft);
+    background: var(--code-bg); border: 1px dashed var(--line); border-radius: 9px; padding: 12px 14px; max-width: 40rem;
+  }
+  .egg .p { color: var(--accent); }
+  .egg .out { color: var(--muted); }
+</style>
+
+<div class="layout">
+  <nav class="rail" aria-hidden="true">
+    <span class="track"></span><span class="fill" id="railFill"></span>
+    <span class="node" data-label="POI 소스" data-go="hero"></span>
+    <span class="node" data-label="파서" data-go="pillars"></span>
+    <span class="node" data-label="AST" data-go="pipeline"></span>
+    <span class="node" data-label="오류 번역" data-go="errors"></span>
+    <span class="node" data-label="런타임 · GUI" data-go="gui"></span>
+    <span class="node" data-label="로드맵" data-go="roadmap"></span>
+    <span class="node" data-label="설치" data-go="get"></span>
+  </nav>
+
+  <header class="top">
+    <div class="wrap">
+      <span class="brand"><span class="dot"></span>POI <small>v0.1.0</small></span>
+      <nav>
+        <a class="navlink" href="#pillars">문법</a>
+        <a class="navlink" href="#pipeline">동작 원리</a>
+        <a class="navlink" href="#roadmap">로드맵</a>
+        <a class="navlink" href="https://github.com/siwon2da/POI">GitHub</a>
+        <button class="ghost" id="themeBtn" title="테마 전환" aria-label="테마 전환">◑</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="wrap">
+      <div class="prose">
+        <div class="eyebrow">Python Powered · Human First</div>
+        <h1>파이썬을 숨긴 게 아니라,<br>파이썬 위에 <span class="u">사람</span>을 얹었다.</h1>
+        <p class="lead">POI 코드는 파이썬 소스로 트랜스파일돼 CPython 에서 돕니다.
+          그래서 <code>numpy</code> · <code>pandas</code> · <code>requests</code> 를 그대로 쓰면서,
+          문법 · GUI · 오류 메시지는 훨씬 쉽습니다.</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/siwon2da/POI">GitHub 에서 보기 →</a>
+          <a class="btn line" href="#get">내려받기 · 실행</a>
+        </div>
+        <div class="runline"><span class="p">$</span> python -m poi run examples/basics.poi</div>
+      </div>
+
+      <div class="transpile" id="tp">
+        <div class="bar">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <span class="name">greet.poi  →  파이썬</span>
+          <span class="chip">✓ compiled</span>
+        </div>
+        <div class="panes">
+          <div class="pane poi">
+            <span class="sweep"></span>
+            <span class="tag">POI</span>
+<pre><span class="n">name</span> = <span class="k">ask</span> <span class="s">"이름: "</span>
+
+<span class="k">if</span> name.length &gt;= <span class="n">2</span> {
+    <span class="k">show</span> <span class="s">"안녕 {name}님"</span>
+} <span class="k">else</span> {
+    <span class="k">show</span> <span class="s">"이름이 너무 짧아요"</span>
+}</pre>
+          </div>
+          <div class="pane py">
+            <span class="sweep"></span>
+            <span class="tag">생성된 파이썬</span>
+<pre><span class="n">name</span> = <span class="call">poi_ask</span>(<span class="s">"이름: "</span>)
+<span class="k">if</span> (<span class="call">poi_getattr</span>(name, <span class="s">"length"</span>) &gt;= <span class="n">2</span>):
+    <span class="call">poi_show</span>(<span class="s">f"안녕 {poi_fmt(name)}님"</span>)
+<span class="k">else</span>:
+    <span class="call">poi_show</span>(<span class="s">"이름이 너무 짧아요"</span>)</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PILLARS -->
+  <section class="band alt" id="pillars">
+    <div class="wrap">
+      <div class="eyebrow">네 개의 축</div>
+      <h2>쉬운 문법 · 파이썬 호환 · 내장 UI · 사람 친화 오류</h2>
+      <p class="dek prose">이 네 가지가 제대로 되면 “파이썬 문법만 바꾼 장난감”이 아니라, 쓸 이유가 있는 언어가 됩니다.</p>
+
+      <div class="pillars">
+        <article class="pillar">
+          <div class="hd"><span class="num">01</span><h3>읽으면 뜻이 보이는 문법</h3></div>
+          <p><code>print()</code> 괄호, <code>range()</code>, <code>f""</code> 없이. 인간이 쓰는 말에 가깝게.</p>
+<pre><span class="k">repeat</span> <span class="n">3</span> <span class="k">as</span> i {
+    <span class="k">show</span> <span class="s">"{i}번째 인사"</span>
+}
+
+<span class="k">fn</span> <span class="fn">double</span>(x) =&gt; x * <span class="n">2</span>
+<span class="k">if</span> age <span class="k">between</span> <span class="n">10</span> <span class="k">and</span> <span class="n">19</span> { <span class="k">show</span> <span class="s">"10대"</span> }</pre>
+        </article>
+
+        <article class="pillar">
+          <div class="hd"><span class="num">02</span><h3>파이썬 생태계를 그대로</h3></div>
+          <p>수십만 개의 파이썬 라이브러리가 곧 POI 라이브러리. 필요하면 파이썬 코드도 그대로 삽입.</p>
+<pre><span class="k">use</span> <span class="call">py:numpy</span> <span class="k">as</span> np
+data = np.<span class="call">array</span>([<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>])
+<span class="k">show</span> data.<span class="call">mean</span>()        <span class="c"># 2.5</span>
+
+<span class="k">python</span> { <span class="c"># 탈출구</span>
+    <span class="k">import</span> os
+    <span class="call">print</span>(os.getcwd())
+}</pre>
+        </article>
+
+        <article class="pillar">
+          <div class="hd"><span class="num">03</span><h3>GUI 가 언어 기본기</h3></div>
+          <p>Tkinter · PyQt 없이. 선언형으로 창 하나가 Hello World 다음 순서.</p>
+<pre><span class="k">app</span> <span class="s">"안녕"</span> {
+    <span class="k">window</span> { size: <span class="n">420x260</span> }
+    <span class="k">text</span> <span class="s">"이건 POI 로 만든 창"</span>
+    <span class="k">button</span> <span class="s">"눌러봐"</span> {
+        <span class="k">show</span> <span class="s">"버튼 눌림!"</span>
+    }
+}</pre>
+        </article>
+
+        <article class="pillar">
+          <div class="hd"><span class="num">04</span><h3>오류는 사람의 말로</h3></div>
+          <p>파이썬 traceback 을 그대로 던지지 않습니다. POI 줄 + 한국어 설명 + 해결 힌트.</p>
+<pre><span class="c"># 파이썬:</span>
+<span class="c"># TypeError: can only concatenate str...</span>
+
+<span class="c"># POI:</span>
+<span class="k">POI Error P103</span>
+  숫자와 문자를 함께 계산할 수 없습니다.
+  → number(...) 로 바꿔보세요.</pre>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- PIPELINE -->
+  <section class="band" id="pipeline">
+    <div class="wrap">
+      <div class="eyebrow">동작 원리</div>
+      <h2>새 VM 을 만들지 않습니다. CPython 이 런타임입니다.</h2>
+      <p class="dek prose">POI 소스는 파서를 거쳐 POI AST 가 되고, 그 AST 를 파이썬 소스로 옮긴 뒤
+        <code>compile()</code> 해서 실행합니다. 성능은 거의 파이썬 급이고,
+        실행 중 오류가 나면 파이썬 줄번호를 POI 줄번호로 되돌려(<span class="mono">linemap</span>) 사람이 읽을 메시지를 만듭니다.</p>
+
+      <div class="flow">
+        <div class="step"><div class="t">.poi</div><div class="d">소스</div></div>
+        <div class="step"><div class="t">Lexer</div><div class="d">토큰</div></div>
+        <div class="step hi"><div class="t">Parser</div><div class="d">POI AST</div></div>
+        <div class="step hi"><div class="t">Transpiler</div><div class="d">파이썬 소스</div></div>
+        <div class="step"><div class="t">CPython</div><div class="d">exec</div></div>
+      </div>
+      <p class="dek" style="margin-top:20px"><code>poi run app.poi --emit-python</code> 으로 변환된 파이썬 코드를 그대로 볼 수 있습니다.</p>
+    </div>
+  </section>
+
+  <!-- ERRORS -->
+  <section class="band alt" id="errors">
+    <div class="wrap">
+      <div class="eyebrow">사람 친화 오류</div>
+      <h2>P103 — 숫자와 문자를 함께 계산할 수 없습니다</h2>
+
+      <div class="err-grid">
+        <div class="term">
+<span class="code">POI Error P103</span>
+
+  <span class="msg">숫자와 문자를 함께 계산할 수 없습니다.</span>
+
+    <span class="dim">3 | money = "1000"</span>
+  <span class="arrow">&gt;</span> <span class="dim">4 |</span> total = money + 500
+                    <span class="arrow">^</span>
+    <span class="dim">5 | show total</span>
+
+<span class="fix">해결:</span>
+<span class="fix">  number(...) 로 문자열을 숫자로 바꾸거나,</span>
+<span class="fix">  text(...) 로 숫자를 문자열로 바꿔서 맞추세요.</span>
+        </div>
+        <div class="err-note">
+          <h3>코드 · 줄 · 원인 · 해결</h3>
+          <p>모든 오류에 <b>P-코드</b>가 붙습니다 (P101 0으로 나눔, P102 모르는 이름, P104 파일 없음 …).
+            컴파일 단계 오류는 P0xx, 실행 단계는 P1xx.</p>
+          <div class="py-was">밑에서 실제로 난 파이썬 예외: <s>TypeError: can only concatenate str (not "int") to str</s></div>
+          <p style="margin-top:14px">입문자가 traceback 을 보고 도망가지 않도록, 이 번역 계층이 v0.1 부터 들어가 있습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GUI -->
+  <section class="band" id="gui">
+    <div class="wrap">
+      <div class="eyebrow">내장 GUI</div>
+      <h2>Flutter · SwiftUI 처럼 선언형. 백엔드는 tkinter.</h2>
+
+      <div class="gui-grid">
+<pre><span class="k">fn</span> <span class="fn">login</span>(id, pw) {
+    <span class="k">if</span> id.length &gt;= <span class="n">2</span> <span class="k">and</span> pw.length &gt;= <span class="n">4</span> {
+        <span class="k">show</span> <span class="s">"로그인 성공: {id}"</span>
+    }
+}
+
+<span class="k">app</span> <span class="s">"로그인"</span> {
+    <span class="k">window</span> { size: <span class="n">380x320</span>  center: <span class="k">true</span> }
+
+    <span class="k">state</span> username = <span class="s">""</span>
+    <span class="k">state</span> password = <span class="s">""</span>
+
+    <span class="k">column</span> {
+        <span class="k">title</span> <span class="s">"로그인"</span>
+        <span class="k">input</span> <span class="s">"아이디"</span> -&gt; username
+        <span class="k">password</span> <span class="s">"비밀번호"</span> -&gt; password
+        <span class="k">button</span> <span class="s">"로그인"</span> {
+            <span class="fn">login</span>(username, password)
+        }
+    }
+}</pre>
+        <div class="win" aria-hidden="true">
+          <div class="tb"><i></i><i></i><i></i><span>로그인</span></div>
+          <div class="body">
+            <h4>로그인</h4>
+            <div class="field"><label>아이디</label><div></div></div>
+            <div class="field"><label>비밀번호</label><div></div></div>
+            <div class="wbtn">로그인</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section class="band alt" id="roadmap">
+    <div class="wrap">
+      <div class="eyebrow">로드맵</div>
+      <h2>한 언어 안에서 입문 → 전문으로 올라간다</h2>
+      <p class="dek prose">v0.1 은 <b>작동하는 뼈대</b>입니다: 코어 언어 · 파이썬 인터롭 · 기본 GUI · 사람 친화 오류 · CLI · 회귀 테스트.
+        아래는 그 다음.</p>
+
+      <div class="road">
+        <div class="r done"><div class="v">v0.1</div><h3>작동하는 뼈대</h3>
+          <ul><li>Lexer · Parser · Transpiler</li><li>조건 · 반복 · 함수 · 객체</li><li><code>?.</code> <code>??</code> <code>|&gt;</code> · try/catch</li><li>use py: · python { } · pyfile</li><li>file · json · web · math · time</li><li>선언형 GUI · P-코드 오류</li></ul></div>
+        <div class="r"><div class="v">v0.2</div><h3>언어 다듬기</h3>
+          <ul><li>match / when 패턴 매칭</li><li>파이프라인 확장 (filter · map · sort)</li><li>구조 분해</li><li>every 1 second · background · async</li></ul></div>
+        <div class="r"><div class="v">v0.3</div><h3>선택적 정적 타입</h3>
+          <ul><li>Int · Text · List&lt;T&gt; · Option&lt;T&gt;</li><li>시그니처 검사 · 반환 타입 추론</li><li><code>poi check --types</code></li></ul></div>
+        <div class="r"><div class="v">v0.4</div><h3>표준 라이브러리</h3>
+          <ul><li>database() SQLite DSL</li><li>ai.chat (openai · gemini · ollama)</li><li>net · crypto · csv · test { }</li></ul></div>
+        <div class="r"><div class="v">v0.5</div><h3>웹</h3>
+          <ul><li>webapp { page "/" { } }</li><li>server { get "/api" { } }</li><li>상태 → 반응형 재렌더</li></ul></div>
+        <div class="r"><div class="v">v0.6</div><h3>GUI 2.0</h3>
+          <ul><li>state 변경 → 부분 갱신</li><li>grid · 전역 style</li><li>웹뷰 / Qt 백엔드 선택</li></ul></div>
+        <div class="r"><div class="v">v0.7</div><h3>패키지 매니저</h3>
+          <ul><li><code>poi add</code> · <code>poi add py:numpy</code></li><li>프로젝트 전용 venv 자동</li><li>poi.lock · 레지스트리</li></ul></div>
+        <div class="r"><div class="v">v0.8</div><h3>빌드 · 배포</h3>
+          <ul><li><code>poi build</code> → 단일 실행파일</li><li>PyInstaller → Nuitka</li><li>--native · --web</li></ul></div>
+        <div class="r"><div class="v">v0.9</div><h3>도구 생태계</h3>
+          <ul><li>POI Language Server (LSP)</li><li>VS Code 확장 · <code>poi fmt</code></li><li>poi doctor</li></ul></div>
+        <div class="r"><div class="v">v1.0</div><h3>안정화</h3>
+          <ul><li>문법 고정 · 하위호환 정책</li><li>play.poi.dev (Pyodide)</li><li>튜토리얼 · 예제 갤러리</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GET IT -->
+  <section class="band" id="get">
+    <div class="wrap">
+      <div class="eyebrow">설치 · 실행</div>
+      <h2>파이썬만 있으면 됩니다. 외부 의존성 0.</h2>
+
+      <div class="get-grid">
+        <div class="steps">
+          <div class="st"><b>1</b><div><div class="txt">저장소를 받습니다</div>
+            <code>git clone https://github.com/siwon2da/POI.git</code></div></div>
+          <div class="st"><b>2</b><div><div class="txt">바로 실행 (설치 없이)</div>
+            <code>python -m poi run examples/basics.poi</code></div></div>
+          <div class="st"><b>3</b><div><div class="txt">또는 설치해서 <code>poi</code> 명령으로</div>
+            <code>pip install -e .  &nbsp;&amp;&amp;&nbsp;  poi repl</code></div></div>
+          <div class="st"><b>4</b><div><div class="txt">새 프로젝트 시작</div>
+            <code>poi new my-app  &nbsp;&amp;&amp;&nbsp;  cd my-app  &nbsp;&amp;&amp;&nbsp;  poi run</code></div></div>
+        </div>
+        <div class="cmds">
+          <div><code>poi run [파일.poi]</code><span>실행 (기본 src/main.poi)</span></div>
+          <div><code>poi run x.poi --emit-python</code><span>변환된 파이썬 보기</span></div>
+          <div><code>poi new &lt;이름&gt;</code><span>프로젝트 생성</span></div>
+          <div><code>poi check &lt;파일&gt;</code><span>문법 검사</span></div>
+          <div><code>poi repl</code><span>대화형 셸</span></div>
+          <div><code>poi version</code><span>버전</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <p class="big">POI 는 파이썬을 죽이는 언어가 아니라,
+        파이썬을 <em>엔진</em>으로 쓰고 그 위에 더 쉬운 언어를 <em>씌운 것</em>.</p>
+      <div class="egg">
+        <span class="p">poi&gt;</span> show test
+        <span class="out">   # → 아스키아트: "강하고 담대하라 … 여호수아 1:9"</span><br>
+        <span class="p">poi&gt;</span> show pp청춘
+        <span class="out">   # → 청춘</span>
+      </div>
+      <div class="meta">
+        <span>MIT License</span>
+        <span>·</span>
+        <a href="https://github.com/siwon2da/POI">github.com/siwon2da/POI</a>
+        <span>·</span>
+        <span>made by SIWON</span>
+        <span>·</span>
+        <span>v0.1.0 — 2026</span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    "use strict";
+    var root = document.documentElement;
+    var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // theme toggle (3-state aware: default follows OS until user picks)
+    try {
+      var saved = localStorage.getItem("poi-theme");
+      if (saved) root.setAttribute("data-theme", saved);
+    } catch (e) {}
+    document.getElementById("themeBtn").addEventListener("click", function () {
+      var cur = root.getAttribute("data-theme");
+      if (!cur) cur = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      var next = cur === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem("poi-theme", next); } catch (e) {}
+    });
+
+    // pipeline rail: active node + fill as you pass sections
+    var nodes = Array.prototype.slice.call(document.querySelectorAll(".rail .node"));
+    var fill = document.getElementById("railFill");
+    var sections = nodes.map(function (n) { return document.getElementById(n.dataset.go); });
+    nodes.forEach(function (n, i) {
+      n.addEventListener("click", function () {
+        if (sections[i]) sections[i].scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      });
+    });
+    function onScroll() {
+      var mid = scrollY + innerHeight * 0.42;
+      var active = 0;
+      sections.forEach(function (s, i) { if (s && s.offsetTop <= mid) active = i; });
+      nodes.forEach(function (n, i) {
+        n.dataset.on = i === active ? "true" : (i < active ? "past" : "false");
+      });
+      var railH = nodes[nodes.length - 1].offsetTop - nodes[0].offsetTop;
+      fill.style.height = (railH * (active / (nodes.length - 1))) + "px";
+    }
+    addEventListener("scroll", onScroll, { passive: true });
+    addEventListener("resize", onScroll);
+    onScroll();
+
+    // hero transpile sweep — runs once when it scrolls into view, from a fully readable rest state
+    var tp = document.getElementById("tp");
+    if (tp && !reduce && "IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            tp.classList.add("run");
+            setTimeout(function () { tp.classList.add("done"); }, 1500);
+            io.disconnect();
+          }
+        });
+      }, { threshold: 0.4 });
+      io.observe(tp);
+    } else if (tp) {
+      tp.classList.add("done");
+    }
+  })();
+</script>

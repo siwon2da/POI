@@ -69,6 +69,10 @@ poi run examples/basics.poi
 - [오류 코드표 (docs/ERRORS.md)](docs/ERRORS.md)
 - [로드맵 (docs/ROADMAP.md)](docs/ROADMAP.md)
 
+## 랜딩 페이지
+
+`site/landing.html` — 문법·동작 원리·오류 메시지·GUI·로드맵을 담은 소개 페이지 (Claude Artifact 형식).
+
 ## 상태
 
 **v0.1 (작동하는 뼈대).** 코어 언어 + 파이썬 인터롭 + 기본 GUI + 사람 친화 오류 + CLI + 회귀 테스트 13개.
