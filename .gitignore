@@ -9,3 +9,9 @@ dist/
 .pytest_cache/
 .DS_Store
 Thumbs.db
+
+# built exes (hagora 에서 배포)
+dist/exe/
+*.exe
+build/pyi/
+*.spec

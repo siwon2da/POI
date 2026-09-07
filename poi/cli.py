@@ -283,8 +283,27 @@ def _unbalanced(text: str) -> bool:
     return depth > 0
 
 
+def cmd_install(args: list[str]) -> int:
+    from .winsetup import install
+    return install(args)
+
+
+def cmd_uninstall(args: list[str]) -> int:
+    from .winsetup import uninstall
+    return uninstall(args)
+
+
 def main(argv: list[str] | None = None) -> int:
+    for _s in (sys.stdout, sys.stderr):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] in ("__install__", "install"):
+        return cmd_install(argv[1:])
+    if argv and argv[0] in ("__uninstall__", "uninstall"):
+        return cmd_uninstall(argv[1:])
     if "--no-banner" in argv:
         os.environ["POI_NO_BANNER"] = "1"
         argv = [a for a in argv if a != "--no-banner"]

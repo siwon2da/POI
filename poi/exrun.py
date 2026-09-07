@@ -19,7 +19,12 @@ _EX = os.path.join(os.path.dirname(_HERE), "exercises")
 
 
 def _load_manifest() -> list[dict]:
-    with open(os.path.join(_EX, "manifest.json"), encoding="utf-8") as f:
+    mf = os.path.join(_EX, "manifest.json")
+    if not os.path.isfile(mf):
+        print("연습문제 폴더를 찾을 수 없습니다 (exercises/).")
+        print("저장소를 받아서 실행하세요:  git clone https://github.com/siwon2da/POI.git")
+        raise SystemExit(2)
+    with open(mf, encoding="utf-8") as f:
         return json.load(f)["problems"]
 
 
