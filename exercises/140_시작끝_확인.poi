@@ -1,0 +1,3 @@
+w = "hello.poi"
+show w.ends_with(".poi")
+show w.starts_with("hello")

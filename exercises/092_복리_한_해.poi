@@ -1,0 +1,2 @@
+money = 10000
+show money + money * 0.03

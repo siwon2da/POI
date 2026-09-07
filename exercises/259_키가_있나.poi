@@ -1,0 +1,3 @@
+u = { name: "x" }
+show u.has("name")
+show u.has("age")

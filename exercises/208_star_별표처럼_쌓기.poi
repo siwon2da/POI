@@ -1,0 +1,5 @@
+repeat 4 as i {
+    row = ""
+    repeat i + 1 { row = row + "*" }
+    show row
+}

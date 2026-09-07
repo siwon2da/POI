@@ -1,0 +1,4 @@
+cart = [{ price: 1200 }, { price: 3400 }, { price: 900 }]
+total = 0
+for item in cart { total = total + item.price }
+show total

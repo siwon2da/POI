@@ -1,0 +1,1 @@
+if 15 % 2 is 0 { show "짝수" } else { show "홀수" }

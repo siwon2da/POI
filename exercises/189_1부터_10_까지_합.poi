@@ -1,0 +1,5 @@
+total = 0
+repeat 10 as i {
+    total = total + i + 1
+}
+show total

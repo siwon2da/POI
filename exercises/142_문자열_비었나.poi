@@ -1,0 +1,2 @@
+show "".is_empty
+show "x".is_empty

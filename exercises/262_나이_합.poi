@@ -1,0 +1,4 @@
+people = [{ age: 16 }, { age: 17 }, { age: 15 }]
+s = 0
+for p in people { s = s + p.age }
+show s

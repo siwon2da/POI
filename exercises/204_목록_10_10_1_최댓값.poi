@@ -1,0 +1,5 @@
+best = [10, 10, 1][0]
+for x in [10, 10, 1] {
+    if x > best { best = x }
+}
+show best

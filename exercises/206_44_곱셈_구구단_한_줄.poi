@@ -1,0 +1,7 @@
+repeat 4 as a {
+    line = ""
+    repeat 4 as b {
+        line = line + text((a+1)*(b+1)) + " "
+    }
+    show line.trim()
+}

@@ -1,0 +1,7 @@
+fn max3(a, b, c) {
+    m = a
+    if b > m { m = b }
+    if c > m { m = c }
+    return m
+}
+show max3(3, 9, 5)

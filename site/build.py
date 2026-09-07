@@ -1,12 +1,14 @@
-"""랜딩 페이지 빌드.
+"""랜딩 + 입문서 빌드.
 
     python site/build.py
 
-_landing.template.html  +  assets/fonts/*.woff2
-   → site/landing.html        (Claude Artifact 조각: <title>+<style>+본문+<script>)
-   → site/hagora/index.html   (독립 실행본: <!doctype> 로 감싼 것)
+_landing.template.html / _book.template.html  +  assets/fonts/Galmuri14.woff2
+   → site/landing.html          (Claude Artifact 조각)
+   → site/hagora/index.html     (독립 실행본)
+   → site/book.html             (Artifact 조각)
+   → site/hagora/book/index.html
 
-폰트(Galmuri)는 base64 로 인라인해서 두 산출물 모두 자체 완결형이다.
+폰트(Galmuri14)는 base64 로 인라인해서 산출물이 전부 자체 완결형이다.
 """
 from __future__ import annotations
 
@@ -21,14 +23,7 @@ def b64(rel: str) -> str:
         return base64.b64encode(f.read()).decode("ascii")
 
 
-def main() -> int:
-    tpl = open(os.path.join(HERE, "_landing.template.html"), encoding="utf-8").read()
-    frag = tpl.replace("__G11B_B64__", b64("assets/fonts/Galmuri11-Bold.woff2"))
-
-    out_frag = os.path.join(HERE, "landing.html")
-    open(out_frag, "w", encoding="utf-8", newline="\n").write(frag)
-
-    # 독립 실행본
+def _wrap(frag: str, og_desc: str, og_url: str) -> str:
     marker = "\n<style>"
     i = frag.index(marker)
     head_bits = [l for l in frag[:i].splitlines() if l.strip()]
@@ -36,8 +31,7 @@ def main() -> int:
     title = next(l for l in head_bits if l.startswith("<title>"))
     meta = next((l for l in head_bits if l.startswith('<meta name="description"')), "")
     links = [l for l in head_bits if l.startswith("<link")]
-
-    standalone = f"""<!doctype html>
+    return f"""<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -47,9 +41,9 @@ def main() -> int:
 {title}
 {meta}
 <meta property="og:title" content="POI">
-<meta property="og:description" content="우리가 만든 언어 — 문법 자체가 파이썬보다 쉽고, 쓸 수 있는 범위는 더 넓게.">
+<meta property="og:description" content="{og_desc}">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://hagora.kr/poi/">
+<meta property="og:url" content="{og_url}">
 <link rel="icon" href="/poi/assets/poi-mark.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/poi/assets/poi-mark-256.png">
 {chr(10).join(links)}
@@ -66,13 +60,37 @@ def main() -> int:
 </body>
 </html>
 """
+
+
+def main() -> int:
+    font = b64("assets/fonts/Galmuri14.woff2")
     hd = os.path.join(HERE, "hagora")
-    os.makedirs(hd, exist_ok=True)
-    open(os.path.join(hd, "index.html"), "w", encoding="utf-8", newline="\n").write(standalone)
+    os.makedirs(os.path.join(hd, "book"), exist_ok=True)
+    done = []
+
+    # 랜딩
+    frag = open(os.path.join(HERE, "_landing.template.html"),
+                encoding="utf-8").read().replace("__G14_B64__", font)
+    open(os.path.join(HERE, "landing.html"), "w", encoding="utf-8",
+         newline="\n").write(frag)
+    open(os.path.join(hd, "index.html"), "w", encoding="utf-8", newline="\n").write(
+        _wrap(frag, "우리가 만든 언어 — 쉽고, 넓고, 끝까지.", "https://hagora.kr/poi/"))
+    done += [("landing.html", frag), ("hagora/index.html", frag)]
+
+    # 입문서
+    bfrag = open(os.path.join(HERE, "_book.template.html"),
+                 encoding="utf-8").read().replace("__G14_B64__", font)
+    open(os.path.join(HERE, "book.html"), "w", encoding="utf-8",
+         newline="\n").write(bfrag)
+    open(os.path.join(hd, "book", "index.html"), "w", encoding="utf-8",
+         newline="\n").write(
+        _wrap(bfrag, "POI 입문서 — 설치부터 GUI·디버깅·파이썬 우주까지.",
+              "https://hagora.kr/poi/book/"))
+    done += [("book.html", bfrag), ("hagora/book/index.html", bfrag)]
 
     print("빌드 완료:")
-    print(f"  {out_frag}  ({len(frag)//1024} KB)")
-    print(f"  {os.path.join(hd, 'index.html')}  ({len(standalone)//1024} KB)")
+    for name, content in done:
+        print(f"  {name}  ({len(content) // 1024} KB)")
     return 0
 
 

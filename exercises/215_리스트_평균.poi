@@ -1,0 +1,4 @@
+xs = [80, 90, 100, 70]
+s = 0
+for x in xs { s = s + x }
+show s / xs.length

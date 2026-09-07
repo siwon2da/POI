@@ -1,0 +1,4 @@
+repeat 5 as i {
+    show 5 - i
+}
+show "발사!"

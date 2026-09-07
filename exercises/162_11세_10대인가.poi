@@ -1,0 +1,2 @@
+age = 11
+if age between 10 and 19 { show "10대" } else { show "아님" }

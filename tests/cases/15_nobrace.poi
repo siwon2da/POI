@@ -1,0 +1,13 @@
+fn dbl(x)
+return x * 2
+end
+
+repeat 3 as i
+show dbl(i)
+end
+
+if 5 > 3
+show "yes"
+else
+show "no"
+end

@@ -1,0 +1,2 @@
+y = 2024
+if y % 4 is 0 and y % 100 is not 0 { show "윤년" } else { show "평년" }

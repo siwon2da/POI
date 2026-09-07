@@ -1,0 +1,2 @@
+show math.floor(3.7)
+show math.ceil(3.2)

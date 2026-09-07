@@ -1,0 +1,12 @@
+count = 0
+repeat 99 as k {
+    n = k + 2
+    isp = true
+    d = 2
+    repeat n {
+        if d < n and n % d is 0 { isp = false }
+        d = d + 1
+    }
+    if isp { count = count + 1 }
+}
+show count

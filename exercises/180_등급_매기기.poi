@@ -1,0 +1,2 @@
+score = 85
+if score >= 90 { show "A" } else if score >= 80 { show "B" } else { show "C" }

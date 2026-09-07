@@ -1,0 +1,4 @@
+xs = [1, 2, 3]
+xs.add(4)
+show xs.length
+show xs.last

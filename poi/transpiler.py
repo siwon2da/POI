@@ -278,6 +278,8 @@ class Transpiler:
         if k == "Is":
             op = "!=" if n.negated else "=="
             return f"({self.ex(n.left)} {op} {self.ex(n.right)})"
+        if k == "Ternary":
+            return f"({self.ex(n.body)} if {self.ex(n.cond)} else {self.ex(n.alt)})"
         if k == "Coalesce":
             return (f"poi_coalesce(lambda: {self.ex(n.left)}, "
                     f"lambda: {self.ex(n.right)})")

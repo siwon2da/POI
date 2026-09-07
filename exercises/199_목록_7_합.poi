@@ -1,0 +1,5 @@
+s = 0
+for x in [7] {
+    s = s + x
+}
+show s

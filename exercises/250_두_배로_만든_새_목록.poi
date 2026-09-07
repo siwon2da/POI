@@ -1,0 +1,4 @@
+xs = [1, 2, 3]
+dbl = []
+for x in xs { dbl.add(x * 2) }
+show dbl.join(" ")

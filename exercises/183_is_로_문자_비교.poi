@@ -1,0 +1,2 @@
+name = "시원"
+if name is "시원" { show "어서와" }

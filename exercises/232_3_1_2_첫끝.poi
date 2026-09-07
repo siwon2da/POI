@@ -1,0 +1,2 @@
+show [3, 1, 2].first
+show [3, 1, 2].last

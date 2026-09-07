@@ -1,0 +1,25 @@
+# 중괄호 없이, 들여쓰기 없이 — end 로 닫는다 (v1.2)
+
+fn 인사(이름)
+return "안녕, " + 이름 + "님"
+end
+
+for 사람 in ["시원", "예성", "민수"]
+show 인사(사람)
+end
+
+점수 = 82
+if 점수 >= 90
+show "A"
+else if 점수 >= 80
+show "B"
+else
+show "C"
+end
+
+# 한 줄이면 콜론으로
+repeat 5 as i: show i + 1
+
+# 삼항식
+등급 = "합격" if 점수 >= 60 else "재시험"
+show 등급

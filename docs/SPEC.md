@@ -1,4 +1,4 @@
-# POI v1.1 문법 명세
+# POI v1.2 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -28,7 +28,7 @@ POI 소스 → Lexer → Parser → POI AST → POI 컴파일러 → (CPython �
 - **크기 리터럴**: `500x300` → 문자열 `"500x300"` (GUI `size:` 용)
 - **문자열**: `"..."`, 여러 줄은 `"""..."""`. `\n \t \" \\` 이스케이프. `{{` `}}` 는 리터럴 중괄호.
 - **식별자**: 유니코드 letter/underscore 로 시작 → 한글 변수명 OK (`이름 = "시원"`).
-- **예약어**: `if else for in fn return const show ask use python try catch true false null is between and or not repeat as`
+- **예약어**: `if else for in fn return const show ask use python try catch true false null is between and or not repeat as end`
   (GUI 단어 `app window text button ...` 은 예약어가 아니라 문맥으로 인식)
 
 ## 2. 값과 자료형
@@ -78,7 +78,29 @@ n = number(ask "숫자: ")            # 숫자로 변환
 | 논리 | `and or not` (`&& || !` 도 됨) |
 | null 병합 | `a ?? b` — a 가 null 이면 b |
 | null 안전 접근 | `a?.b` — a 가 null 이거나 b 가 없으면 null |
+| 삼항식 | `값 if 조건 else 다른값` (파이썬과 같은 순서) |
 | 파이프라인 | `x |> f`, `x |> f(a)` → `f(x)`, `f(x, a)` |
+
+## 5.5 블록 — 3가지 방식 (섞어도 됨)
+
+POI 의 블록은 세 가지로 쓸 수 있다. **파이썬보다 자유롭게** — 중괄호도, 들여쓰기도
+강제하지 않는다.
+
+```poi
+# 1) 중괄호
+if x > 0 { show "양수" }
+
+# 2) 콜론 — 한 줄
+if x > 0: show "양수"
+
+# 3) end 로 닫기 — 중괄호도 들여쓰기도 없이
+if x > 0
+show "양수"
+end
+```
+
+`if / else if / else` 는 체인 전체를 하나의 `end` 로 닫는다.
+`fn` `repeat` `for` `try/catch` 도 같은 3방식을 쓴다. 들여쓰기는 순전히 장식이다.
 
 ## 6. 조건문
 
@@ -90,6 +112,14 @@ if age >= 18 {
 } else {
     show "어린이"
 }
+# 또는 중괄호 없이:
+if age >= 18
+    show "성인"
+else if age >= 13
+    show "청소년"
+else
+    show "어린이"
+end
 
 if name is "시원" { show "어서와" }
 if age between 10 and 19 { show "10대" }
@@ -221,14 +251,23 @@ poi debug x.poi            # 위 전부
 |---|---|
 | `poi run [파일]` | 실행 (기본 `src/main.poi` → `main.poi` → `app.poi`) |
 | `poi run 파일 --emit-python` | 낮춰진 중간 표현 출력 |
+| `poi run 파일 --safe [--time N]` | 샌드박스 실행 (python{}·use py·파일·네트워크 차단, 시간 제한) |
 | `poi debug 파일` | 추적 + 변수 + 사후 분석 |
+| `poi serve [폴더] [--port]` | 플레이그라운드 서버 (정적 서빙 + 안전 실행 `/run`) |
+| `poi exercises [번호\|--topic\|--show]` | 연습문제 300제 실행·채점 |
 | `poi new <이름>` | 프로젝트 폴더 생성 |
 | `poi check <파일>` | 문법만 검사 |
-| `poi repl` | 대화형 셸 |
+| `poi repl` | 대화형 셸 (부팅 배너) |
 | `poi update` | 새 버전 확인 / 올리기 |
 | `poi version` | 버전 |
 
-환경변수 `POI_NO_UPDATE_CHECK=1` — 자동 새 버전 확인 끄기.
+환경변수: `POI_NO_UPDATE_CHECK=1` (버전 확인 끄기) · `POI_NO_BANNER=1` (배너 끄기).
+
+### 안전 모드 (`--safe`)
+
+모르는 사람의 코드를 받아 실행할 때(플레이그라운드) 쓴다. 막는 것:
+`python { }` · `use py:` · `use pyfile` · `file.*` · `web.*` · 위험한 파이썬 내장(`open`/`eval`/`exec`/`__import__` 등) ·
+무한 루프(벽시계 제한) · 출력 폭탄(바이트 상한). `poi serve` 는 여기에 **별도 프로세스 격리**를 더한다.
 
 ## 16. 프로젝트 구조
 

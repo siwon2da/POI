@@ -1,0 +1,6 @@
+ws = ["a", "bbb", "cc", "dddd"]
+best = ws[0]
+for w in ws {
+    if w.length > best.length { best = w }
+}
+show best

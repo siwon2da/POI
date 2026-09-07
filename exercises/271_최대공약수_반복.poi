@@ -1,0 +1,10 @@
+a = 48
+b = 18
+repeat 100 {
+    if b is not 0 {
+        t = a % b
+        a = b
+        b = t
+    }
+}
+show a

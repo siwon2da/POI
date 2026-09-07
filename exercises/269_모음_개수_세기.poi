@@ -1,0 +1,7 @@
+s = "power of imagination"
+n = 0
+repeat s.length as i {
+    c = s[i]
+    if c is "a" or c is "e" or c is "i" or c is "o" or c is "u" { n = n + 1 }
+}
+show n

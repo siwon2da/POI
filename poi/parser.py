@@ -73,8 +73,12 @@ class Parser:
             self.skip_nl()
         return Node("Program", body=body)
 
-    # -- statements -----------------------------------------------
-    def block(self):
+    # -- blocks --------------------------------------------------
+    # 세 가지 방식 다 됨 (섞어도 됨):
+    #   1)  ... { 문장들 }          중괄호
+    #   2)  ... : 문장              한 줄 (콜론)
+    #   3)  ...\n 문장들\n end       중괄호·들여쓰기 없이, end 로 닫기
+    def _brace_block(self):
         self.expect("OP", "{")
         self.skip_nl()
         body = []
@@ -85,6 +89,30 @@ class Parser:
             self.skip_nl()
         self.expect("OP", "}")
         return body
+
+    def block(self, stops=()):
+        """(문장리스트, needs_end) 반환. needs_end 면 호출부가 'end' 를 소비해야 함."""
+        if self.check("OP", "{"):
+            return self._brace_block(), False
+        if self.match("OP", ":"):
+            while self.check("NEWLINE"):
+                self.advance()
+            return [self.statement()], False
+        # end / stops 로 닫히는 형태 (중괄호·들여쓰기 불필요)
+        self.skip_nl()
+        stopset = set(stops) | {"end"}
+        body = []
+        while not (self.check_any("KEYWORD", stopset) or self.at_end()):
+            body.append(self.statement())
+            self.skip_nl()
+        return body, True
+
+    def _end(self, needs_end: bool):
+        if needs_end:
+            if not self.match("KEYWORD", "end"):
+                t = self.peek()
+                raise POIError("블록을 닫는 'end' 가 필요합니다.", "P016", t.line, t.col,
+                               hint="중괄호 { } 를 쓰거나, 블록 끝에 end 를 넣으세요.")
 
     def statement(self):
         t = self.peek()
@@ -181,23 +209,30 @@ class Parser:
         if self.match("OP", "=>"):
             return Node("FnDecl", line=t.line, name=name, params=params,
                         body=self.expression(), is_expr_body=True)
+        body, ne = self.block()
+        self._end(ne)
         return Node("FnDecl", line=t.line, name=name, params=params,
-                    body=self.block(), is_expr_body=False)
+                    body=body, is_expr_body=False)
 
     def _if_stmt(self):
         t = self.advance()
-        branches = [(self.expression(), self.block())]
+        cond = self.expression()
+        first, ne = self.block(("else",))
+        branches = [(cond, first)]
         orelse = None
         self.skip_nl()
         while self.check("KEYWORD", "else"):
             self.advance()
             self.skip_nl()
             if self.match("KEYWORD", "if"):
-                branches.append((self.expression(), self.block()))
+                c2 = self.expression()
+                b2, _ = self.block(("else",))
+                branches.append((c2, b2))
                 self.skip_nl()
             else:
-                orelse = self.block()
+                orelse, _ = self.block(())
                 break
+        self._end(ne)
         return Node("If", line=t.line, branches=branches, orelse=orelse)
 
     def _repeat_stmt(self):
@@ -206,15 +241,21 @@ class Parser:
         var = None
         if self.match("KEYWORD", "as"):
             var = self.expect("IDENT", what="반복 변수").value
-        return Node("Repeat", line=t.line, count=count, var=var, body=self.block())
+        body, ne = self.block()
+        self._end(ne)
+        return Node("Repeat", line=t.line, count=count, var=var, body=body)
 
     def _for_stmt(self, gui=False):
         t = self.advance()
         var = self.expect("IDENT", what="반복 변수").value
         self.expect("KEYWORD", "in")
         it = self.expression()
-        body = self._gui_block() if gui else self.block()
-        return Node("ForIn", line=t.line, var=var, iterable=it, body=body, gui=gui)
+        if gui:
+            return Node("ForIn", line=t.line, var=var, iterable=it,
+                        body=self._gui_block(), gui=True)
+        body, ne = self.block()
+        self._end(ne)
+        return Node("ForIn", line=t.line, var=var, iterable=it, body=body, gui=False)
 
     def _use_stmt(self):
         t = self.advance()
@@ -242,13 +283,14 @@ class Parser:
 
     def _try_stmt(self):
         t = self.advance()
-        body = self.block()
+        body, ne1 = self.block(("catch",))
         self.skip_nl()
         self.expect("KEYWORD", "catch")
         name = None
         if self.check("IDENT"):
             name = self.advance().value
-        handler = self.block()
+        handler, ne2 = self.block()
+        self._end(ne1 or ne2)
         return Node("TryCatch", line=t.line, body=body, name=name, handler=handler)
 
     # -- GUI ------------------------------------------------------
@@ -350,7 +392,15 @@ class Parser:
 
     # -- expressions --------------------------------------------
     def expression(self):
-        return self._pipeline()
+        node = self._pipeline()
+        # 삼항식:  값  if  조건  else  다른값   (파이썬과 같은 순서)
+        if self.check("KEYWORD", "if"):
+            self.advance()
+            cond = self._pipeline()
+            self.expect("KEYWORD", "else", what="삼항식의 else")
+            alt = self.expression()
+            return Node("Ternary", line=node.line, body=node, cond=cond, alt=alt)
+        return node
 
     def _pipeline(self):
         node = self._coalesce()

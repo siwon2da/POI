@@ -1,0 +1,367 @@
+<title>POI 입문서</title>
+<meta name="description" content="POI 를 처음부터 — 설치부터 GUI·디버깅·파이썬 우주까지, 예제로 배우는 입문서.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+
+<style>
+  @font-face { font-family:"Galmuri14"; src:url(data:font/woff2;base64,__G14_B64__) format("woff2"); font-weight:400; font-display:swap; }
+  @font-face { font-family:"Galmuri14"; src:url(data:font/woff2;base64,__G14_B64__) format("woff2"); font-weight:700; font-display:swap; }
+
+  :root{
+    --bg:#fff; --bg-soft:#f2f4f6; --card:#fff; --ink:#191f28; --ink-2:#4e5968; --ink-3:#8b95a1;
+    --line:#e8ebee; --blue:#3182f6; --blue-wash:#ebf2fe; --good:#12b886;
+    --r:16px; --shadow:0 1px 3px rgba(25,31,40,.04),0 8px 24px -12px rgba(25,31,40,.12);
+    --sans:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    --pixel:"Galmuri14","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    --code:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"D2Coding",monospace;
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#17171c; --bg-soft:#1e1e25; --card:#1e1e25; --ink:#eaecef; --ink-2:#a9aeb8; --ink-3:#767c87;
+    --line:#2e2f38; --blue:#4b93f8; --blue-wash:#1c2a42;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 14px 40px -14px rgba(0,0,0,.6);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#17171c; --bg-soft:#1e1e25; --card:#1e1e25; --ink:#eaecef; --ink-2:#a9aeb8; --ink-3:#767c87;
+    --line:#2e2f38; --blue:#4b93f8; --blue-wash:#1c2a42;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 14px 40px -14px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.8;word-break:keep-all;-webkit-font-smoothing:antialiased;}
+  .pixel{font-family:var(--pixel);-webkit-font-smoothing:none;font-weight:700;line-height:1.4;}
+  a{color:var(--blue);text-decoration:none;} a:hover{text-decoration:underline;text-underline-offset:3px;}
+  code{font-family:var(--code);font-size:.9em;background:var(--bg-soft);padding:1px 5px;border-radius:5px;}
+  pre{font-family:var(--code);font-size:13px;line-height:1.85;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow-x:auto;margin:14px 0;}
+  pre code{background:none;padding:0;font-size:inherit;}
+  .k{color:var(--blue);font-weight:700;} .s{color:var(--good);} .c{color:var(--ink-3);} .nu{color:#e8590c;}
+  :root[data-theme="dark"] .nu, :root:not([data-theme="light"]) .nu{color:#ff922b;}
+
+  header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  header.top .in{max-width:1000px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;}
+  header.top .b{font-family:var(--pixel);-webkit-font-smoothing:none;font-size:17px;color:var(--ink);display:flex;gap:8px;align-items:center;}
+  header.top svg{width:24px;height:24px;}
+  header.top a{font-size:13px;color:var(--ink-2);font-weight:500;}
+
+  .shell{max-width:1000px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:210px 1fr;gap:44px;}
+  @media (max-width:860px){ .shell{grid-template-columns:1fr;} nav.toc{display:none;} }
+  nav.toc{position:sticky;top:72px;align-self:start;max-height:calc(100vh - 100px);overflow-y:auto;font-size:13px;padding:24px 0;}
+  nav.toc a{display:block;color:var(--ink-3);padding:4px 0;}
+  nav.toc a:hover{color:var(--blue);text-decoration:none;}
+  nav.toc .lv2{padding-left:12px;font-size:12px;}
+
+  main{padding:32px 0 120px;max-width:44rem;}
+  .hero{padding:56px 0 24px;}
+  .hero h1{font-size:clamp(2rem,5vw,3rem);margin:0;}
+  .hero p{color:var(--ink-2);margin-top:14px;}
+  h2{font-family:var(--pixel);-webkit-font-smoothing:none;font-weight:700;font-size:clamp(1.4rem,3vw,1.9rem);margin:64px 0 4px;scroll-margin-top:72px;}
+  h2 .no{color:var(--blue);}
+  h3{font-size:1.1rem;margin:32px 0 4px;}
+  p{margin:12px 0;}
+  .tip{background:var(--blue-wash);border-radius:12px;padding:14px 16px;font-size:14.5px;margin:16px 0;}
+  .try{border-left:3px solid var(--blue);padding:6px 0 6px 14px;margin:16px 0;font-size:14.5px;color:var(--ink-2);}
+  .try b{color:var(--ink);}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0;}
+  .foot{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px;}
+</style>
+
+<header class="top">
+  <div class="in">
+    <span class="b">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="44" height="44" rx="11" fill="#3182F6"/><g fill="#fff"><rect x="15" y="7" width="4.4" height="4.4"/><rect x="20" y="7" width="4.4" height="4.4"/><rect x="25" y="7" width="4.4" height="4.4"/><rect x="30" y="7" width="4.4" height="4.4"/><rect x="15" y="12" width="4.4" height="4.4"/><rect x="30" y="12" width="4.4" height="4.4"/><rect x="15" y="17" width="4.4" height="4.4"/><rect x="30" y="17" width="4.4" height="4.4"/><rect x="15" y="22" width="4.4" height="4.4"/><rect x="20" y="22" width="4.4" height="4.4"/><rect x="25" y="22" width="4.4" height="4.4"/><rect x="30" y="22" width="4.4" height="4.4"/><rect x="15" y="27" width="4.4" height="4.4"/><rect x="15" y="32" width="4.4" height="4.4"/><rect x="15" y="37" width="4.4" height="4.4"/></g></svg>
+      POI 입문서
+    </span>
+    <a href="/poi/">← 소개로</a>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc">
+    <a href="#c0">0. 이 책은</a>
+    <a href="#c1">1. POI 세우기</a>
+    <a href="#c2">2. 첫 프로그램</a>
+    <a href="#c3">3. 값과 변수</a>
+    <a href="#c4">4. 문자열</a>
+    <a href="#c5">5. 계산</a>
+    <a href="#c6">6. 물어보기</a>
+    <a href="#c7">7. 조건</a>
+    <a href="#c8">8. 반복</a>
+    <a href="#c9">9. 함수</a>
+    <a href="#c10">10. 목록</a>
+    <a href="#c11">11. 객체</a>
+    <a href="#c12">12. 파일과 JSON</a>
+    <a href="#c13">13. 웹</a>
+    <a href="#c14">14. 오류 다루기</a>
+    <a href="#c15">15. 디버깅</a>
+    <a href="#c16">16. 창 만들기</a>
+    <a href="#c17">17. 파이썬 우주</a>
+    <a href="#c18">18. 프로젝트</a>
+    <a href="#c19">19. 300제, 그리고</a>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <h1 class="pixel">POI 입문서</h1>
+      <p>설치부터 GUI · 디버깅 · 파이썬 우주까지. 예제는 전부 그대로 실행됩니다.
+        <code>poi run 파일.poi</code> 로 따라 해 보세요.</p>
+    </div>
+
+    <h2 id="c0"><span class="no">0.</span> 이 책은</h2>
+    <p>프로그래밍을 처음 하는 사람을 위한 책입니다. 파이썬을 몰라도 됩니다.
+      각 장은 <b>짧은 설명 → 실행되는 예제 → 해보기</b> 로 되어 있습니다.
+      순서대로 읽으면 됩니다.</p>
+    <p>POI 는 <b>우리가 만든 언어</b>입니다. 자체 문법·타입·오류·GUI 를 갖고,
+      실행만 세계에서 가장 검증된 런타임 위에서 합니다. 그래서 새 언어인데도
+      파이썬 라이브러리 수십만 개를 첫날부터 씁니다.</p>
+
+    <h2 id="c1"><span class="no">1.</span> POI 세우기</h2>
+    <p>파이썬 3.10 이상만 있으면 됩니다.</p>
+    <pre><span class="c"># Windows — 설치 마법사</span>
+poi-setup-1.2.0.exe
+
+<span class="c"># 어디서나 — 저장소를 받아서</span>
+git clone https://github.com/siwon2da/POI.git
+python -m poi run examples/basics.poi</pre>
+    <p><code>pip install -e .</code> 하면 <code>poi</code> 명령을 쓸 수 있습니다.
+      새 버전이 나오면 <code>poi run</code> 이 알려주고, <code>poi update</code> 로 올립니다.</p>
+
+    <h2 id="c2"><span class="no">2.</span> 첫 프로그램</h2>
+    <p><code>hello.poi</code> 파일을 만들고:</p>
+    <pre><span class="k">show</span> <span class="s">"Hello World"</span>
+<span class="k">show</span> <span class="nu">2</span> + <span class="nu">3</span>
+<span class="c"># # 뒤는 주석 — 실행되지 않습니다</span></pre>
+    <p><code>poi run hello.poi</code> 하면 <code>Hello World</code> 와 <code>5</code> 가 나옵니다.
+      <code>print()</code> 도, 괄호도, 세미콜론도 필요 없습니다.</p>
+    <div class="try"><b>해보기</b> — 자기 이름과 좋아하는 숫자를 각각 한 줄로 출력해 보세요.</div>
+
+    <h2 id="c3"><span class="no">3.</span> 값과 변수</h2>
+    <pre>name = <span class="s">"시원"</span>       <span class="c"># 글자 (Text)</span>
+age = <span class="nu">16</span>            <span class="c"># 정수 (Int)</span>
+height = <span class="nu">172.5</span>      <span class="c"># 실수 (Float)</span>
+alive = <span class="k">true</span>         <span class="c"># 참/거짓</span>
+nothing = <span class="k">null</span>       <span class="c"># 없음</span>
+
+<span class="k">const</span> PI = <span class="nu">3.14159</span>  <span class="c"># 안 바뀌는 값은 const</span></pre>
+    <p>이름은 한글로도 됩니다. <code>이름 = "시원"</code> 도 정상입니다.</p>
+    <div class="try"><b>해보기</b> — 좋아하는 음식 이름과 가격을 변수에 담아 출력해 보세요.</div>
+
+    <h2 id="c4"><span class="no">4.</span> 문자열</h2>
+    <p>중괄호로 값을 문장에 끼워 넣습니다 (보간).</p>
+    <pre>name = <span class="s">"시원"</span>
+<span class="k">show</span> <span class="s">"안녕하세요 {name}님, 반갑습니다"</span>
+
+<span class="k">show</span> name.length          <span class="c"># 2</span>
+<span class="k">show</span> <span class="s">"poi"</span>.upper()        <span class="c"># POI</span>
+<span class="k">show</span> <span class="s">"Hello"</span>.reverse()    <span class="c"># olleH</span>
+<span class="k">show</span> <span class="s">"바나나"</span>.contains(<span class="s">"나"</span>)  <span class="c"># true</span>
+<span class="k">show</span> <span class="s">"a b c"</span>.words()      <span class="c"># [a, b, c]</span></pre>
+    <p>그밖에 <code>.lower()</code> <code>.trim()</code> <code>.starts_with(s)</code>
+      <code>.ends_with(s)</code> <code>.is_empty</code> 가 있습니다.</p>
+
+    <h2 id="c5"><span class="no">5.</span> 계산</h2>
+    <pre><span class="k">show</span> <span class="nu">2</span> + <span class="nu">3</span> * <span class="nu">4</span>      <span class="c"># 14 (곱셈 먼저)</span>
+<span class="k">show</span> (<span class="nu">2</span> + <span class="nu">3</span>) * <span class="nu">4</span>    <span class="c"># 20</span>
+<span class="k">show</span> <span class="nu">10</span> / <span class="nu">4</span>          <span class="c"># 2.5</span>
+<span class="k">show</span> <span class="nu">10</span> % <span class="nu">3</span>          <span class="c"># 1 (나머지)</span>
+
+<span class="k">show</span> math.sqrt(<span class="nu">144</span>)   <span class="c"># 12.0</span>
+<span class="k">show</span> math.round(math.pi, <span class="nu">2</span>)  <span class="c"># 3.14</span></pre>
+    <p><code>math</code> 는 import 없이 바로 씁니다: <code>floor</code> <code>ceil</code>
+      <code>abs</code> <code>min</code> <code>max</code> <code>random</code> <code>randint(a,b)</code> …</p>
+
+    <h2 id="c6"><span class="no">6.</span> 물어보기</h2>
+    <pre>name = <span class="k">ask</span> <span class="s">"이름이 뭐예요? "</span>
+<span class="k">show</span> <span class="s">"{name}님 환영합니다"</span>
+
+age = number(<span class="k">ask</span> <span class="s">"나이는? "</span>)   <span class="c"># ask 는 항상 글자 → number() 로 변환</span>
+<span class="k">show</span> <span class="s">"내년엔 {age + 1}살"</span></pre>
+
+    <h2 id="c7"><span class="no">7.</span> 조건</h2>
+    <pre>age = <span class="nu">16</span>
+<span class="k">if</span> age &gt;= <span class="nu">18</span> {
+    <span class="k">show</span> <span class="s">"성인"</span>
+} <span class="k">else if</span> age &gt;= <span class="nu">13</span> {
+    <span class="k">show</span> <span class="s">"청소년"</span>
+} <span class="k">else</span> {
+    <span class="k">show</span> <span class="s">"어린이"</span>
+}
+
+<span class="k">if</span> age <span class="k">between</span> <span class="nu">10</span> <span class="k">and</span> <span class="nu">19</span> { <span class="k">show</span> <span class="s">"10대"</span> }
+<span class="k">if</span> name <span class="k">is</span> <span class="s">"시원"</span> { <span class="k">show</span> <span class="s">"어서와"</span> }
+
+grade = <span class="s">"통과"</span> <span class="k">if</span> score &gt;= <span class="nu">60</span> <span class="k">else</span> <span class="s">"재시험"</span>   <span class="c"># 삼항식</span></pre>
+    <p>연결어는 <code>and</code> <code>or</code> <code>not</code>. <code>1 &lt; x and x &lt; 10</code> 처럼 이어서 씁니다.</p>
+    <div class="tip"><b>블록은 3가지</b> — 중괄호 <code>{ }</code>, 한 줄이면 콜론 <code>if x &gt; 0: show "양수"</code>,
+      아니면 <code>end</code> 로 닫기(중괄호도 들여쓰기도 필요 없음).
+      <code>if / else if / else</code> 는 체인 전체를 하나의 <code>end</code> 로 닫습니다.</div>
+    <pre><span class="c"># 셋 다 같은 뜻</span>
+<span class="k">if</span> x &gt; <span class="nu">0</span> { <span class="k">show</span> <span class="s">"양수"</span> }
+<span class="k">if</span> x &gt; <span class="nu">0</span>: <span class="k">show</span> <span class="s">"양수"</span>
+<span class="k">if</span> x &gt; <span class="nu">0</span>
+<span class="k">show</span> <span class="s">"양수"</span>
+<span class="k">end</span></pre>
+
+    <h2 id="c8"><span class="no">8.</span> 반복</h2>
+    <pre><span class="k">repeat</span> <span class="nu">3</span> {
+    <span class="k">show</span> <span class="s">"안녕"</span>
+}
+<span class="k">repeat</span> <span class="nu">5</span> <span class="k">as</span> i {          <span class="c"># i 는 0,1,2,3,4</span>
+    <span class="k">show</span> i + <span class="nu">1</span>
+}
+<span class="k">for</span> x <span class="k">in</span> [<span class="nu">10</span>, <span class="nu">20</span>, <span class="nu">30</span>] {
+    <span class="k">show</span> x
+}
+
+<span class="c"># 합 구하기</span>
+total = <span class="nu">0</span>
+<span class="k">for</span> x <span class="k">in</span> [<span class="nu">3</span>, <span class="nu">1</span>, <span class="nu">4</span>, <span class="nu">1</span>, <span class="nu">5</span>] {
+    total = total + x
+}
+<span class="k">show</span> total          <span class="c"># 14</span></pre>
+
+    <h2 id="c9"><span class="no">9.</span> 함수</h2>
+    <pre><span class="k">fn</span> add(a, b) {
+    <span class="k">return</span> a + b
+}
+<span class="k">show</span> add(<span class="nu">3</span>, <span class="nu">4</span>)          <span class="c"># 7</span>
+
+<span class="k">fn</span> double(x) =&gt; x * <span class="nu">2</span>   <span class="c"># 한 줄 함수</span>
+<span class="k">fn</span> greet(name, msg = <span class="s">"안녕"</span>) =&gt; msg + <span class="s">", "</span> + name  <span class="c"># 기본값</span>
+
+<span class="k">show</span> greet(<span class="s">"시원"</span>)        <span class="c"># 안녕, 시원</span>
+<span class="k">show</span> greet(<span class="s">"예성"</span>, <span class="s">"반가워"</span>)  <span class="c"># 반가워, 예성</span></pre>
+
+    <h2 id="c10"><span class="no">10.</span> 목록</h2>
+    <pre>nums = [<span class="nu">3</span>, <span class="nu">1</span>, <span class="nu">4</span>, <span class="nu">1</span>, <span class="nu">5</span>]
+<span class="k">show</span> nums.length        <span class="c"># 5</span>
+<span class="k">show</span> nums.first         <span class="c"># 3</span>
+<span class="k">show</span> nums.last          <span class="c"># 5</span>
+nums.add(<span class="nu">9</span>)
+<span class="k">show</span> nums.sort().join(<span class="s">"-"</span>)   <span class="c"># 1-1-3-4-5-9</span>
+
+<span class="c"># 짝수만 골라 담기</span>
+even = []
+<span class="k">for</span> x <span class="k">in</span> nums {
+    <span class="k">if</span> x % <span class="nu">2</span> <span class="k">is</span> <span class="nu">0</span> { even.add(x) }
+}
+<span class="k">show</span> even</pre>
+
+    <h2 id="c11"><span class="no">11.</span> 객체</h2>
+    <pre>user = { name: <span class="s">"시원"</span>, age: <span class="nu">16</span>, admin: <span class="k">true</span> }
+<span class="k">show</span> user.name          <span class="c"># 시원  (user["name"] 안 해도 됨)</span>
+user.age = <span class="nu">17</span>
+
+<span class="k">show</span> user?.nick ?? <span class="s">"별명없음"</span>   <span class="c"># 없는 값은 안전하게</span>
+<span class="k">show</span> user.has(<span class="s">"name"</span>)          <span class="c"># true</span>
+
+people = [
+    { name: <span class="s">"시원"</span>, age: <span class="nu">16</span> },
+    { name: <span class="s">"예성"</span>, age: <span class="nu">17</span> }
+]
+<span class="k">for</span> p <span class="k">in</span> people {
+    <span class="k">show</span> <span class="s">"{p.name} ({p.age})"</span>
+}</pre>
+
+    <h2 id="c12"><span class="no">12.</span> 파일과 JSON</h2>
+    <pre>file.write(<span class="s">"메모.txt"</span>, <span class="s">"안녕하세요"</span>)
+<span class="k">show</span> file.read(<span class="s">"메모.txt"</span>)
+<span class="k">show</span> file.exists(<span class="s">"메모.txt"</span>)
+
+data = json.parse(<span class="s">"""{ "lang": "POI", "year": 2026 }"""</span>)
+<span class="k">show</span> data.lang           <span class="c"># POI</span>
+json.write(<span class="s">"설정.json"</span>, { theme: <span class="s">"dark"</span> })</pre>
+
+    <h2 id="c13"><span class="no">13.</span> 웹</h2>
+    <pre>res = web.get(<span class="s">"https://api.github.com/repos/siwon2da/POI"</span>)
+<span class="k">show</span> res.status          <span class="c"># 200</span>
+<span class="k">show</span> res.json.name       <span class="c"># POI</span>
+
+web.post(<span class="s">"https://example.com/login"</span>, { id: <span class="s">"test"</span>, pw: <span class="s">"1234"</span> })</pre>
+    <p><code>requests</code> 가 필요하면 <code>use py:requests</code> 로 진짜 requests 를 쓰면 됩니다.</p>
+
+    <h2 id="c14"><span class="no">14.</span> 오류 다루기</h2>
+    <pre><span class="k">try</span> {
+    text = file.read(<span class="s">"없는파일.txt"</span>)
+} <span class="k">catch</span> error {
+    <span class="k">show</span> <span class="s">"실패: {error}"</span>
+}</pre>
+    <p>POI 는 스택 트레이스를 그대로 던지지 않습니다. 대신 <b>P-코드 + 줄 + 힌트</b>:</p>
+    <pre><span class="c">POI Error P103
+  숫자와 문자를 함께 계산할 수 없습니다.
+    4 | total = money + 500
+  해결: number(...) 로 문자열을 숫자로 바꾸세요.</span></pre>
+
+    <h2 id="c15"><span class="no">15.</span> 디버깅</h2>
+    <pre><span class="k">show</span> <span class="s">"--- inspect ---"</span>
+inspect(user)                 <span class="c"># 타입·구조·길이를 예쁘게, user 를 그대로 반환</span>
+final = watch(add(total, <span class="nu">10</span>))  <span class="c"># 값 보면서 흘려보내기</span>
+<span class="c"># pause()                     그 줄에서 멈춰 지역 변수 보기</span></pre>
+    <p>실행할 때: <code>poi run x.poi --trace</code> (문장마다),
+      <code>--vars</code> (변수 변화까지), <code>--explain</code> (오류 시 그때 값들),
+      <code>poi debug x.poi</code> (전부).</p>
+
+    <h2 id="c16"><span class="no">16.</span> 창 만들기</h2>
+    <pre><span class="k">app</span> <span class="s">"로그인"</span> {
+    <span class="k">window</span> { size: <span class="nu">380x320</span>  center: <span class="k">true</span> }
+    <span class="k">state</span> username = <span class="s">""</span>
+
+    <span class="k">column</span> {
+        <span class="k">title</span> <span class="s">"로그인"</span>
+        <span class="k">input</span> <span class="s">"아이디"</span> -&gt; username
+        <span class="k">password</span> <span class="s">"비밀번호"</span> -&gt; pw
+        <span class="k">button</span> <span class="s">"로그인"</span> {
+            <span class="k">show</span> <span class="s">"환영합니다 {username}님"</span>
+        }
+    }
+}</pre>
+    <p>배치는 <code>column</code>(세로) · <code>row</code>(가로) · <code>card</code>.
+      이벤트는 <code>on "start" { }</code> · <code>on "close" { }</code>.</p>
+
+    <h2 id="c17"><span class="no">17.</span> 파이썬 우주</h2>
+    <p>POI 안에서 파이썬 생태계 전부를 씁니다.</p>
+    <pre><span class="k">use</span> py:numpy <span class="k">as</span> np
+data = np.array([<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>, <span class="nu">4</span>])
+<span class="k">show</span> data.mean()        <span class="c"># 2.5</span>
+
+<span class="k">python</span> {               <span class="c"># 필요하면 파이썬 코드 그대로</span>
+    import sys
+    print(sys.version)
+}
+
+<span class="k">use</span> pyfile <span class="s">"./ai.py"</span>   <span class="c"># 내 파이썬 파일도</span></pre>
+    <div class="tip">플레이그라운드(브라우저 실행)에서는 안전을 위해 이 장의 기능이 잠깁니다.
+      내 컴퓨터에서는 전부 됩니다.</div>
+
+    <h2 id="c18"><span class="no">18.</span> 프로젝트</h2>
+    <pre>poi new my-app
+cd my-app
+poi run                <span class="c"># src/main.poi 를 실행</span></pre>
+    <p><code>poi.toml</code> 에 이름·버전·의존성이 들어갑니다.
+      <code>poi build</code> (로드맵) 로 나중에 단일 실행파일을 만듭니다.</p>
+
+    <h2 id="c19"><span class="no">19.</span> 300제, 그리고</h2>
+    <p>연습문제 300개가 들어 있습니다. 주제별로 난이도 순입니다.</p>
+    <pre>poi exercises              <span class="c"># 전체 채점</span>
+poi exercises --topic 반복   <span class="c"># 주제별</span>
+poi exercises --show 042    <span class="c"># 문제와 정답 보기</span></pre>
+    <p>다음은 <a href="/poi/#roadmap">로드맵</a> 을 보세요. POI 의 목표는
+      <b>파이썬보다 더 큰 우주</b> — 쉽고, 넓고, 끝까지 가는 언어입니다.</p>
+
+    <div class="foot">
+      POI 입문서 · v1.2 · <a href="https://github.com/siwon2da/POI">github.com/siwon2da/POI</a> ·
+      <a href="/poi/">소개</a> · MIT
+    </div>
+  </main>
+</div>
+
+<script>
+  (function(){
+    try{ var s=localStorage.getItem("poi-theme"); if(s) document.documentElement.setAttribute("data-theme",s); }catch(e){}
+    var links=[].slice.call(document.querySelectorAll('nav.toc a'));
+    var heads=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+    addEventListener('scroll',function(){
+      var y=scrollY+90, cur=0;
+      heads.forEach(function(h,i){ if(h && h.offsetTop<=y) cur=i; });
+      links.forEach(function(a,i){ a.style.color = i===cur ? 'var(--blue)' : ''; });
+    },{passive:true});
+  })();
+</script>

@@ -1,0 +1,7 @@
+repeat 5 as a {
+    line = ""
+    repeat 5 as b {
+        line = line + text((a+1)*(b+1)) + " "
+    }
+    show line.trim()
+}

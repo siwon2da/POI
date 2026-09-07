@@ -18,7 +18,9 @@ POI v{ver}  -  Power Of Imagination
        --vars                         --trace + 변수 변화까지
        --explain                      오류가 나면 그때의 지역 변수까지 사후 분석
        --debug                        위 세 개를 한 번에
+       --safe [--time N]              샌드박스로 실행 (python{}·use py·파일·네트워크 차단, 시간 제한)
   poi debug <파일.poi>                 = poi run --debug
+  poi serve [폴더] [--port 8900]       플레이그라운드 서버 (정적 서빙 + 안전 실행 /run)
   poi new <이름>                       새 프로젝트 폴더 만들기
   poi check <파일.poi>                 문법만 검사 (실행 안 함)
   poi repl                            대화형 셸
@@ -85,16 +87,33 @@ def _maybe_update_notice():
         pass
 
 
-_RUN_FLAGS = {"--emit-python", "--trace", "--vars", "--explain", "--debug"}
+_RUN_FLAGS = {"--emit-python", "--trace", "--vars", "--explain", "--debug", "--safe"}
 
 
 def _run(args: list[str], *, force_debug: bool = False) -> int:
-    flags = {a for a in args if a in _RUN_FLAGS}
-    rest = [a for a in args if a not in _RUN_FLAGS]
+    time_limit = 5.0
+    kept = []
+    it = iter(args)
+    for a in it:
+        if a == "--time":
+            try:
+                time_limit = float(next(it))
+            except (StopIteration, ValueError):
+                pass
+        elif a.startswith("--time="):
+            try:
+                time_limit = float(a.split("=", 1)[1])
+            except ValueError:
+                pass
+        else:
+            kept.append(a)
+    flags = {a for a in kept if a in _RUN_FLAGS}
+    rest = [a for a in kept if a not in _RUN_FLAGS]
     emit = "--emit-python" in flags
     trace = "--trace" in flags or "--debug" in flags or force_debug
     trace_vars = "--vars" in flags or "--debug" in flags or force_debug
     explain = "--explain" in flags or "--debug" in flags or force_debug
+    safe = "--safe" in flags
 
     path = rest[0] if rest else _find_default_entry()
     if not path:
@@ -105,8 +124,9 @@ def _run(args: list[str], *, force_debug: bool = False) -> int:
         print(f"파일이 없습니다: {path}", file=sys.stderr)
         return 1
     rc = run_file(path, emit_python=emit, argv=rest[1:],
-                  trace=trace, trace_vars=trace_vars, explain=explain)
-    if not emit:
+                  trace=trace, trace_vars=trace_vars, explain=explain,
+                  safe=safe, time_limit=time_limit)
+    if not emit and not safe:
         _maybe_update_notice()
     return rc
 
@@ -123,6 +143,34 @@ def cmd_debug(args: list[str]) -> int:
 def cmd_update(args: list[str]) -> int:
     from .update import run_update
     return run_update()
+
+
+def cmd_exercises(args: list[str]) -> int:
+    from .exrun import main as ex_main
+    return ex_main(args)
+
+
+def cmd_serve(args: list[str]) -> int:
+    from .playground import serve
+    port = 8900
+    root = "."
+    it = iter(args)
+    for a in it:
+        if a in ("--port", "-p"):
+            try:
+                port = int(next(it))
+            except (StopIteration, ValueError):
+                pass
+        elif a.startswith("--port="):
+            port = int(a.split("=", 1)[1])
+        elif not a.startswith("-"):
+            root = a
+    if root == ".":
+        for cand in ("site/hagora", "site", "."):
+            if os.path.isdir(cand):
+                root = cand
+                break
+    return serve(root, port)
 
 
 def cmd_new(args: list[str]) -> int:
@@ -182,6 +230,8 @@ def cmd_build(args: list[str]) -> int:
 
 def cmd_repl(_args: list[str]) -> int:
     from .runtime import make_globals
+    from . import banner
+    banner.show()
     g = make_globals()
     g["__name__"] = "__main__"
     print(f"POI {__version__} REPL - 나가려면 exit 또는 Ctrl+C")
@@ -235,7 +285,12 @@ def _unbalanced(text: str) -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--no-banner" in argv:
+        os.environ["POI_NO_BANNER"] = "1"
+        argv = [a for a in argv if a != "--no-banner"]
     if not argv or argv[0] in ("help", "-h", "--help"):
+        from . import banner
+        banner.show()
         print(HELP.format(ver=__version__))
         return 0
     cmd, rest = argv[0], argv[1:]
@@ -247,6 +302,8 @@ def main(argv: list[str] | None = None) -> int:
         "run": cmd_run, "new": cmd_new, "check": cmd_check,
         "repl": cmd_repl, "fmt": cmd_fmt, "build": cmd_build,
         "update": cmd_update, "upgrade": cmd_update, "debug": cmd_debug,
+        "serve": cmd_serve, "playground": cmd_serve, "exercises": cmd_exercises,
+        "ex": cmd_exercises,
     }
     if cmd in table:
         return table[cmd](rest)

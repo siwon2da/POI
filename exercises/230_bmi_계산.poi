@@ -1,0 +1,2 @@
+fn bmi(w, h) => math.round(w / (h * h), 1)
+show bmi(64, 1.72)

@@ -1,0 +1,5 @@
+n = 476
+h = math.floor(n / 100)
+t = math.floor((n % 100) / 10)
+o = n % 10
+show h + t + o

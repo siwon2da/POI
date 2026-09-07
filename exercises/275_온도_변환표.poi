@@ -1,0 +1,5 @@
+repeat 6 as i {
+    c = i * 20
+    f = c * 9 / 5 + 32
+    show "{c}C = {f}F"
+}

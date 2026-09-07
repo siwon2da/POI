@@ -1,0 +1,4 @@
+s = "level"
+rev = ""
+repeat s.length as i { rev = rev + s[s.length - 1 - i] }
+if s is rev { show "회문" } else { show "아님" }

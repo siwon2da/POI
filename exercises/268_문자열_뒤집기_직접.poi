@@ -1,0 +1,6 @@
+s = "imagination"
+r = ""
+repeat s.length as i {
+    r = r + s[s.length - 1 - i]
+}
+show r

@@ -1,0 +1,4 @@
+people = [{ name: "시원", age: 16 }, { name: "예성", age: 17 }]
+for p in people {
+    show "{p.name} ({p.age})"
+}

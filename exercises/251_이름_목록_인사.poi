@@ -1,0 +1,4 @@
+names = ["시원", "예성", "민수"]
+for n in names {
+    show "{n}님 환영합니다"
+}

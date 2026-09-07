@@ -9,23 +9,30 @@ from .parser import Parser
 from .transpiler import Transpiler
 
 
-def compile_source(src: str, filename: str = "main.poi", *, trace: bool = False):
+def compile_source(src: str, filename: str = "main.poi", *, trace: bool = False,
+                   safe: bool = False):
     """POI 소스를 (파이썬소스, linemap, compiled_name) 으로."""
     compiled_name = f"<poi {filename}>"
     tokens = Lexer(src, filename).tokenize()
     ast = Parser(tokens, src, filename).parse()
+    if safe:
+        from .safemode import assert_safe
+        assert_safe(ast)
     py_src, linemap = Transpiler(compiled_name, source=src, trace=trace).generate(ast)
     return py_src, linemap, compiled_name
 
 
 def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = False,
                argv: list[str] | None = None, trace: bool = False,
-               trace_vars: bool = False, explain: bool = False) -> int:
+               trace_vars: bool = False, explain: bool = False,
+               safe: bool = False, time_limit: float = 5.0,
+               output_limit: int = 64_000) -> int:
     from .runtime import make_globals
 
     trace_on = trace or trace_vars
     try:
-        py_src, linemap, compiled_name = compile_source(src, filename, trace=trace_on)
+        py_src, linemap, compiled_name = compile_source(
+            src, filename, trace=trace_on, safe=safe)
     except POIError as e:
         print(e.render(src), file=sys.stderr)
         return 1
@@ -41,13 +48,30 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
     g["__poi_linemap__"] = linemap
     g["poi_argv"] = argv or []
 
+    if safe:
+        from .safemode import harden_globals
+        harden_globals(g)
     if trace_on:
         from .debugtools import poi_set_trace
         poi_set_trace(True, trace_vars)
 
+    import contextlib
+    limit_ctx = contextlib.nullcontext({"v": False})
+    if safe:
+        from .safemode import limits
+        limit_ctx = limits(time_limit, output_limit)
+
     try:
         code = compile(py_src, compiled_name, "exec")
-        exec(code, g)
+        with limit_ctx as _to:
+            try:
+                exec(code, g)
+            except KeyboardInterrupt:
+                if isinstance(_to, dict) and _to.get("v"):
+                    print(f"\n시간이 초과됐습니다 ({time_limit:g}초). 무한 루프가 아닌지 보세요.",
+                          file=sys.stderr)
+                    return 1
+                raise
     except POIError as e:
         print(e.render(src), file=sys.stderr)
         return 1
@@ -82,9 +106,11 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
 
 def run_file(path: str, *, emit_python: bool = False, argv: list[str] | None = None,
              trace: bool = False, trace_vars: bool = False,
-             explain: bool = False) -> int:
+             explain: bool = False, safe: bool = False,
+             time_limit: float = 5.0) -> int:
     import os
     with open(path, "r", encoding="utf-8") as f:
         src = f.read()
     return run_source(src, os.path.basename(path), emit_python=emit_python, argv=argv,
-                      trace=trace, trace_vars=trace_vars, explain=explain)
+                      trace=trace, trace_vars=trace_vars, explain=explain,
+                      safe=safe, time_limit=time_limit)

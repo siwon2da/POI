@@ -1,0 +1,3 @@
+fn odd(n) => n * 2 - 1
+show odd(1)
+show odd(5)

@@ -1,0 +1,3 @@
+a = 3
+b = 5
+show a if a >= b else b

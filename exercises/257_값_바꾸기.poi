@@ -1,0 +1,3 @@
+u = { name: "시원", age: 16 }
+u.age = 17
+show u.age

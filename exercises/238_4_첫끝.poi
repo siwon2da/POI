@@ -1,0 +1,2 @@
+show [4].first
+show [4].last

@@ -1,0 +1,5 @@
+x = 10
+if x between 1 and 100: show "in range"
+for n in [1, 2, 3]: show n * n
+grade = "pass" if x >= 5 else "fail"
+show grade

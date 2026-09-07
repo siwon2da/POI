@@ -1,0 +1,2 @@
+fn area(r) => math.round(math.pi * r * r, 2)
+show area(3)

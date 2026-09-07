@@ -1,0 +1,2 @@
+show [9, 7, 5, 3, 1].first
+show [9, 7, 5, 3, 1].last

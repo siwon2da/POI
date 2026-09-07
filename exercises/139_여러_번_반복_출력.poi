@@ -1,0 +1,2 @@
+s = "야! "
+repeat 3 { show s }

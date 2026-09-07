@@ -1,0 +1,2 @@
+fn sq(x) => x * x
+show sq(9)

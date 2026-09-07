@@ -1,0 +1,8 @@
+fn fact(n) {
+    r = 1
+    repeat n as i {
+        r = r * (i + 1)
+    }
+    return r
+}
+show fact(5)

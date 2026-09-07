@@ -1,0 +1,2 @@
+u = { name: "시원", pet: { kind: "고양이", age: 2 } }
+show u.pet.kind

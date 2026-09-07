@@ -1,0 +1,7 @@
+repeat 20 as i {
+    n = i + 1
+    if n % 15 is 0 { show "FizzBuzz" }
+    else if n % 3 is 0 { show "Fizz" }
+    else if n % 5 is 0 { show "Buzz" }
+    else { show n }
+}

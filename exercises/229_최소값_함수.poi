@@ -1,0 +1,6 @@
+fn least(xs) {
+    m = xs[0]
+    for x in xs { if x < m { m = x } }
+    return m
+}
+show least([5, 2, 8, 1, 9])

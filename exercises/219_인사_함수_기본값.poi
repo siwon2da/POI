@@ -1,0 +1,5 @@
+fn greet(name, msg = "안녕") {
+    return msg + ", " + name
+}
+show greet("시원")
+show greet("예성", "반가워")

@@ -1,0 +1,3 @@
+repeat 7 as i {
+    show i + 1
+}

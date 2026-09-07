@@ -1,0 +1,6 @@
+fn repeatstr(s, n) {
+    r = ""
+    repeat n { r = r + s }
+    return r
+}
+show repeatstr("ab", 3)

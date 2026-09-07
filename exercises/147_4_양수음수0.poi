@@ -1,0 +1,2 @@
+x = -4
+if x > 0 { show "양수" } else if x < 0 { show "음수" } else { show "영" }
