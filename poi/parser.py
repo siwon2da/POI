@@ -145,6 +145,21 @@ class Parser:
                 return self._use_stmt()
             if t.value == "try":
                 return self._try_stmt()
+            if t.value == "raise":
+                self.advance()
+                return Node("Raise", line=t.line, value=self.expression())
+            if t.value == "assert":
+                self.advance()
+                start = self.i
+                ex = self.expression()
+                src = " ".join(str(self.toks[j].value) for j in range(start, self.i))
+                return Node("Assert", line=t.line, test=ex, src=src)
+            if t.value == "test":
+                self.advance()
+                name = self.expect("STRING", what="테스트 이름").value
+                body, ne = self.block()
+                self._end(ne)
+                return Node("TestBlock", line=t.line, name=name, body=body)
 
         # app "제목" { ... }
         if t.type == "IDENT" and t.value == "app" and self.peek(1).type == "STRING" \
@@ -275,6 +290,13 @@ class Parser:
             path = self.expect("STRING", what="파일 경로").value
             stem = _stem(path)
             return Node("Use", line=t.line, use_kind="pyfile", target=path, alias=stem)
+        if nxt.type == "STRING":
+            path = self.advance().value
+            alias = None
+            if self.match("KEYWORD", "as"):
+                alias = self.expect("IDENT").value
+            return Node("Use", line=t.line, use_kind="poimod", target=path,
+                        alias=alias or _stem(path))
         name = self.expect("IDENT", what="모듈 이름").value
         alias = None
         if self.match("KEYWORD", "as"):
@@ -392,6 +414,9 @@ class Parser:
 
     # -- expressions --------------------------------------------
     def expression(self):
+        lam = self._try_lambda()
+        if lam is not None:
+            return lam
         node = self._pipeline()
         # 삼항식:  값  if  조건  else  다른값   (파이썬과 같은 순서)
         if self.check("KEYWORD", "if"):
@@ -401,6 +426,37 @@ class Parser:
             alt = self.expression()
             return Node("Ternary", line=node.line, body=node, cond=cond, alt=alt)
         return node
+
+    def _try_lambda(self):
+        """ x => 식   또는   (a, b) => 식   을 익명 함수로."""
+        t = self.peek()
+        # x => ...
+        if t.type == "IDENT" and self.peek(1).type == "OP" and self.peek(1).value == "=>":
+            self.advance()
+            self.advance()
+            return Node("Lambda", line=t.line, params=[t.value], body=self.expression())
+        # ( a, b ) => ...
+        if t.type == "OP" and t.value == "(":
+            save = self.i
+            self.advance()
+            params = []
+            ok = True
+            if not self.check("OP", ")"):
+                while True:
+                    if not self.check("IDENT"):
+                        ok = False
+                        break
+                    params.append(self.advance().value)
+                    if self.match("OP", ":"):
+                        self._skip_type()
+                    if self.match("OP", ","):
+                        continue
+                    break
+            if ok and self.match("OP", ")") and self.check("OP", "=>"):
+                self.advance()
+                return Node("Lambda", line=t.line, params=params, body=self.expression())
+            self.i = save
+        return None
 
     def _pipeline(self):
         node = self._coalesce()
@@ -485,15 +541,23 @@ class Parser:
             return Node("UnaryOp", line=t.line, op=t.value, operand=self._unary())
         return self._postfix()
 
+    def _member_name(self):
+        # `.` 뒤에는 이름 자리이므로 예약어(test/end/is 등)도 속성 이름으로 허용
+        t = self.peek()
+        if t.type in ("IDENT", "KEYWORD"):
+            self.advance()
+            return str(t.value)
+        raise POIError("'.' 뒤에는 속성 이름이 와야 합니다.", "P010", t.line, t.col)
+
     def _postfix(self):
         node = self._primary()
         while True:
             if self.match("OP", "."):
-                name = self.expect("IDENT", what="속성 이름").value
-                node = Node("Member", line=node.line, obj=node, name=name, safe=False)
+                node = Node("Member", line=node.line, obj=node,
+                            name=self._member_name(), safe=False)
             elif self.match("OP", "?."):
-                name = self.expect("IDENT", what="속성 이름").value
-                node = Node("Member", line=node.line, obj=node, name=name, safe=True)
+                node = Node("Member", line=node.line, obj=node,
+                            name=self._member_name(), safe=True)
             elif self.match("OP", "("):
                 args, kwargs = self._arglist()
                 self.expect("OP", ")")

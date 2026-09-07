@@ -3,12 +3,15 @@ from __future__ import annotations
 
 from .. import debugtools as _dbg
 from . import easter as _easter
+from . import functional as _fn
 from . import gui as _gui
 from . import stdmods as _std
 from .boxes import Box, boxify
-from .builtins import (boolean, number, poi_ask, poi_coalesce, poi_error_value,
-                       poi_fmt, poi_getattr, poi_getattr_safe, poi_import_pyfile,
-                       poi_show, poi_setattr, poi_std, text)
+from .builtins import (boolean, number, poi_ask, poi_assert, poi_coalesce,
+                       poi_error_value, poi_fmt, poi_getattr, poi_getattr_safe,
+                       poi_import_module, poi_import_pyfile, poi_make_error,
+                       poi_register_test, poi_run_tests, poi_show, poi_setattr,
+                       poi_std, text)
 
 _RUNTIME = {
     "Box": Box,
@@ -25,7 +28,13 @@ _RUNTIME = {
     "poi_coalesce": poi_coalesce,
     "poi_error_value": poi_error_value,
     "poi_import_pyfile": poi_import_pyfile,
+    "poi_import_module": poi_import_module,
     "poi_std": poi_std,
+    # 전문 (v1.3)
+    "poi_make_error": poi_make_error,
+    "poi_assert": poi_assert,
+    "poi_register_test": poi_register_test,
+    "poi_run_tests": poi_run_tests,
     # 디버깅 도구
     "inspect": _dbg.inspect_value,
     "pause": _dbg.poi_pause,
@@ -37,6 +46,12 @@ _RUNTIME = {
     "web": _std.web,
     "math": _std.math,
     "time": _std.time,
+    "regex": _std.regex,
+    "csv": _std.csv,
+    "datetime": _std.datetime,
+    "random": _std.random,
+    "stats": _std.stats,
+    "env": _std.env,
     # GUI
     "poi_app": _gui.poi_app,
     "poi_window": _gui.poi_window,
@@ -52,6 +67,7 @@ _RUNTIME = {
 
 def make_globals() -> dict:
     g = dict(_RUNTIME)
+    g.update(_fn.EXPORTS)  # map/filter/reduce/sort_by/group_by/take/... (파이프라인)
     g["__builtins__"] = __import__("builtins")
     # 이스터에그 (사용자가 덮어쓰면 그대로 덮인다)
     g["pp청춘"] = _easter.CHUNCHEONG

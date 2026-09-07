@@ -1,0 +1,42 @@
+# v1.3 — 전문 분야용 기능들
+
+# 1) 람다 + 함수형 파이프라인
+nums = [5, -3, 8, 1, -7, 12, 4, -1, 9]
+
+result = nums
+    |> filter(x => x > 0)
+    |> map(x => x * x)
+    |> sort_desc
+    |> take(3)
+
+show "상위 3개 제곱: {result}"
+show "양수 합: " + text(nums |> filter(x => x > 0) |> sum_of)
+show "평균: " + text(nums |> avg)
+
+# 2) group_by
+people = [
+    { name: "시원", team: "A" },
+    { name: "예성", team: "B" },
+    { name: "민수", team: "A" },
+    { name: "지훈", team: "B" }
+]
+byteam = people |> group_by(p => p.team)
+show "A팀 인원: " + text(byteam.A |> count_of)
+
+# 3) 표준 모듈 (import 없이)
+show regex.test("^\\d{3}-\\d{4}$", "010-1234")
+show regex.all("\\d+", "a1b22c333")
+show stats.median([3, 1, 4, 1, 5, 9, 2, 6])
+show datetime.format(datetime.now(), "%Y")
+
+# 4) raise + try/catch
+fn 나이확인(n)
+if n < 0: raise "나이는 음수일 수 없습니다"
+return n
+end
+
+try
+show 나이확인(-5)
+catch e
+show "막힘: {e}"
+end

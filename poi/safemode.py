@@ -35,7 +35,7 @@ _SAFE_NAMES = {
     "ArithmeticError", "LookupError", "OverflowError", "NameError",
 }
 
-_FORBIDDEN_STD = {"file", "web", "gui", "ui"}
+_FORBIDDEN_STD = {"file", "web", "gui", "ui", "env"}
 
 
 def safe_builtins() -> dict:

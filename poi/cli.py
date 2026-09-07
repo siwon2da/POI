@@ -140,6 +140,15 @@ def cmd_debug(args: list[str]) -> int:
     return _run(args, force_debug=True)
 
 
+def cmd_test(args: list[str]) -> int:
+    """poi test [파일] — 파일 안의 test 블록을 실행하고 통과/실패 요약."""
+    path = next((a for a in args if not a.startswith("-")), None) or _find_default_entry()
+    if not path or not os.path.exists(path):
+        print("테스트할 .poi 파일을 지정하세요: poi test 파일.poi", file=sys.stderr)
+        return 1
+    return run_file(path, run_tests=True)
+
+
 def cmd_update(args: list[str]) -> int:
     from .update import run_update
     return run_update()
@@ -223,9 +232,8 @@ def cmd_fmt(args: list[str]) -> int:
 
 
 def cmd_build(args: list[str]) -> int:
-    print("poi build (단일 실행파일) 는 로드맵 v0.8 입니다.\n"
-          "지금 배포하려면: python -m poi run <파일> 또는 pip install -e . 후 poi 명령 사용.")
-    return 0
+    from .build import build
+    return build(args)
 
 
 def cmd_repl(_args: list[str]) -> int:
@@ -322,7 +330,7 @@ def main(argv: list[str] | None = None) -> int:
         "repl": cmd_repl, "fmt": cmd_fmt, "build": cmd_build,
         "update": cmd_update, "upgrade": cmd_update, "debug": cmd_debug,
         "serve": cmd_serve, "playground": cmd_serve, "exercises": cmd_exercises,
-        "ex": cmd_exercises,
+        "ex": cmd_exercises, "test": cmd_test, "build": cmd_build,
     }
     if cmd in table:
         return table[cmd](rest)

@@ -1,0 +1,11 @@
+fn check(n)
+if n < 0: raise "음수 안 됨"
+return n * 2
+end
+try
+show check(-1)
+catch e
+show e
+end
+show regex.test("\d+", "abc123")
+show stats.median([1, 2, 3, 4, 5])

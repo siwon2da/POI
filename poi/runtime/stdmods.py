@@ -189,3 +189,144 @@ time = SimpleNamespace(
     now=_now, today=_today, timestamp=_time.time,
     sleep=_time.sleep, format=_format,
 )
+
+# -- regex -----------------------------------------------------------
+import re as _re  # noqa: E402
+
+
+def _rx_match(pattern, text):
+    m = _re.search(pattern, text)
+    if not m:
+        return None
+    return boxify({"text": m.group(0), "start": m.start(), "end": m.end(),
+                   "groups": list(m.groups())})
+
+
+def _rx_all(pattern, text):
+    return _re.findall(pattern, text)
+
+
+def _rx_replace(pattern, text, repl):
+    return _re.sub(pattern, repl, text)
+
+
+def _rx_split(pattern, text):
+    return _re.split(pattern, text)
+
+
+def _rx_test(pattern, text):
+    return _re.search(pattern, text) is not None
+
+
+regex = SimpleNamespace(match=_rx_match, all=_rx_all, replace=_rx_replace,
+                        split=_rx_split, test=_rx_test)
+
+# -- csv -------------------------------------------------------------
+import csv as _csv  # noqa: E402
+import io as _io  # noqa: E402
+
+
+def _csv_parse(text, header=True):
+    rows = list(_csv.reader(_io.StringIO(text)))
+    if not rows:
+        return []
+    if header:
+        head = rows[0]
+        return [boxify(dict(zip(head, r))) for r in rows[1:]]
+    return rows
+
+
+def _csv_format(rows):
+    buf = _io.StringIO()
+    if rows and isinstance(rows[0], dict):
+        w = _csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+    else:
+        _csv.writer(buf).writerows(rows)
+    return buf.getvalue()
+
+
+def _csv_read(path, header=True):
+    return _csv_parse(_read(path), header)
+
+
+def _csv_write(path, rows):
+    return _write(path, _csv_format(rows))
+
+
+csv = SimpleNamespace(parse=_csv_parse, format=_csv_format,
+                      read=_csv_read, write=_csv_write)
+
+# -- datetime ------------------------------------------------------
+from datetime import datetime as _dt, timedelta as _td  # noqa: E402
+
+
+def _dt_now():
+    return _dt.now()
+
+
+def _dt_parse(s, fmt="%Y-%m-%d"):
+    return _dt.strptime(s, fmt)
+
+
+def _dt_format(d, fmt="%Y-%m-%d %H:%M:%S"):
+    return d.strftime(fmt)
+
+
+def _dt_add(d, days=0, hours=0, minutes=0, seconds=0):
+    return d + _td(days=days, hours=hours, minutes=minutes, seconds=seconds)
+
+
+def _dt_diff_days(a, b):
+    return (a - b).days
+
+
+def _dt_parts(d):
+    return boxify({"year": d.year, "month": d.month, "day": d.day,
+                   "hour": d.hour, "minute": d.minute, "second": d.second,
+                   "weekday": d.isoweekday()})
+
+
+datetime = SimpleNamespace(now=_dt_now, parse=_dt_parse, format=_dt_format,
+                           add=_dt_add, diff_days=_dt_diff_days, parts=_dt_parts)
+
+# -- random --------------------------------------------------------
+random = SimpleNamespace(
+    int=_random.randint, float=_random.random,
+    range=lambda a, b: _random.uniform(a, b),
+    choice=lambda xs: _random.choice(list(xs)),
+    sample=lambda xs, k: _random.sample(list(xs), k),
+    shuffle=lambda xs: _random.sample(list(xs), len(list(xs))),
+    seed=_random.seed, chance=lambda p=0.5: _random.random() < p,
+)
+
+# -- stats --------------------------------------------------------
+import statistics as _stats  # noqa: E402
+
+
+def _st_mode(xs):
+    try:
+        return _stats.mode(xs)
+    except _stats.StatisticsError:
+        return None
+
+
+stats = SimpleNamespace(
+    mean=lambda xs: _stats.fmean(xs) if xs else 0,
+    median=lambda xs: _stats.median(xs) if xs else 0,
+    mode=_st_mode,
+    stdev=lambda xs: _stats.pstdev(xs) if len(xs) > 0 else 0,
+    variance=lambda xs: _stats.pvariance(xs) if len(xs) > 0 else 0,
+    sum=lambda xs: sum(xs), min=lambda xs: min(xs) if xs else None,
+    max=lambda xs: max(xs) if xs else None,
+    range=lambda xs: (max(xs) - min(xs)) if xs else 0,
+)
+
+# -- env / args --------------------------------------------------
+env = SimpleNamespace(
+    get=lambda name, default=None: _os.environ.get(name, default),
+    set=lambda name, value: _os.environ.__setitem__(name, str(value)),
+    has=lambda name: name in _os.environ,
+    all=lambda: boxify(dict(_os.environ)),
+)

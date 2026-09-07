@@ -22,7 +22,7 @@ RESERVED = {
     "show", "ask", "use", "python", "try", "catch",
     "true", "false", "null",
     "is", "between", "and", "or", "not",
-    "repeat", "as", "end",
+    "repeat", "as", "end", "raise", "test", "assert",
 }
 
 # 여러 글자 연산자 (긴 것부터 매칭)

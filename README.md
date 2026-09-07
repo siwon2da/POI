@@ -61,6 +61,9 @@ poi run examples/basics.poi
 4. **사람 친화 오류** — 파이썬 traceback 대신 POI 줄 + 한국어 설명 + 해결 힌트
 5. **디버깅 도구 (v1.1)** — `inspect(x)` · `watch(x)` · `pause()` · `poi run --trace/--vars/--explain` · `poi debug`
 6. **새 버전 알림 (v1.1)** — `poi run` 이 하루 1회 확인, 새 버전이면 터미널에서 안내
+7. **형식 자유 (v1.2)** — 중괄호·들여쓰기 없이 `end` / 콜론 · 삼항식 · 안전 모드 · 플레이그라운드 · 300제
+8. **전문 분야 (v1.3)** — 람다 + 함수형 파이프라인(`map`/`filter`/`reduce`/`group_by`…) · `test`/`assert` + `poi test` ·
+   `use "./x.poi"` 모듈 · `raise` · `regex`/`csv`/`datetime`/`random`/`stats`/`env` · `poi build` → 단일 exe
 
 ## 예제
 
@@ -76,6 +79,7 @@ poi run examples/basics.poi
 ## 문서
 
 - [문법 명세 (docs/SPEC.md)](docs/SPEC.md)
+- [함수형·테스트·모듈은 SPEC 참고]
 - [디버깅 (docs/DEBUGGING.md)](docs/DEBUGGING.md)
 - [오류 코드표 (docs/ERRORS.md)](docs/ERRORS.md)
 - [로드맵 (docs/ROADMAP.md)](docs/ROADMAP.md)
@@ -89,7 +93,7 @@ poi run examples/basics.poi
 
 ## 상태
 
-**v1.2.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + **디버깅 도구** + 새 버전 알림 + CLI + 회귀 테스트 16개 + 연습문제 300제.
+**v1.3.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + **디버깅 도구** + 새 버전 알림 + CLI + 회귀 테스트 18개 + 연습문제 300제.
 웹앱/서버, DB DSL, 한국어 키워드, 패키지 매니저, 네이티브 빌드, LSP 는 [로드맵](docs/ROADMAP.md) 참고.
 
 ## 내려받기

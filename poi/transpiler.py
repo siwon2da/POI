@@ -10,7 +10,8 @@ import textwrap
 
 from .errors import POIError
 
-_STD_MODULES = {"file", "json", "web", "math", "time", "ui", "gui"}
+_STD_MODULES = {"file", "json", "web", "math", "time", "ui", "gui",
+                "regex", "csv", "datetime", "random", "stats", "env"}
 
 
 class Transpiler:
@@ -54,7 +55,7 @@ class Transpiler:
         self.ind -= 1
 
     _NO_TRACE = {"PyBlock", "FnDecl", "App", "GWindow", "GText", "GButton",
-                 "GRow", "GColumn", "GCard", "GInput", "GState", "GOn"}
+                 "GRow", "GColumn", "GCard", "GInput", "GState", "GOn", "TestBlock"}
 
     def stmt(self, n):
         k = n.kind
@@ -83,6 +84,12 @@ class Transpiler:
             self._try(n)
         elif k == "Use":
             self._use(n)
+        elif k == "Raise":
+            self.emit(f"raise poi_make_error({self.ex(n.value)})", n.line)
+        elif k == "Assert":
+            self.emit(f"poi_assert({self.ex(n.test)}, {n.src!r})", n.line)
+        elif k == "TestBlock":
+            self._testblock(n)
         elif k == "PyBlock":
             self._pyblock(n)
         elif k == "App":
@@ -140,6 +147,8 @@ class Transpiler:
             self.emit(f"import {n.target}" + (f" as {n.alias}" if n.alias else ""), n.line)
         elif n.use_kind == "pyfile":
             self.emit(f"{n.alias} = poi_import_pyfile({n.target!r})", n.line)
+        elif n.use_kind == "poimod":
+            self.emit(f"{n.alias} = poi_import_module({n.target!r})", n.line)
         else:
             if n.target not in _STD_MODULES:
                 raise POIError(
@@ -152,6 +161,12 @@ class Transpiler:
     def _pyblock(self, n):
         for raw_line in textwrap.dedent(n.raw).strip("\n").split("\n"):
             self.emit(raw_line, n.line)
+
+    def _testblock(self, n):
+        h = f"_poi_test_{self._next_h()}"
+        self.emit(f"def {h}():", n.line)
+        self.block(n.body)
+        self.emit(f"poi_register_test({n.name!r}, {h})", n.line)
 
     # -- GUI -------------------------------------------------
     def _app(self, n):
@@ -280,6 +295,9 @@ class Transpiler:
             return f"({self.ex(n.left)} {op} {self.ex(n.right)})"
         if k == "Ternary":
             return f"({self.ex(n.body)} if {self.ex(n.cond)} else {self.ex(n.alt)})"
+        if k == "Lambda":
+            params = ", ".join(n.params)
+            return f"(lambda {params}: {self.ex(n.body)})"
         if k == "Coalesce":
             return (f"poi_coalesce(lambda: {self.ex(n.left)}, "
                     f"lambda: {self.ex(n.right)})")
@@ -328,7 +346,8 @@ class Transpiler:
         # 조각을 전부 소비했는지 (JSON `{"a": 1}` 같은 건 여기서 걸러짐)
         if p.peek().type not in ("EOF", "NEWLINE"):
             return None
-        if node.kind == "ObjectLit":
+        # `{3}` `{4}` 같은 순수 리터럴은 정규식 수량자 등 — 보간이 아니다
+        if node.kind in ("ObjectLit", "Num", "Str", "Bool", "Null"):
             return None
         try:
             return self.ex(node)

@@ -1,5 +1,39 @@
 # 변경 이력
 
+## v1.3.0 — 2026-09-08  (대규모 업데이트 — 전문 분야)
+
+입문자만이 아니라 실무에서 파이썬보다 잘 쓰이게.
+
+**함수형 데이터 처리**
+- 람다: `x => x * 2`, `(a, b) => a + b` (값으로).
+- 파이프라인 표준 함수 30여 개 (첫 인자가 목록 → `|>` 와 자연스럽게):
+  `map filter reject reduce each find find_index count_where any_of all_of
+  sort_by sort_desc group_by partition take drop take_while drop_while unique
+  flatten chunk zip_with sum_of avg min_of max_of count_of reverse_of range_list repeat_list`
+- 예: `nums |> filter(x => x > 0) |> map(x => x * x) |> sort_desc |> take(3)`
+
+**테스트가 언어 안에**
+- `test "이름" { ... assert 조건 ... }` + `poi test 파일.poi` → 통과/실패 요약, 실패 시 exit 1.
+- `assert a == b` — 실패하면 그 소스와 함께 P301.
+- 일반 `poi run` 에서는 test 블록을 정의만 하고 실행하지 않음.
+
+**모듈**
+- `use "./유틸.poi" as u` → 그 파일의 함수·변수를 `u.함수()` 로. 경로는 현재 파일 기준.
+- `raise "메시지"` (또는 `raise 값`) — `try/catch` 로 잡힘.
+
+**표준 모듈 7종 추가** (import 없이): `regex` `csv` `datetime` `random` `stats` `env`
+- `regex.match/all/replace/split/test`, `csv.parse/format/read/write`,
+  `datetime.now/parse/format/add/diff_days/parts`, `random.int/choice/sample/shuffle/chance`,
+  `stats.mean/median/mode/stdev/variance`, `env.get/set/has/all` (안전 모드에선 env 차단)
+
+**빌드**
+- `poi build app.poi [-o 이름] [--console]` → PyInstaller 로 단일 `.exe`. 파이썬 없는 곳에서도 실행.
+
+**기타**
+- `.` 뒤 예약어 허용 (`regex.test`, `x.end` 등).
+- 문자열 보간에서 `{3}` `{4}` 같은 순수 숫자/문자 리터럴은 보간 안 함 (정규식 수량자 보호).
+- 회귀 테스트 16 → 18.
+
 ## v1.2.0 — 2026-09-08  (대규모 업데이트)
 
 **문법 — 파이썬보다 자유롭게**

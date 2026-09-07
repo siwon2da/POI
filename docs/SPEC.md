@@ -1,4 +1,4 @@
-# POI v1.2 문법 명세
+# POI v1.3 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -28,7 +28,7 @@ POI 소스 → Lexer → Parser → POI AST → POI 컴파일러 → (CPython �
 - **크기 리터럴**: `500x300` → 문자열 `"500x300"` (GUI `size:` 용)
 - **문자열**: `"..."`, 여러 줄은 `"""..."""`. `\n \t \" \\` 이스케이프. `{{` `}}` 는 리터럴 중괄호.
 - **식별자**: 유니코드 letter/underscore 로 시작 → 한글 변수명 OK (`이름 = "시원"`).
-- **예약어**: `if else for in fn return const show ask use python try catch true false null is between and or not repeat as end`
+- **예약어**: `if else for in fn return const show ask use python try catch true false null is between and or not repeat as end raise test assert`
   (GUI 단어 `app window text button ...` 은 예약어가 아니라 문맥으로 인식)
 
 ## 2. 값과 자료형
@@ -79,7 +79,25 @@ n = number(ask "숫자: ")            # 숫자로 변환
 | null 병합 | `a ?? b` — a 가 null 이면 b |
 | null 안전 접근 | `a?.b` — a 가 null 이거나 b 가 없으면 null |
 | 삼항식 | `값 if 조건 else 다른값` (파이썬과 같은 순서) |
+| 람다 | `x => x * 2`, `(a, b) => a + b` — 값으로 |
 | 파이프라인 | `x |> f`, `x |> f(a)` → `f(x)`, `f(x, a)` |
+
+### 함수형 데이터 처리 (파이프라인용 표준 함수)
+
+전부 목록을 첫 인자로 받는다.
+
+```poi
+nums
+    |> filter(x => x > 0)
+    |> map(x => x * x)
+    |> sort_desc
+    |> take(3)
+```
+
+`map filter reject reduce each find find_index count_where any_of all_of
+sort_by sort_desc group_by partition take drop take_while drop_while unique
+flatten chunk zip_with sum_of avg min_of max_of count_of reverse_of
+range_list repeat_list`
 
 ## 5.5 블록 — 3가지 방식 (섞어도 됨)
 
@@ -173,6 +191,38 @@ try {
 
 `catch` 로 잡힌 값은 사람이 읽기 좋은 문자열로 변환된다.
 
+직접 던지기:
+
+```poi
+fn 나이확인(n)
+if n < 0: raise "나이는 음수일 수 없습니다"
+return n
+end
+```
+
+## 10.5 테스트 (`test` / `assert` / `poi test`)
+
+```poi
+fn add(a, b) => a + b
+
+test "덧셈"
+assert add(2, 3) == 5
+assert add(0, 0) == 0
+end
+```
+
+`poi test 파일.poi` 로 실행 → 통과/실패 요약, 실패 시 exit 1.
+`poi run` 에서는 `test` 블록을 정의만 하고 실행하지 않는다.
+
+## 10.7 다른 POI 파일 불러오기
+
+```poi
+use "./유틸.poi" as u      # 경로는 현재 파일 기준
+show u.함수(1, 2)
+```
+
+파이썬 파일은 `use pyfile "./x.py"`, 파이썬 라이브러리는 `use py:이름`.
+
 ## 11. 파이썬 상호운용
 
 ```poi
@@ -197,6 +247,12 @@ python {                     # 파이썬 코드 그대로
 | `web`  | `get(url, headers, params) post(url, body, headers) download(url, p)` → `.text .status .json .ok` |
 | `math` | `pi e tau sqrt floor ceil round abs pow min max sum sin cos tan log random randint pick clamp` |
 | `time` | `now() today() timestamp() sleep(s) format(dt, fmt)` |
+| `regex` | `match(p,t) all(p,t) replace(p,t,r) split(p,t) test(p,t)` |
+| `csv` | `parse(text, header) format(rows) read(path) write(path, rows)` |
+| `datetime` | `now() parse(s,fmt) format(d,fmt) add(d, days=…) diff_days(a,b) parts(d)` |
+| `random` | `int(a,b) float() range(a,b) choice(xs) sample(xs,k) shuffle(xs) chance(p) seed(n)` |
+| `stats` | `mean median mode stdev variance sum min max range` (모두 `(xs)`) |
+| `env` | `get(name, default) set(name, v) has(name) all()` (안전 모드 차단) |
 
 명시하고 싶으면 `use file` / `use json` / ... 도 가능.
 
@@ -253,6 +309,8 @@ poi debug x.poi            # 위 전부
 | `poi run 파일 --emit-python` | 낮춰진 중간 표현 출력 |
 | `poi run 파일 --safe [--time N]` | 샌드박스 실행 (python{}·use py·파일·네트워크 차단, 시간 제한) |
 | `poi debug 파일` | 추적 + 변수 + 사후 분석 |
+| `poi test 파일` | 파일 안의 `test` 블록 실행·채점 |
+| `poi build 파일 [-o 이름]` | 단일 실행파일로 (PyInstaller 필요) |
 | `poi serve [폴더] [--port]` | 플레이그라운드 서버 (정적 서빙 + 안전 실행 `/run`) |
 | `poi exercises [번호\|--topic\|--show]` | 연습문제 300제 실행·채점 |
 | `poi new <이름>` | 프로젝트 폴더 생성 |

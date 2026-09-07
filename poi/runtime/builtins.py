@@ -162,6 +162,77 @@ def poi_error_value(err):
     return f"{type(err).__name__}: {err}"
 
 
+def poi_make_error(value):
+    """raise <값>  →  예외로."""
+    if isinstance(value, BaseException):
+        return value
+    return POIError(str(value), "P300")
+
+
+def poi_assert(cond, src=""):
+    if not cond:
+        raise POIError(f"확인(assert) 실패: {src}".rstrip(": "), "P301",
+                       hint="이 조건이 참이어야 하는데 거짓입니다.")
+
+
+# --- 테스트 레지스트리 (poi test) ------------------------------------
+
+_POI_TESTS: list = []
+
+
+def poi_register_test(name, fn):
+    _POI_TESTS.append((name, fn))
+
+
+def poi_run_tests() -> int:
+    if not _POI_TESTS:
+        print("테스트가 없습니다. test \"이름\" { ... assert ... } 로 만드세요.")
+        return 0
+    ok = bad = 0
+    for name, fn in _POI_TESTS:
+        try:
+            fn()
+            print(f"  ✓ {name}")
+            ok += 1
+        except POIError as e:
+            print(f"  ✗ {name}\n      {e.message}")
+            bad += 1
+        except Exception as e:  # noqa: BLE001
+            print(f"  ✗ {name}\n      {type(e).__name__}: {e}")
+            bad += 1
+    print(f"\n테스트 {ok + bad}개 중  통과 {ok} · 실패 {bad}")
+    return 1 if bad else 0
+
+
+def poi_import_module(path):
+    """use \"./다른파일.poi\"  →  그 파일의 함수·변수를 담은 객체."""
+    import os
+    import sys as _sys
+    from ..interpreter import compile_source
+
+    frame = _sys._getframe(1)
+    base = frame.f_globals.get("__poi_dir__") or os.getcwd()
+    full = os.path.normpath(os.path.join(base, path))
+    if not os.path.isfile(full):
+        raise POIError(f"POI 모듈을 찾을 수 없습니다: {path}", "P302",
+                       hint=f"찾은 경로: {full}")
+    with open(full, encoding="utf-8") as f:
+        src = f.read()
+    py, linemap, cname = compile_source(src, os.path.basename(full))
+
+    from . import make_globals
+    g2 = make_globals()
+    base_keys = set(g2)
+    g2["__name__"] = "__poi_module__"
+    g2["__poi_file__"] = full
+    g2["__poi_dir__"] = os.path.dirname(full)
+    g2["__poi_source__"] = src
+    g2["__poi_linemap__"] = linemap
+    exec(compile(py, cname, "exec"), g2)  # noqa: S102
+    return Box({k: v for k, v in g2.items()
+                if k not in base_keys and not k.startswith("__")})
+
+
 def poi_import_pyfile(path):
     spec = importlib.util.spec_from_file_location("_poi_pyfile", path)
     if spec is None or spec.loader is None:
@@ -184,6 +255,12 @@ def poi_std(name):
         "web": stdmods.web,
         "math": stdmods.math,
         "time": stdmods.time,
+        "regex": stdmods.regex,
+        "csv": stdmods.csv,
+        "datetime": stdmods.datetime,
+        "random": stdmods.random,
+        "stats": stdmods.stats,
+        "env": stdmods.env,
     }
     if name in ("ui", "gui"):
         from . import gui as _guimod

@@ -1,0 +1,101 @@
+"""poi build — POI 프로그램을 단일 실행파일로 (v1.3).
+
+    poi build app.poi [-o 이름] [--console]
+
+PyInstaller 로 묶는다. 파이썬이 없는 컴퓨터에서도 돈다.
+한계: use pyfile / use "./x.poi" 로 부르는 파일은 자동 포함되지 않는다
+      (필요하면 만든 exe 옆에 같이 두거나 --add-data 로).
+"""
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+
+def _have_pyinstaller() -> bool:
+    try:
+        import PyInstaller  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def build(args: list[str]) -> int:
+    from .interpreter import compile_source
+
+    src_path = None
+    out_name = None
+    console = False
+    it = iter(args)
+    for a in it:
+        if a in ("-o", "--out"):
+            out_name = next(it, None)
+        elif a == "--console":
+            console = True
+        elif not a.startswith("-"):
+            src_path = a
+
+    if not src_path or not os.path.isfile(src_path):
+        print("빌드할 .poi 파일을 지정하세요:  poi build app.poi", file=sys.stderr)
+        return 1
+    if not _have_pyinstaller():
+        print("PyInstaller 가 필요합니다:  python -m pip install pyinstaller")
+        print("(설치 후 다시 poi build)")
+        return 1
+
+    with open(src_path, encoding="utf-8") as f:
+        poi_src = f.read()
+    try:
+        py_src, _lm, _cn = compile_source(poi_src, os.path.basename(src_path))
+    except Exception as e:  # noqa: BLE001
+        from .errors import POIError
+        if isinstance(e, POIError):
+            print(e.render(poi_src), file=sys.stderr)
+        else:
+            print(f"컴파일 실패: {e}", file=sys.stderr)
+        return 1
+
+    name = out_name or os.path.splitext(os.path.basename(src_path))[0]
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    work = tempfile.mkdtemp(prefix="poi_build_")
+    boot = os.path.join(work, "_poi_app.py")
+    with open(boot, "w", encoding="utf-8") as f:
+        f.write(
+            "import os, sys\n"
+            "from poi.runtime import make_globals\n"
+            "PY_SRC = " + repr(py_src) + "\n"
+            "g = make_globals()\n"
+            "g['__name__'] = '__main__'\n"
+            "g['__poi_dir__'] = os.getcwd()\n"
+            "g['__poi_file__'] = " + repr(os.path.basename(src_path)) + "\n"
+            "g['__poi_source__'] = ''\n"
+            "g['__poi_linemap__'] = {}\n"
+            "g['poi_argv'] = sys.argv[1:]\n"
+            "exec(compile(PY_SRC, '<poi app>', 'exec'), g)\n"
+        )
+
+    out_dist = os.path.join(os.getcwd(), "dist")
+    cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--onefile",
+           "--name", name, "--collect-all", "poi",
+           "--distpath", out_dist,
+           "--workpath", os.path.join(work, "b"),
+           "--specpath", work,
+           "--console" if console else "--noconsole", boot]
+    ico = os.path.join(repo, "installer", "poi.ico")
+    if os.path.isfile(ico):
+        cmd[3:3] = ["--icon", ico]
+
+    print(f"빌드 중: {name}  (PyInstaller)  — 처음엔 1~2분 걸립니다")
+    rc = subprocess.run(cmd, cwd=work,
+                        env={**os.environ, "PYTHONPATH": repo}).returncode
+    shutil.rmtree(work, ignore_errors=True)
+
+    exe = os.path.join(os.getcwd(), "dist", name + (".exe" if os.name == "nt" else ""))
+    if rc == 0 and os.path.exists(exe):
+        print(f"\n완성:  {exe}  ({os.path.getsize(exe) / 1e6:.1f} MB)")
+        return 0
+    print("빌드 실패.", file=sys.stderr)
+    return 1

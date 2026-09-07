@@ -26,7 +26,8 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
                argv: list[str] | None = None, trace: bool = False,
                trace_vars: bool = False, explain: bool = False,
                safe: bool = False, time_limit: float = 5.0,
-               output_limit: int = 64_000) -> int:
+               output_limit: int = 64_000, run_tests: bool = False,
+               base_dir: str | None = None) -> int:
     from .runtime import make_globals
 
     trace_on = trace or trace_vars
@@ -41,9 +42,11 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
         print(py_src)
         return 0
 
+    import os as _os
     g = make_globals()
     g["__name__"] = "__main__"
     g["__poi_file__"] = filename
+    g["__poi_dir__"] = base_dir or _os.getcwd()
     g["__poi_source__"] = src
     g["__poi_linemap__"] = linemap
     g["poi_argv"] = argv or []
@@ -66,6 +69,9 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
         with limit_ctx as _to:
             try:
                 exec(code, g)
+                if run_tests:
+                    print("\n테스트 실행:")
+                    return g["poi_run_tests"]()
             except KeyboardInterrupt:
                 if isinstance(_to, dict) and _to.get("v"):
                     print(f"\n시간이 초과됐습니다 ({time_limit:g}초). 무한 루프가 아닌지 보세요.",
@@ -107,10 +113,11 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
 def run_file(path: str, *, emit_python: bool = False, argv: list[str] | None = None,
              trace: bool = False, trace_vars: bool = False,
              explain: bool = False, safe: bool = False,
-             time_limit: float = 5.0) -> int:
+             time_limit: float = 5.0, run_tests: bool = False) -> int:
     import os
     with open(path, "r", encoding="utf-8") as f:
         src = f.read()
     return run_source(src, os.path.basename(path), emit_python=emit_python, argv=argv,
                       trace=trace, trace_vars=trace_vars, explain=explain,
-                      safe=safe, time_limit=time_limit)
+                      safe=safe, time_limit=time_limit, run_tests=run_tests,
+                      base_dir=os.path.dirname(os.path.abspath(path)))
