@@ -1,0 +1,19 @@
+# 언어 기본 기능으로 GUI (tkinter 필요, 데스크톱에서 실행)
+
+app "Hello" {
+
+    window {
+        title: "POI 앱"
+        size: 420x260
+        center: true
+    }
+
+    column {
+        title "안녕하세요 👋"
+        text "이건 POI 로 만든 창이에요."
+
+        button "눌러봐" {
+            show "버튼 눌림!"
+        }
+    }
+}

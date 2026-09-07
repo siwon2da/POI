@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poi-lang"
+version = "0.1.0"
+description = "POI - Python Powered, Human First language"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+poi = "poi.cli:main"
+
+[tool.setuptools]
+packages = ["poi", "poi.runtime"]

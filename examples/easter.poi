@@ -1,0 +1,9 @@
+# 이스터에그
+
+show pp청춘
+
+show test
+
+python {
+    print(pp청춘)
+}

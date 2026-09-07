@@ -1,0 +1,4 @@
+show 2 + 3 * 4
+show 10 / 4
+show 10 % 3
+show (2 + 3) * 4

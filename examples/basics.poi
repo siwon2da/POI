@@ -1,0 +1,39 @@
+# 변수 · 문자열 · 조건 · 반복 · 함수
+
+name = "시원"
+age = 16
+const PI = 3.14159
+
+show "내 이름은 {name}, 나이는 {age}살"
+show "원주율은 {PI}"
+
+if age between 10 and 19 {
+    show "{name}님은 10대"
+} else if age is 20 {
+    show "스무살"
+} else {
+    show "그밖에"
+}
+
+repeat 3 as i {
+    show "{i}번째 인사"
+}
+
+fn add(a, b) {
+    return a + b
+}
+fn double(x) => x * 2
+
+show "3 + 4 = {add(3, 4)}"
+show "double(21) = {double(21)}"
+
+users = ["시원", "예성", "민수"]
+for u in users {
+    show "- {u}"
+}
+
+user = { name: "시원", age: 16, admin: true }
+show "{user.name} / admin={user.admin}"
+
+nick = user?.nickname ?? "이름없음"
+show "별명: {nick}"

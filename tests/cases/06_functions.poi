@@ -1,0 +1,10 @@
+fn add(a, b) { return a + b }
+fn sq(x) => x * x
+show add(2, 40)
+show sq(9)
+
+fn greet(name, greeting = "안녕") {
+    return greeting + ", " + name
+}
+show greet("시원")
+show greet("시원", "반가워")

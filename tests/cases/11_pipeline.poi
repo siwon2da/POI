@@ -1,0 +1,5 @@
+fn shout(s) => s.upper() + "!"
+fn wrap(s, l, r) => l + s + r
+
+show "hello" |> shout
+show "poi" |> shout |> wrap("[", "]")

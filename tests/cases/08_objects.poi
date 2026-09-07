@@ -1,0 +1,8 @@
+u = { name: "시원", age: 16, admin: true }
+show u.name
+show u.age
+show u.admin
+show u?.nope ?? "none"
+u.age = 17
+show u.age
+show u.has("name")

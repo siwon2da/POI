@@ -1,0 +1,592 @@
+"""POI 파서 (재귀 하강).
+
+토큰 스트림 -> POI AST(Node).
+"""
+from __future__ import annotations
+
+from .ast_nodes import Node
+from .errors import POIError
+
+_COMPARE_OPS = {"==", "!=", "<", ">", "<=", ">="}
+_ADD_OPS = {"+", "-"}
+_MUL_OPS = {"*", "/", "%"}
+_GUI_WORDS = {"window", "text", "title", "button", "row", "column",
+              "grid", "card", "input", "password", "state", "on"}
+_EXPR_START_KEYWORDS = {"true", "false", "null", "not", "ask"}
+
+
+class Parser:
+    def __init__(self, tokens, source: str = "", filename: str = "<poi>"):
+        self.toks = tokens
+        self.src = source
+        self.filename = filename
+        self.i = 0
+
+    # -- token helpers -------------------------------------------------
+    def peek(self, k=0):
+        j = self.i + k
+        return self.toks[j] if j < len(self.toks) else self.toks[-1]
+
+    def at_end(self):
+        return self.peek().type == "EOF"
+
+    def advance(self):
+        t = self.toks[self.i]
+        if self.i < len(self.toks) - 1:
+            self.i += 1
+        return t
+
+    def check(self, type_, value=None):
+        t = self.peek()
+        if t.type != type_:
+            return False
+        return value is None or t.value == value
+
+    def check_any(self, type_, values):
+        t = self.peek()
+        return t.type == type_ and t.value in values
+
+    def match(self, type_, value=None):
+        if self.check(type_, value):
+            return self.advance()
+        return None
+
+    def expect(self, type_, value=None, what=None):
+        if self.check(type_, value):
+            return self.advance()
+        t = self.peek()
+        want = what or (value or type_)
+        raise POIError(f"'{want}' 이(가) 필요한데 '{_tok_desc(t)}' 이(가) 왔습니다.",
+                       "P010", t.line, t.col,
+                       hint="괄호나 중괄호 { } 짝이 맞는지, 줄 끝이 맞는지 확인하세요.")
+
+    def skip_nl(self):
+        while self.check("NEWLINE") or self.check("OP", ";"):
+            self.advance()
+
+    # -- entry ------------------------------------------------------
+    def parse(self) -> Node:
+        body = []
+        self.skip_nl()
+        while not self.at_end():
+            body.append(self.statement())
+            self.skip_nl()
+        return Node("Program", body=body)
+
+    # -- statements -----------------------------------------------
+    def block(self):
+        self.expect("OP", "{")
+        self.skip_nl()
+        body = []
+        while not self.check("OP", "}"):
+            if self.at_end():
+                raise POIError("중괄호 } 가 닫히지 않았습니다.", "P011", self.peek().line)
+            body.append(self.statement())
+            self.skip_nl()
+        self.expect("OP", "}")
+        return body
+
+    def statement(self):
+        t = self.peek()
+
+        if t.type == "PYBLOCK":
+            self.advance()
+            return Node("PyBlock", line=t.line, raw=t.value)
+
+        if t.type == "KEYWORD":
+            if t.value == "show":
+                self.advance()
+                return Node("Show", line=t.line, value=self.expression())
+            if t.value == "const":
+                return self._const_decl()
+            if t.value == "fn":
+                return self._fn_decl()
+            if t.value == "if":
+                return self._if_stmt()
+            if t.value == "repeat":
+                return self._repeat_stmt()
+            if t.value == "for":
+                return self._for_stmt()
+            if t.value == "return":
+                self.advance()
+                if self.check("NEWLINE") or self.check("OP", "}") or self.at_end() \
+                        or self.check("OP", ";"):
+                    return Node("Return", line=t.line, value=None)
+                return Node("Return", line=t.line, value=self.expression())
+            if t.value == "use":
+                return self._use_stmt()
+            if t.value == "try":
+                return self._try_stmt()
+
+        # app "제목" { ... }
+        if t.type == "IDENT" and t.value == "app" and self.peek(1).type == "STRING" \
+                and self.peek(2).type == "OP" and self.peek(2).value == "{":
+            self.advance()
+            title = self.advance().value
+            return Node("App", line=t.line, title=title, body=self._gui_block())
+
+        # 타입 붙은 선언:  name: Type = value
+        if t.type == "IDENT" and self.peek(1).type == "OP" and self.peek(1).value == ":":
+            save = self.i
+            self.advance()  # name
+            self.advance()  # :
+            self._skip_type()
+            if self.check("OP", "="):
+                self.advance()
+                return Node("Assign", line=t.line, target=Node("Name", id=t.value),
+                            value=self.expression(), is_const=False)
+            self.i = save  # 되돌리기 (객체 접근 등 다른 문장)
+
+        # 표현식 또는 대입
+        expr = self.expression()
+        if self.check("OP", "="):
+            self.advance()
+            value = self.expression()
+            if expr.kind not in ("Name", "Member", "Index"):
+                raise POIError("여기에는 값을 넣을 수 없습니다.", "P012", t.line,
+                               hint="왼쪽은 변수 이름이거나 a.b / a[0] 형태여야 합니다.")
+            return Node("Assign", line=t.line, target=expr, value=value, is_const=False)
+        return Node("ExprStmt", line=t.line, value=expr)
+
+    def _const_decl(self):
+        t = self.advance()
+        name = self.expect("IDENT", what="상수 이름").value
+        if self.match("OP", ":"):
+            self._skip_type()
+        self.expect("OP", "=")
+        return Node("Assign", line=t.line, target=Node("Name", id=name),
+                    value=self.expression(), is_const=True)
+
+    def _fn_decl(self):
+        t = self.advance()
+        name = self.expect("IDENT", what="함수 이름").value
+        self.expect("OP", "(")
+        params = []
+        self.skip_nl()
+        while not self.check("OP", ")"):
+            pname = self.expect("IDENT", what="매개변수 이름").value
+            if self.match("OP", ":"):
+                self._skip_type()
+            default = None
+            if self.match("OP", "="):
+                default = self.expression()
+            params.append((pname, default))
+            self.skip_nl()
+            if not self.match("OP", ","):
+                break
+            self.skip_nl()
+        self.expect("OP", ")")
+        if self.match("OP", "->"):
+            self._skip_type()
+        if self.match("OP", "=>"):
+            return Node("FnDecl", line=t.line, name=name, params=params,
+                        body=self.expression(), is_expr_body=True)
+        return Node("FnDecl", line=t.line, name=name, params=params,
+                    body=self.block(), is_expr_body=False)
+
+    def _if_stmt(self):
+        t = self.advance()
+        branches = [(self.expression(), self.block())]
+        orelse = None
+        self.skip_nl()
+        while self.check("KEYWORD", "else"):
+            self.advance()
+            self.skip_nl()
+            if self.match("KEYWORD", "if"):
+                branches.append((self.expression(), self.block()))
+                self.skip_nl()
+            else:
+                orelse = self.block()
+                break
+        return Node("If", line=t.line, branches=branches, orelse=orelse)
+
+    def _repeat_stmt(self):
+        t = self.advance()
+        count = self.expression()
+        var = None
+        if self.match("KEYWORD", "as"):
+            var = self.expect("IDENT", what="반복 변수").value
+        return Node("Repeat", line=t.line, count=count, var=var, body=self.block())
+
+    def _for_stmt(self, gui=False):
+        t = self.advance()
+        var = self.expect("IDENT", what="반복 변수").value
+        self.expect("KEYWORD", "in")
+        it = self.expression()
+        body = self._gui_block() if gui else self.block()
+        return Node("ForIn", line=t.line, var=var, iterable=it, body=body, gui=gui)
+
+    def _use_stmt(self):
+        t = self.advance()
+        nxt = self.peek()
+        if nxt.type == "IDENT" and nxt.value == "py" and self.peek(1).value == ":":
+            self.advance()
+            self.advance()
+            parts = [self.expect("IDENT", what="모듈 이름").value]
+            while self.match("OP", "."):
+                parts.append(self.expect("IDENT").value)
+            alias = None
+            if self.match("KEYWORD", "as"):
+                alias = self.expect("IDENT").value
+            return Node("Use", line=t.line, use_kind="py", target=".".join(parts), alias=alias)
+        if nxt.type == "IDENT" and nxt.value == "pyfile":
+            self.advance()
+            path = self.expect("STRING", what="파일 경로").value
+            stem = _stem(path)
+            return Node("Use", line=t.line, use_kind="pyfile", target=path, alias=stem)
+        name = self.expect("IDENT", what="모듈 이름").value
+        alias = None
+        if self.match("KEYWORD", "as"):
+            alias = self.expect("IDENT").value
+        return Node("Use", line=t.line, use_kind="std", target=name, alias=alias)
+
+    def _try_stmt(self):
+        t = self.advance()
+        body = self.block()
+        self.skip_nl()
+        self.expect("KEYWORD", "catch")
+        name = None
+        if self.check("IDENT"):
+            name = self.advance().value
+        handler = self.block()
+        return Node("TryCatch", line=t.line, body=body, name=name, handler=handler)
+
+    # -- GUI ------------------------------------------------------
+    def _gui_block(self):
+        self.expect("OP", "{")
+        self.skip_nl()
+        nodes = []
+        while not self.check("OP", "}"):
+            if self.at_end():
+                raise POIError("app 블록의 } 가 닫히지 않았습니다.", "P013", self.peek().line)
+            nodes.append(self._gui_stmt())
+            self.skip_nl()
+        self.expect("OP", "}")
+        return nodes
+
+    def _gui_stmt(self):
+        t = self.peek()
+        if t.type == "KEYWORD" and t.value == "for":
+            return self._for_stmt(gui=True)
+        if t.type == "KEYWORD" and t.value == "if":
+            return self._gui_if()
+
+        if t.type == "IDENT" and t.value in _GUI_WORDS:
+            w = self.advance().value
+            if w == "window":
+                return Node("GWindow", line=t.line, props=self._prop_bag())
+            if w == "text":
+                return Node("GText", line=t.line, value=self.expression(), heading=False)
+            if w == "title":
+                return Node("GText", line=t.line, value=self.expression(), heading=True)
+            if w == "button":
+                label = self.expression()
+                body = self._gui_block() if self.check("OP", "{") else []
+                return Node("GButton", line=t.line, label=label, body=body)
+            if w in ("row", "column", "grid", "card"):
+                kind = {"row": "GRow", "column": "GColumn",
+                        "grid": "GColumn", "card": "GCard"}[w]
+                return Node(kind, line=t.line, body=self._gui_block())
+            if w in ("input", "password"):
+                label = self.expression()
+                bind = None
+                if self.match("OP", "->"):
+                    bind = self.expect("IDENT", what="연결할 변수").value
+                return Node("GInput", line=t.line, label=label, bind=bind,
+                            secret=(w == "password"))
+            if w == "state":
+                name = self.expect("IDENT", what="상태 이름").value
+                self.expect("OP", "=")
+                return Node("GState", line=t.line, name=name, value=self.expression())
+            if w == "on":
+                ev = self.advance().value
+                return Node("GOn", line=t.line, event=str(ev), body=self._gui_block())
+
+        # 그밖에는 일반 문장 (예: db = database("x.db"))
+        return self.statement()
+
+    def _gui_if(self):
+        t = self.advance()
+        branches = [(self.expression(), self._gui_block())]
+        orelse = None
+        self.skip_nl()
+        while self.check("KEYWORD", "else"):
+            self.advance()
+            self.skip_nl()
+            if self.match("KEYWORD", "if"):
+                branches.append((self.expression(), self._gui_block()))
+                self.skip_nl()
+            else:
+                orelse = self._gui_block()
+                break
+        return Node("If", line=t.line, branches=branches, orelse=orelse)
+
+    def _prop_bag(self):
+        self.expect("OP", "{")
+        self.skip_nl()
+        props = {}
+        while not self.check("OP", "}"):
+            key = self.expect("IDENT", what="속성 이름").value
+            self.expect("OP", ":")
+            props[key] = self._prop_value()
+            if self.match("OP", ","):
+                pass
+            self.skip_nl()
+        self.expect("OP", "}")
+        return props
+
+    def _prop_value(self):
+        t = self.peek()
+        if t.type == "DIM":
+            self.advance()
+            return Node("Str", value=t.value)
+        if t.type == "KEYWORD" and t.value in ("true", "false"):
+            self.advance()
+            return Node("Bool", value=(t.value == "true"))
+        if t.type == "IDENT":
+            self.advance()
+            return Node("Str", value=t.value)
+        return self.expression()
+
+    # -- expressions --------------------------------------------
+    def expression(self):
+        return self._pipeline()
+
+    def _pipeline(self):
+        node = self._coalesce()
+        while self.match("OP", "|>"):
+            self.skip_nl()
+            stage = self._unary()
+            if stage.kind == "Call":
+                node = Node("Call", line=node.line, func=stage.func,
+                            args=[node] + stage.args, kwargs=stage.kwargs)
+            else:
+                node = Node("Call", line=node.line, func=stage, args=[node], kwargs=[])
+        return node
+
+    def _coalesce(self):
+        node = self._or()
+        while self.match("OP", "??"):
+            node = Node("Coalesce", line=node.line, left=node, right=self._or())
+        return node
+
+    def _or(self):
+        node = self._and()
+        vals = [node]
+        while self.check("KEYWORD", "or") or self.check("OP", "||"):
+            self.advance()
+            vals.append(self._and())
+        if len(vals) == 1:
+            return node
+        return Node("BoolOp", line=node.line, op="or", values=vals)
+
+    def _and(self):
+        node = self._not()
+        vals = [node]
+        while self.check("KEYWORD", "and") or self.check("OP", "&&"):
+            self.advance()
+            vals.append(self._not())
+        if len(vals) == 1:
+            return node
+        return Node("BoolOp", line=node.line, op="and", values=vals)
+
+    def _not(self):
+        if self.check("KEYWORD", "not") or self.check("OP", "!"):
+            t = self.advance()
+            return Node("UnaryOp", line=t.line, op="not", operand=self._not())
+        return self._comparison()
+
+    def _comparison(self):
+        left = self._addsub()
+        if self.match("KEYWORD", "between"):
+            low = self._addsub()
+            self.expect("KEYWORD", "and")
+            high = self._addsub()
+            return Node("Between", line=left.line, value=left, low=low, high=high)
+        if self.match("KEYWORD", "is"):
+            neg = bool(self.match("KEYWORD", "not"))
+            right = self._addsub()
+            return Node("Is", line=left.line, left=left, right=right, negated=neg)
+        ops, comps = [], []
+        while self.check_any("OP", _COMPARE_OPS):
+            ops.append(self.advance().value)
+            comps.append(self._addsub())
+        if ops:
+            return Node("Compare", line=left.line, left=left, ops=ops, comparators=comps)
+        return left
+
+    def _addsub(self):
+        node = self._muldiv()
+        while self.check_any("OP", _ADD_OPS):
+            op = self.advance().value
+            node = Node("BinOp", line=node.line, op=op, left=node, right=self._muldiv())
+        return node
+
+    def _muldiv(self):
+        node = self._unary()
+        while self.check_any("OP", _MUL_OPS):
+            op = self.advance().value
+            node = Node("BinOp", line=node.line, op=op, left=node, right=self._unary())
+        return node
+
+    def _unary(self):
+        if self.check_any("OP", {"-", "+"}):
+            t = self.advance()
+            return Node("UnaryOp", line=t.line, op=t.value, operand=self._unary())
+        return self._postfix()
+
+    def _postfix(self):
+        node = self._primary()
+        while True:
+            if self.match("OP", "."):
+                name = self.expect("IDENT", what="속성 이름").value
+                node = Node("Member", line=node.line, obj=node, name=name, safe=False)
+            elif self.match("OP", "?."):
+                name = self.expect("IDENT", what="속성 이름").value
+                node = Node("Member", line=node.line, obj=node, name=name, safe=True)
+            elif self.match("OP", "("):
+                args, kwargs = self._arglist()
+                self.expect("OP", ")")
+                node = Node("Call", line=node.line, func=node, args=args, kwargs=kwargs)
+            elif self.match("OP", "["):
+                idx = self.expression()
+                self.expect("OP", "]")
+                node = Node("Index", line=node.line, obj=node, index=idx)
+            else:
+                break
+        return node
+
+    def _arglist(self):
+        args, kwargs = [], []
+        self.skip_nl()
+        if self.check("OP", ")"):
+            return args, kwargs
+        while True:
+            self.skip_nl()
+            if self.check("IDENT") and self.peek(1).type == "OP" \
+                    and self.peek(1).value == ":":
+                key = self.advance().value
+                self.advance()
+                kwargs.append((key, self.expression()))
+            else:
+                args.append(self.expression())
+            self.skip_nl()
+            if not self.match("OP", ","):
+                break
+        return args, kwargs
+
+    def _primary(self):
+        t = self.peek()
+        if t.type == "NUMBER":
+            self.advance()
+            return Node("Num", line=t.line, value=t.value)
+        if t.type == "STRING":
+            self.advance()
+            return Node("Str", line=t.line, value=t.value)
+        if t.type == "DIM":
+            self.advance()
+            return Node("Str", line=t.line, value=t.value)
+        if t.type == "KEYWORD":
+            if t.value in ("true", "false"):
+                self.advance()
+                return Node("Bool", line=t.line, value=(t.value == "true"))
+            if t.value == "null":
+                self.advance()
+                return Node("Null", line=t.line)
+            if t.value == "ask":
+                self.advance()
+                if self._starts_expr():
+                    return Node("Ask", line=t.line, prompt=self._unary())
+                return Node("Ask", line=t.line, prompt=Node("Str", value=""))
+        if t.type == "OP" and t.value == "(":
+            self.advance()
+            self.skip_nl()
+            inner = self.expression()
+            self.skip_nl()
+            self.expect("OP", ")")
+            return inner
+        if t.type == "OP" and t.value == "[":
+            return self._array_lit()
+        if t.type == "OP" and t.value == "{":
+            return self._object_lit()
+        if t.type == "IDENT":
+            self.advance()
+            return Node("Name", line=t.line, id=t.value)
+        raise POIError(f"여기서 '{_tok_desc(t)}' 은(는) 올 수 없습니다.", "P014",
+                       t.line, t.col,
+                       hint="값(숫자/문자/변수)이나 여는 괄호가 와야 합니다.")
+
+    def _array_lit(self):
+        t = self.advance()  # [
+        self.skip_nl()
+        elems = []
+        while not self.check("OP", "]"):
+            elems.append(self.expression())
+            self.skip_nl()
+            if not self.match("OP", ","):
+                break
+            self.skip_nl()
+        self.expect("OP", "]")
+        return Node("ArrayLit", line=t.line, elements=elems)
+
+    def _object_lit(self):
+        t = self.advance()  # {
+        self.skip_nl()
+        pairs = []
+        while not self.check("OP", "}"):
+            if self.check("IDENT") or self.check("STRING"):
+                key = self.advance().value
+            else:
+                kt = self.peek()
+                raise POIError(f"객체의 키 이름이 필요합니다 (받은 것: '{_tok_desc(kt)}').",
+                               "P015", kt.line, kt.col)
+            self.expect("OP", ":")
+            pairs.append((key, self.expression()))
+            self.skip_nl()
+            if not self.match("OP", ","):
+                break
+            self.skip_nl()
+        self.expect("OP", "}")
+        return Node("ObjectLit", line=t.line, pairs=pairs)
+
+    # -- misc ---------------------------------------------------
+    def _starts_expr(self):
+        t = self.peek()
+        if t.type in ("NUMBER", "STRING", "IDENT", "DIM"):
+            return True
+        if t.type == "KEYWORD" and t.value in _EXPR_START_KEYWORDS:
+            return True
+        if t.type == "OP" and t.value in ("(", "[", "{", "-", "+", "!"):
+            return True
+        return False
+
+    def _skip_type(self):
+        # 타입 표기는 v0.1 에서 검사하지 않고 그냥 지나간다.
+        self.expect("IDENT", what="타입 이름")
+        while self.match("OP", "."):
+            self.expect("IDENT")
+        if self.match("OP", "["):
+            depth = 1
+            while depth and not self.at_end():
+                if self.check("OP", "["):
+                    depth += 1
+                elif self.check("OP", "]"):
+                    depth -= 1
+                self.advance()
+        if self.match("OP", "?"):
+            pass
+
+
+def _tok_desc(t):
+    if t.type == "NEWLINE":
+        return "줄바꿈"
+    if t.type == "EOF":
+        return "파일 끝"
+    return str(t.value)
+
+
+def _stem(path: str) -> str:
+    base = path.replace("\\", "/").rsplit("/", 1)[-1]
+    if "." in base:
+        base = base.rsplit(".", 1)[0]
+    return "".join(ch if (ch.isalnum() or ch == "_") else "_" for ch in base) or "mod"

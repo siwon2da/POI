@@ -1,0 +1,31 @@
+# 조금 더 전문적인 GUI - 상태 · 입력 바인딩
+
+fn login(id, pw) {
+    if id.length >= 2 and pw.length >= 4 {
+        show "로그인 성공: {id}"
+    } else {
+        show "아이디/비밀번호를 확인하세요"
+    }
+}
+
+app "로그인" {
+
+    window {
+        size: 380x320
+        center: true
+    }
+
+    state username = ""
+    state password = ""
+
+    column {
+        title "로그인"
+
+        input "아이디" -> username
+        password "비밀번호" -> password
+
+        button "로그인" {
+            login(username, password)
+        }
+    }
+}

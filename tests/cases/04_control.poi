@@ -1,0 +1,9 @@
+age = 16
+if age between 10 and 19 { show "teen" } else { show "no" }
+if age is 16 { show "sixteen" }
+if age is not 20 { show "not twenty" }
+
+x = 5
+if x > 10 { show "big" } else if x > 3 { show "mid" } else { show "small" }
+
+if x > 1 and x < 10 { show "in range" }

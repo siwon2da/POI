@@ -1,0 +1,108 @@
+# POI 로드맵
+
+POI 의 포지션: **파이썬을 죽이는 언어가 아니라, 파이썬을 엔진으로 쓰고 그 위에 더 쉬운 언어를 씌우는 것.**
+
+```
+입문
+ │
+ ├──── POI ── GUI · Web · AI · Automation · Data · (파이썬 생태계 전부)
+ │
+ └──────────── 전문 개발
+```
+
+핵심 4축: **Easy Syntax · Python Compatibility · Built-in UI · Human-Friendly Errors**
+
+---
+
+## v0.1 — 작동하는 뼈대  ✅ (현재)
+
+- [x] Lexer / Parser / AST / 파이썬 트랜스파일 / 런타임
+- [x] 변수·상수·타입표기(무시)·문자열 보간
+- [x] `if / else if / else`, `is`, `between`, 연쇄 비교
+- [x] `repeat N`, `repeat N as i`, `for x in xs`
+- [x] `fn`, 한 줄 함수 `=>`, 기본값 인자
+- [x] 배열·객체(점 접근)·문자열/배열 편의 메서드
+- [x] `?.`, `??`, 파이프라인 `|>`
+- [x] `try / catch`
+- [x] `use py:...`, `python { }`, `use pyfile`
+- [x] 표준 모듈: `file json web math time` (외부 의존성 0)
+- [x] 선언형 GUI: `app / window / text / title / button / row / column / card / input / state / on`
+- [x] 사람 친화 오류 (P-코드 + POI 줄 + 힌트)
+- [x] CLI: `run / new / check / repl / version`
+- [x] 회귀 테스트
+
+## v0.2 — 언어 다듬기
+
+- [ ] `const` 재대입 금지 실제 적용, 스코프 규칙 문서화
+- [ ] `match` / `when` 패턴 매칭
+- [ ] 리스트 컴프리헨션 대체 문법: `[x * 2 for x in xs where x > 0]`
+- [ ] 파이프라인 확장: `|> filter(x => x > 0)`, `|> map(...)`, `|> sort(by: age)`, `|> take(10)`
+- [ ] 구조 분해: `a, b = pair`, `{ name, age } = user`
+- [ ] `every 1 second { }`, `background { }`, `async fn` / `await` 고수준 동시성
+- [ ] 문자열 보간에서 형식 지정: `"{price:money}"`, `"{ratio:%}"`
+- [ ] 더 나은 오류: "did you mean" 오타 제안, 다중 프레임
+
+## v0.3 — 선택적 정적 타입
+
+- [ ] `Int Float Text Bool List<T> Map<K,V> Option<T>` 타입 체커 (opt-in)
+- [ ] 함수 시그니처 검사, 반환 타입 추론
+- [ ] `poi check --types`
+- [ ] 타입 오류도 P-코드로
+
+## v0.4 — 표준 라이브러리 확장
+
+- [ ] `database("x.db")` SQLite DSL: `db.table "users" { ... }`, `db.users.add {...}`, `db.users.where(...)`, `db.sql """..."""`
+- [ ] `ai` 모듈: `ai.chat(model:, prompt:)`, provider adapter (openai / gemini / ollama)
+- [ ] `net` (소켓/websocket), `crypto`, `datetime` 확장, `csv`, `env`
+- [ ] `test { }` 블록 + `poi test`
+
+## v0.5 — 웹
+
+- [ ] `webapp "..." { page "/" { ... } }` — GUI 와 같은 문법으로 정적/SPA 페이지
+- [ ] `server { get "/api/x" { return {...} } }` — `poi run` 하면 서버 기동
+- [ ] 상태 관리 + 반응형 재렌더 (`state` 바뀌면 UI 갱신) — 데스크톱 GUI 에도 소급 적용
+- [ ] 라우팅 / 미들웨어 / 세션 / 정적 파일
+
+## v0.6 — GUI 2.0
+
+- [ ] 반응형 렌더: `state` 변경 → diff → 부분 갱신 (`for user in users` 자동 리스트)
+- [ ] `grid columns=3 { }`, `style Button { ... }` 전역 스타일, 인라인 `style { }`
+- [ ] 이벤트: `on change`, `on key "ESC"`, 드래그/포커스
+- [ ] tkinter 백엔드 → 선택적으로 웹뷰/Qt 백엔드
+- [ ] 테마 시스템 (라이트/다크)
+
+## v0.7 — 패키지 매니저
+
+- [ ] `poi add <이름>` / `poi add py:numpy` — 프로젝트 전용 venv 자동 생성
+- [ ] `poi remove / update`, `poi.lock`
+- [ ] POI 패키지 레지스트리 (초기엔 git URL 허용)
+
+## v0.8 — 빌드 / 배포
+
+- [ ] `poi build` → 단일 실행파일 (초기 PyInstaller, 이후 Nuitka)
+- [ ] `poi build --native`, `poi build --web` (정적 번들)
+- [ ] 크로스 플랫폼 아이콘/메타데이터, 코드 서명 훅
+
+## v0.9 — 도구 생태계
+
+- [ ] **POI Language Server (LSP)** — 자동완성/정의이동/진단/리네임
+- [ ] VS Code 확장: 하이라이팅 · 포매터(`poi fmt`) · Run/Debug 버튼 · LSP
+- [ ] `poi fmt` 정식 구현 (현재는 미구현)
+- [ ] `poi doctor` — 환경 진단
+
+## v1.0
+
+- [ ] 문법 안정화 + 하위호환 정책
+- [ ] **play.poi.dev** — 브라우저에서 바로 실행되는 플레이그라운드 (Pyodide)
+- [ ] 튜토리얼 · 레퍼런스 · 예제 갤러리
+- [ ] 성능: 자주 쓰는 경로 트랜스파일 최적화, AST 캐시
+
+---
+
+## 설계 원칙 (바뀌지 않는 것)
+
+1. **파이썬 라이브러리를 절대 버리지 않는다.** POI 생태계 = 파이썬 생태계 + POI 표준.
+2. **입문자는 타입/괄호/import 를 몰라도 되고, 전문가는 다 쓸 수 있다.** 강요하지 않되 막지도 않는다.
+3. **오류는 사람의 말로.** 파이썬 traceback 을 사용자에게 그대로 노출하지 않는다.
+4. **GUI/웹은 언어 기본기.** "Hello World 다음이 창 띄우기" 가 되어야 한다.
+5. **트랜스파일 우선.** 새 VM 을 만들지 않는다. CPython 이 런타임이다.

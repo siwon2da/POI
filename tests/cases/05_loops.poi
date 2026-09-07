@@ -1,0 +1,3 @@
+repeat 3 { show "a" }
+repeat 3 as i { show i }
+for c in [10, 20, 30] { show c }

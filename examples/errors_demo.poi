@@ -1,0 +1,5 @@
+# 일부러 오류를 내서 POI 오류 메시지를 본다
+
+money = "1000"
+total = money + 500
+show total

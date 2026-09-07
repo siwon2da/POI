@@ -1,0 +1,6 @@
+name = "POI"
+show "hi {name}"
+show name.length
+show name.upper()
+show name.contains("O")
+show name.contains("z")

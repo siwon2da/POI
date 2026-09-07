@@ -1,0 +1,3 @@
+money = "1000"
+total = money + 500
+show total

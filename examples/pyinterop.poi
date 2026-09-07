@@ -1,0 +1,19 @@
+# 파이썬 생태계 그대로 빨아먹기
+
+# 표준 모듈 (import 없이 바로)
+show math.sqrt(144)
+show file.exists("examples/hello.poi")
+
+# 파이썬 라이브러리 (설치돼 있으면 동작)
+# use py:numpy as np
+# numbers = np.array([1, 2, 3, 4])
+# show numbers.mean()
+
+# 파이썬 코드 직접 삽입
+python {
+    import sys
+    print("파이썬 버전:", sys.version.split()[0])
+}
+
+data = json.parse("""{ "lang": "POI", "year": 2026 }""")
+show "언어는 {data.lang}, {data.year}년"

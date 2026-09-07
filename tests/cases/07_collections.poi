@@ -1,0 +1,7 @@
+nums = [3, 1, 2]
+show nums.length
+show nums.first
+nums.add(9)
+show nums.last
+show nums.sort().join("-")
+show nums.contains(9)

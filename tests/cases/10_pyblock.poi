@@ -1,0 +1,9 @@
+python {
+    result = 6 * 7
+    doubled = result * 2
+}
+show "답: {result}"
+show "두배: {doubled}"
+
+use py:math as pymath
+show pymath.gcd(24, 36)

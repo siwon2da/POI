@@ -1,0 +1,7 @@
+try {
+    x = number("abc")
+    show x
+} catch e {
+    show "잡음: {e}"
+}
+show "계속"
