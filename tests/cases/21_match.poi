@@ -1,0 +1,9 @@
+for x in [1, 3, 7, 50, 200]
+  match x {
+    when 1 { show "one" }
+    when 2, 3 { show "few" }
+    when between 4 and 10 { show "mid" }
+    when > 100 { show "huge" }
+    else { show "big" }
+  }
+end

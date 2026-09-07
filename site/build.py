@@ -44,8 +44,8 @@ def _wrap(frag: str, og_desc: str, og_url: str) -> str:
 <meta property="og:description" content="{og_desc}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{og_url}">
-<link rel="icon" href="/poi/assets/poi-mark.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/poi/assets/poi-mark-256.png">
+<link rel="icon" href="/poi/assets/poi-octopus-96.png" type="image/png">
+<link rel="apple-touch-icon" href="/poi/assets/poi-octopus-256.png">
 {chr(10).join(links)}
 <style>
   :root {{ color-scheme: light dark; }}
@@ -62,15 +62,20 @@ def _wrap(frag: str, og_desc: str, og_url: str) -> str:
 """
 
 
+def _sub(tpl: str, font: str, octo: str) -> str:
+    return tpl.replace("__G14_B64__", font).replace("__OCTO_B64__", octo)
+
+
 def main() -> int:
     font = b64("assets/fonts/Galmuri14.woff2")
+    octo = b64("assets/poi-octopus-96.png")
     hd = os.path.join(HERE, "hagora")
     os.makedirs(os.path.join(hd, "book"), exist_ok=True)
     done = []
 
     # 랜딩
-    frag = open(os.path.join(HERE, "_landing.template.html"),
-                encoding="utf-8").read().replace("__G14_B64__", font)
+    frag = _sub(open(os.path.join(HERE, "_landing.template.html"),
+                     encoding="utf-8").read(), font, octo)
     open(os.path.join(HERE, "landing.html"), "w", encoding="utf-8",
          newline="\n").write(frag)
     open(os.path.join(hd, "index.html"), "w", encoding="utf-8", newline="\n").write(
@@ -78,8 +83,8 @@ def main() -> int:
     done += [("landing.html", frag), ("hagora/index.html", frag)]
 
     # 입문서
-    bfrag = open(os.path.join(HERE, "_book.template.html"),
-                 encoding="utf-8").read().replace("__G14_B64__", font)
+    bfrag = _sub(open(os.path.join(HERE, "_book.template.html"),
+                      encoding="utf-8").read(), font, octo)
     open(os.path.join(HERE, "book.html"), "w", encoding="utf-8",
          newline="\n").write(bfrag)
     open(os.path.join(hd, "book", "index.html"), "w", encoding="utf-8",

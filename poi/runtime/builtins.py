@@ -261,6 +261,7 @@ def poi_std(name):
         "random": stdmods.random,
         "stats": stdmods.stats,
         "env": stdmods.env,
+        "shell": stdmods.shell,
     }
     if name in ("ui", "gui"):
         from . import gui as _guimod

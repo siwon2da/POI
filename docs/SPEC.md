@@ -1,4 +1,4 @@
-# POI v1.3 문법 명세
+# POI v1.4 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -28,8 +28,13 @@ POI 소스 → Lexer → Parser → POI AST → POI 컴파일러 → (CPython �
 - **크기 리터럴**: `500x300` → 문자열 `"500x300"` (GUI `size:` 용)
 - **문자열**: `"..."`, 여러 줄은 `"""..."""`. `\n \t \" \\` 이스케이프. `{{` `}}` 는 리터럴 중괄호.
 - **식별자**: 유니코드 letter/underscore 로 시작 → 한글 변수명 OK (`이름 = "시원"`).
-- **예약어**: `if else for in fn return const show ask use python try catch true false null is between and or not repeat as end raise test assert`
-  (GUI 단어 `app window text button ...` 은 예약어가 아니라 문맥으로 인식)
+- **예약어**: `if else for in fn return const show ask use python try catch true false null is between and or not repeat as end raise assert match when`
+  (`test` 는 문맥 키워드 — `test "이름" { }` 일 때만; GUI 단어도 문맥으로 인식)
+- **한국어 키워드 별칭** — 영문과 완전 호환, 한 파일에서 섞어도 됨:
+  `보여주기·출력`=show · `물어보기`=ask · `만약`=if · `아니면·그밖에`=else · `반복`=repeat ·
+  `순회`=for · `안에`=in · `마다·로`=as · `함수`=fn · `돌려주기·반환`=return ·
+  `참·거짓·없음` · `그리고·또는·아님` · `시도·잡기` · `끝`=end · `상수`=const · `사용`=use ·
+  `던지기`=raise · `분기`=match · `경우`=when · `검사`=test · `확인`=assert · `사이`=between · `파이썬`=python
 
 ## 2. 값과 자료형
 
@@ -101,23 +106,26 @@ range_list repeat_list`
 
 ## 5.5 블록 — 3가지 방식 (섞어도 됨)
 
-POI 의 블록은 세 가지로 쓸 수 있다. **파이썬보다 자유롭게** — 중괄호도, 들여쓰기도
-강제하지 않는다.
+POI 의 블록은 **다섯 가지**로 쓸 수 있고, 한 파일에서 **섞어도 된다**. 무엇도 강제하지 않는다.
 
 ```poi
-# 1) 중괄호
-if x > 0 { show "양수" }
-
-# 2) 콜론 — 한 줄
-if x > 0: show "양수"
-
-# 3) end 로 닫기 — 중괄호도 들여쓰기도 없이
-if x > 0
+if x > 0 { show "양수" }          # 1) 중괄호
+if x > 0: show "양수"             # 2) 콜론 — 한 줄
+if x > 0                          # 3) end 로 닫기
 show "양수"
 end
+if x > 0                          # 4) 들여쓰기 (콜론도 end 도 없이 — 파이썬처럼)
+    show "양수"
+else
+    show "음수"
+a = 1; b = 2; show a + b          # 5) 세미콜론으로 한 줄에 여러 문장
 ```
 
-`if / else if / else` 는 체인 전체를 하나의 `end` 로 닫는다.
+**규칙**: 여는 키워드(`if`/`fn`/`repeat`/`for`/`try`) 다음 첫 문장의 열이 여는 키워드보다
+깊으면 → 들여쓰기 블록(뒤따르는 덜 들여쓴 줄에서 끝). 아니면 → `end` 로 닫는 형태.
+어느 방식이든 뒤에 `end` 가 있으면 그냥 먹는다(호환).
+
+`if / else if / else` 는 체인 전체를 하나의 `end`(또는 dedent)로 닫는다.
 `fn` `repeat` `for` `try/catch` 도 같은 3방식을 쓴다. 들여쓰기는 순전히 장식이다.
 
 ## 6. 조건문
@@ -142,6 +150,20 @@ end
 if name is "시원" { show "어서와" }
 if age between 10 and 19 { show "10대" }
 ```
+
+## 6.5 match / when — 패턴 매칭
+
+```poi
+match x {
+    when 1 { show "하나" }
+    when 2, 3 { show "둘 또는 셋" }        # 여러 값
+    when > 100 { show "큼" }               # 비교 패턴 (> < >= <= == !=)
+    when between 4 and 10 { show "중간" }
+    else { show "그밖에" }
+}
+```
+
+`{ }` · `:` 한 줄 · `end` 다 된다. 한국어로는 `분기` / `경우` / `그밖에`.
 
 ## 7. 반복문
 
@@ -253,6 +275,10 @@ python {                     # 파이썬 코드 그대로
 | `random` | `int(a,b) float() range(a,b) choice(xs) sample(xs,k) shuffle(xs) chance(p) seed(n)` |
 | `stats` | `mean median mode stdev variance sum min max range` (모두 `(xs)`) |
 | `env` | `get(name, default) set(name, v) has(name) all()` (안전 모드 차단) |
+| `shell` | `run(cmd, stdin, timeout)` → `{out,err,code,ok}` · `text(cmd)` → stdout (안전 모드 차단) |
+
+`shell` 로 node·go 바이너리·git·ffmpeg 등 **어떤 언어·도구든** 부른다. `python { }` · `use py:` ·
+`use pyfile` · `use "./x.poi"` 와 함께 POI 는 사실상 모든 것과 이어진다.
 
 명시하고 싶으면 `use file` / `use json` / ... 도 가능.
 

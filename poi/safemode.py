@@ -35,7 +35,7 @@ _SAFE_NAMES = {
     "ArithmeticError", "LookupError", "OverflowError", "NameError",
 }
 
-_FORBIDDEN_STD = {"file", "web", "gui", "ui", "env"}
+_FORBIDDEN_STD = {"file", "web", "gui", "ui", "env", "shell"}
 
 
 def safe_builtins() -> dict:
@@ -66,8 +66,11 @@ def harden_globals(g: dict) -> dict:
     g["__builtins__"] = safe_builtins()
     g["file"] = _Denied("파일")
     g["web"] = _Denied("네트워크")
+    g["shell"] = _Denied("셸/외부 명령")
+    g["env"] = _Denied("환경변수")
     g["pause"] = lambda *_a, **_kw: None          # 서버에선 멈출 수 없음
     g["poi_import_pyfile"] = _denied("다른 파일 불러오기")
+    g["poi_import_module"] = _denied("다른 파일 불러오기")
     g["poi_std"] = _guard_std(g.get("poi_std"))
     return g
 
@@ -91,8 +94,8 @@ def assert_safe(program) -> None:
                            hint="POI 문법과 표준 모듈(math·time·json)만 쓰세요.")
         if k == "Use":
             uk = getattr(node, "use_kind", "")
-            if uk in ("py", "pyfile"):
-                raise POIError("안전 모드에서는 파이썬 라이브러리를 불러올 수 없습니다.",
+            if uk in ("py", "pyfile", "poimod"):
+                raise POIError("안전 모드에서는 다른 파일·라이브러리를 불러올 수 없습니다.",
                                "P211", getattr(node, "line", None))
             if uk == "std" and getattr(node, "target", "") in _FORBIDDEN_STD:
                 raise POIError(

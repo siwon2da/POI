@@ -1,0 +1,10 @@
+fn sum_to(n)
+    s = 0
+    repeat n as i
+        s = s + i + 1
+    return s
+end
+if sum_to(5) == 15
+    show "ok"
+else
+    show "no"

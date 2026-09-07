@@ -1,4 +1,4 @@
-1.3.0
-POI 1.3.0 — 람다(x => x*2)와 함수형 파이프라인(map·filter·reduce·group_by…),
-test 블록 + poi test, use "./파일.poi" 모듈, raise, regex·csv·datetime·random·stats·env,
-poi build(단일 실행파일). 올리기:  poi update
+1.4.0
+POI 1.4.0 — 한국어 키워드(보여주기·만약·반복·함수·끝…), match/when 패턴 매칭,
+들여쓰기 블록(콜론·end 없이도), 세미콜론, shell 모듈(어떤 언어·도구든 호출).
+호환성 끝판왕: 중괄호·end·콜론·들여쓰기·세미콜론 다 되고 섞어도 됨. 올리기:  poi update

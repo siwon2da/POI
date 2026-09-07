@@ -11,7 +11,7 @@ import textwrap
 from .errors import POIError
 
 _STD_MODULES = {"file", "json", "web", "math", "time", "ui", "gui",
-                "regex", "csv", "datetime", "random", "stats", "env"}
+                "regex", "csv", "datetime", "random", "stats", "env", "shell"}
 
 
 class Transpiler:
@@ -90,6 +90,8 @@ class Transpiler:
             self.emit(f"poi_assert({self.ex(n.test)}, {n.src!r})", n.line)
         elif k == "TestBlock":
             self._testblock(n)
+        elif k == "Match":
+            self._match(n)
         elif k == "PyBlock":
             self._pyblock(n)
         elif k == "App":
@@ -167,6 +169,31 @@ class Transpiler:
         self.emit(f"def {h}():", n.line)
         self.block(n.body)
         self.emit(f"poi_register_test({n.name!r}, {h})", n.line)
+
+    def _match(self, n):
+        mv = f"_poi_m{self._next_h()}"
+        self.emit(f"{mv} = {self.ex(n.subject)}", n.line)
+        first = True
+        for pats, body in n.clauses:
+            cond = " or ".join(self._pat_cond(mv, p) for p in pats)
+            self.emit(f"{'if' if first else 'elif'} {cond}:", n.line)
+            self.block(body)
+            first = False
+        if n.default is not None:
+            if first:
+                self.emit("if True:", n.line)
+            else:
+                self.emit("else:", n.line)
+            self.block(n.default)
+        elif first:
+            self.emit("pass", n.line)
+
+    def _pat_cond(self, mv: str, p) -> str:
+        if p.kind == "PatCompare":
+            return f"({mv} {p.op} {self.ex(p.value)})"
+        if p.kind == "PatRange":
+            return f"({self.ex(p.low)} <= {mv} <= {self.ex(p.high)})"
+        return f"({mv} == {self.ex(p.value)})"
 
     # -- GUI -------------------------------------------------
     def _app(self, n):

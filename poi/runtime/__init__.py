@@ -52,6 +52,7 @@ _RUNTIME = {
     "random": _std.random,
     "stats": _std.stats,
     "env": _std.env,
+    "shell": _std.shell,
     # GUI
     "poi_app": _gui.poi_app,
     "poi_window": _gui.poi_window,

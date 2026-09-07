@@ -330,3 +330,28 @@ env = SimpleNamespace(
     has=lambda name: name in _os.environ,
     all=lambda: boxify(dict(_os.environ)),
 )
+
+# -- shell — 어떤 언어·도구든 (node, go 바이너리, git, ffmpeg …) ------
+import shlex as _shlex  # noqa: E402
+import subprocess as _sp  # noqa: E402
+
+
+def _sh_run(cmd, stdin="", timeout=60):
+    args = cmd if isinstance(cmd, list) else _shlex.split(cmd, posix=(_os.name != "nt"))
+    try:
+        p = _sp.run(args, input=stdin, capture_output=True, text=True,
+                    encoding="utf-8", errors="replace", timeout=timeout)
+        return boxify({"out": p.stdout, "err": p.stderr, "code": p.returncode,
+                       "ok": p.returncode == 0})
+    except FileNotFoundError:
+        raise POIError(f"명령을 찾을 수 없습니다: {args[0] if args else cmd}", "P160")
+    except _sp.TimeoutExpired:
+        return boxify({"out": "", "err": f"시간 초과 ({timeout}s)", "code": 124,
+                       "ok": False})
+
+
+def _sh_text(cmd, stdin="", timeout=60):
+    return _sh_run(cmd, stdin, timeout).out.rstrip("\n")
+
+
+shell = SimpleNamespace(run=_sh_run, text=_sh_text)

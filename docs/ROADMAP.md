@@ -20,7 +20,15 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.3 — 전문 분야에서도  ✅ (현재)
+## v1.4 — 한국어 · match · 호환성 끝판왕  ✅ (현재)
+
+- [x] **한국어 키워드 별칭** — 보여주기·만약·아니면·반복·순회·함수·돌려주기·끝·분기·경우 … (영문과 혼용 가능)
+- [x] **match / when** 패턴 매칭 — 여러 값 · `> 100` 비교 · `between a and b`
+- [x] **들여쓰기 블록** — 콜론도 `end` 도 없이 (오프사이드 규칙). `{ }` · `:` · `end` · 들여쓰기 · `;` 다 되고 섞어도 됨
+- [x] **shell 모듈** — `shell.run/text` 로 어떤 언어·도구든 호출 (안전 모드 차단)
+- [x] 버그 정리 — `show test` 이스터에그 복구, 안전 모드 shell/env/module 차단, 회귀 22개
+
+## v1.3 — 전문 분야에서도  ✅
 
 - [x] **람다** `x => x*2` · `(a,b) => a+b` (값으로)
 - [x] **함수형 파이프라인** — map·filter·reduce·group_by·sort_by·take·unique·chunk … 30여 개
@@ -59,72 +67,54 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [x] Windows 설치 마법사 (`poi.iss` + `install.ps1`) · 로고 · 회귀 테스트 14개
 - [x] 한생(Galmuri)/토스 감성 소개 페이지 (hagora.kr/poi)
 
-## v1.4 — 언어 다듬기
+## v1.5 — 언어 다듬기
 
 - [ ] `const` 재대입 금지 실제 적용, 스코프 규칙 문서화
-- [ ] **한국어 키워드 별칭** — `보여주기`=`show`, `만약`=`if`, `아니면`=`else`, `반복`=`repeat`,
-      `함수`=`fn`, `돌려주기`=`return` … (영문 키워드와 완전 호환, 섞어 써도 됨)
-- [ ] `match` / `when` 패턴 매칭
 - [ ] 리스트 컴프리헨션 대체 문법: `[x * 2 for x in xs where x > 0]`
 - [ ] 구조 분해: `a, b = pair`, `{ name, age } = user`
 - [ ] `every 1 second { }`, `background { }`, `async fn` / `await` 고수준 동시성
-- [ ] 문자열 보간에서 형식 지정: `"{price:money}"`, `"{ratio:%}"`
+- [ ] 문자열 보간 형식 지정: `"{price:money}"`, `"{ratio:%}"`
 - [ ] 더 나은 오류: "did you mean" 오타 제안, 다중 프레임
 
-## v1.5 — 선택적 정적 타입
+## v1.6 — 선택적 정적 타입
 
 - [ ] `Int Float Text Bool List<T> Map<K,V> Option<T>` 타입 체커 (opt-in)
-- [ ] 함수 시그니처 검사, 반환 타입 추론
-- [ ] `poi check --types`
-- [ ] 타입 오류도 P-코드로
+- [ ] 함수 시그니처 검사, 반환 타입 추론, `poi check --types`
 
-## v1.6 — 표준 라이브러리 확장
+## v1.7 — 표준 라이브러리 확장
 
-- [ ] `database("x.db")` SQLite DSL: `db.table "users" { ... }`, `db.users.add {...}`, `db.users.where(...)`, `db.sql """..."""`
-- [ ] `ai` 모듈: `ai.chat(model:, prompt:)`, provider adapter (openai / gemini / ollama)
-- [ ] `net` (소켓/websocket), `crypto`, `path`, `sqlite`, `http.server` 고수준
+- [ ] `database("x.db")` SQLite DSL
+- [ ] `ai` 모듈: `ai.chat(model:, prompt:)` (openai / gemini / ollama)
+- [ ] `net`(소켓/websocket) · `crypto` · `path` · `http.server` 고수준
 - [ ] 데이터프레임 유사 API (`table`), 플로팅 헬퍼
 
-## v1.7 — 웹
+## v1.8 — 웹
 
-- [ ] `webapp "..." { page "/" { ... } }` — GUI 와 같은 문법으로 정적/SPA 페이지
+- [ ] `webapp "..." { page "/" { ... } }` — GUI 문법으로 정적/SPA
 - [ ] `server { get "/api/x" { return {...} } }` — `poi run` 하면 서버 기동
-- [ ] 상태 관리 + 반응형 재렌더 (`state` 바뀌면 UI 갱신) — 데스크톱 GUI 에도 소급 적용
-- [ ] 라우팅 / 미들웨어 / 세션 / 정적 파일
+- [ ] 상태 → 반응형 재렌더 (데스크톱 GUI 에도 소급)
 
-## v1.8 — GUI 2.0
+## v1.9 — GUI 2.0
 
-- [ ] 반응형 렌더: `state` 변경 → diff → 부분 갱신 (`for user in users` 자동 리스트)
-- [ ] `grid columns=3 { }`, `style Button { ... }` 전역 스타일, 인라인 `style { }`
-- [ ] 이벤트: `on change`, `on key "ESC"`, 드래그/포커스
-- [ ] tkinter 백엔드 → 선택적으로 웹뷰/Qt 백엔드
-- [ ] 테마 시스템 (라이트/다크)
+- [ ] 반응형 렌더 (`state` 변경 → 부분 갱신), `grid`, 전역 `style`
+- [ ] 웹뷰 / Qt 백엔드 선택, 테마 시스템
 
-## v1.9 — 패키지 매니저
+## v2.0 — 패키지 매니저 · 빌드 심화
 
-- [ ] `poi add <이름>` / `poi add py:numpy` — 프로젝트 전용 venv 자동 생성
-- [ ] `poi remove / update`, `poi.lock`
-- [ ] POI 패키지 레지스트리 (초기엔 git URL 허용)
-
-## v2.0 — 빌드 심화 (poi build 는 v1.3 에서 됨)
-
-- [ ] `poi build` → 단일 실행파일 (초기 PyInstaller, 이후 Nuitka)
-- [ ] `poi build --native`, `poi build --web` (정적 번들)
-- [ ] 크로스 플랫폼 아이콘/메타데이터, 코드 서명 훅
+- [ ] `poi add <이름>` / `poi add py:numpy` — 프로젝트 전용 venv
+- [ ] `poi.lock`, POI 패키지 레지스트리
+- [ ] `poi build --native`(Nuitka) · `--web`(정적 번들) · 코드 서명 훅
 
 ## v2.1 — 도구 생태계
 
 - [ ] **POI Language Server (LSP)** — 자동완성/정의이동/진단/리네임
-- [ ] VS Code 확장: 하이라이팅 · 포매터(`poi fmt`) · Run/Debug 버튼 · LSP
-- [ ] `poi fmt` 정식 구현 (현재는 미구현)
-- [ ] `poi doctor` — 환경 진단
+- [ ] VS Code 확장, `poi fmt` 정식 구현, `poi doctor`
 
 ## v2.2 — 안정화
 
 - [ ] 문법 안정화 + 하위호환 정책
-- [ ] **play.poi.dev** — 브라우저에서 바로 실행되는 플레이그라운드 (Pyodide)
-- [ ] 튜토리얼 · 레퍼런스 · 예제 갤러리
-- [ ] 성능: 자주 쓰는 경로 트랜스파일 최적화, AST 캐시
+- [ ] **play.poi.dev** — 브라우저 실행 (Pyodide)
+- [ ] 튜토리얼 · 레퍼런스 · 예제 갤러리 · 성능(AST 캐시)
 
 ---
 
