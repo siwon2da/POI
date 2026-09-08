@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 
 from . import __version__
@@ -18,14 +19,14 @@ POI v{ver}  -  Power Of Imagination
        --vars                         --trace + 변수 변화까지
        --explain                      오류가 나면 그때의 지역 변수까지 사후 분석
        --debug                        위 세 개를 한 번에
-       --safe [--time N]              샌드박스로 실행 (python 블록·use py·파일·네트워크 차단, 시간 제한)
+       --safe [--time N]              샌드박스로 실행 (파일·네트워크·외부 실행 차단, 시간 제한)
        --types                       선택적 정적 타입 검사도 함께
   poi debug <파일.poi>                 = poi run --debug
   poi test [파일.poi]                  파일 안의 test 블록 실행
   poi build <파일.poi> [-o 이름]        단일 실행파일(.exe) 로 빌드
   poi idle [파일.poi]                  POI IDLE — POI 로 만든 코드 편집기
   poi photo [사진]                     POI 로 만든 사진 편집기 (Pillow 필요)
-  poi add / remove / install          프로젝트 파이썬 의존성 (.venv + poi.toml + poi.lock)
+  poi add / remove / install          프로젝트 의존성 (.venv + poi.toml + poi.lock)
        install --frozen               poi.lock 그대로 설치 (재현용)
   poi cache [clear]                   컴파일 캐시 상태 / 비우기 (~/.poi/cache)
   poi run 파일 --host 0.0.0.0 --port 80 [--prod]   운영 서버로 노출
@@ -431,6 +432,131 @@ def _eco(name):
     return getattr(__import__("poi.ecosystem", fromlist=[name]), name)
 
 
+def _deploy_config() -> dict:
+    """배포 설정을 로컬에서만 읽는다 (poi.toml [deploy] → ~/.poi/deploy.json).
+    비밀번호·키는 절대 명령행 인자로 받지 않는다."""
+    cfg = {}
+    p = "poi.toml"
+    if os.path.isfile(p):
+        section = None
+        for line in open(p, encoding="utf-8"):
+            s = line.strip()
+            if s.startswith("[") and s.endswith("]"):
+                section = s[1:-1]
+                continue
+            if section == "deploy" and "=" in s and not s.startswith("#"):
+                k, _, v = s.partition("=")
+                cfg[k.strip()] = v.strip().strip('"').strip("'")
+    home = os.path.join(os.path.expanduser("~"), ".poi", "deploy.json")
+    if os.path.isfile(home):
+        try:
+            import json
+            cfg = {**json.load(open(home, encoding="utf-8")), **cfg}
+        except Exception:
+            pass
+    return cfg
+
+
+def _haon_deploy(args: list[str]) -> int:
+    """poi haon deploy [--git] [--dry] — 로컬 설정의 서버로 프로젝트를 올린다."""
+    cfg = _deploy_config()
+    host, user = cfg.get("host"), cfg.get("user", "root")
+    remote = cfg.get("path")
+    do_git = "--git" in args or str(cfg.get("git", "")).lower() in ("1", "true", "yes")
+    dry = "--dry" in args or "--dry-run" in args
+    if not host or not remote:
+        print("배포 설정이 없어요. poi.toml 에 넣거나 ~/.poi/deploy.json 을 만드세요:\n"
+              '  [deploy]\n  host = "example.com"\n  user = "deploy"\n'
+              '  path = "/var/www/app"\n  key = "~/.ssh/id_ed25519"   # 또는 생략하면 실행 시 비번 물음\n'
+              "  git = true", file=sys.stderr)
+        return 1
+    try:
+        import paramiko
+    except ImportError:
+        print("SSH 배포에는 paramiko 가 필요해요:  poi add paramiko", file=sys.stderr)
+        return 1
+
+    import fnmatch
+    import getpass
+    import posixpath
+    ignore = ["*.pyc", "__pycache__", ".git", ".venv", "node_modules", "dist",
+              ".poi", "*.log"] + [g.strip() for g in
+                                  (open(".gitignore", encoding="utf-8").read().splitlines()
+                                   if os.path.isfile(".gitignore") else [])
+                                  if g.strip() and not g.startswith("#")]
+
+    def skip(rel):
+        return any(fnmatch.fnmatch(rel, g) or fnmatch.fnmatch(os.path.basename(rel), g)
+                   or g.rstrip("/") in rel.split("/") for g in ignore)
+
+    files = []
+    for base, dirs, fs in os.walk("."):
+        dirs[:] = [d for d in dirs if not skip(os.path.relpath(os.path.join(base, d), "."))]
+        for f in fs:
+            rel = os.path.relpath(os.path.join(base, f), ".").replace("\\", "/")
+            if not skip(rel):
+                files.append(rel)
+    print(f"대상: {user}@{host}:{remote}   ·   파일 {len(files)}개"
+          + ("   (드라이런)" if dry else ""))
+    if dry:
+        for rel in files[:40]:
+            print("  " + rel)
+        if len(files) > 40:
+            print(f"  … 외 {len(files) - 40}개")
+        return 0
+
+    cli = paramiko.SSHClient()
+    cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    key_path = os.path.expanduser(cfg["key"]) if cfg.get("key") else None
+    try:
+        if key_path and os.path.isfile(key_path):
+            cli.connect(host, port=int(cfg.get("port", 22)), username=user,
+                        key_filename=key_path, timeout=25)
+        else:
+            pw = os.environ.get("POI_DEPLOY_PASSWORD") or getpass.getpass(
+                f"{user}@{host} 비밀번호: ")
+            cli.connect(host, port=int(cfg.get("port", 22)), username=user,
+                        password=pw, timeout=25, look_for_keys=False, allow_agent=False)
+    except Exception as e:  # noqa: BLE001
+        print(f"접속 실패: {e}", file=sys.stderr)
+        return 1
+    sftp = cli.open_sftp()
+    made = set()
+
+    def mkdirs(rp):
+        parts = rp.split("/")
+        cur = ""
+        for p in parts[:-1]:
+            cur = posixpath.join(cur, p) if cur else p
+            full = posixpath.join(remote, cur)
+            if full not in made:
+                cli.exec_command(f'mkdir -p "{full}"')
+                made.add(full)
+
+    n = 0
+    for rel in files:
+        rp = posixpath.join(remote, rel)
+        mkdirs(rel)
+        try:
+            sftp.put(rel, rp)
+            n += 1
+        except Exception as e:  # noqa: BLE001
+            print(f"  실패 {rel}: {e}", file=sys.stderr)
+    sftp.close()
+    cli.close()
+    print(f"올림: {n}/{len(files)}개")
+    if do_git:
+        import time as _t
+        for c in (["git", "add", "-A"],
+                  ["git", "commit", "-m", "deploy: " + _t.strftime("%Y-%m-%d %H:%M")],
+                  ["git", "push"]):
+            r = subprocess.run(c)
+            if c[1] == "commit" and r.returncode != 0:
+                print("(커밋할 변경 없음 — push 만 시도)")
+        print("git push 완료")
+    return 0
+
+
 def _cmd_add(args: list[str]) -> int:
     """poi add <이름> — 레지스트리에 있으면 POI 모듈, 없으면 pip 패키지."""
     names = [a for a in args if not a.startswith("-")]
@@ -505,6 +631,8 @@ def cmd_haon(args: list[str]) -> int:
         if r.get("files"):
             print("파일:", ", ".join(r["files"]))
         return 0 if r.get("ok") else 1
+    if sub == "deploy":
+        return _haon_deploy(rest)
     if sub == "fix":
         if not rest:
             print("poi haon fix <파일.poi>", file=sys.stderr)

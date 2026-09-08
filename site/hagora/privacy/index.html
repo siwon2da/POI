@@ -1,0 +1,82 @@
+<!doctype html><html lang=ko><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>POI 개인정보처리방침</title><style>*{margin:0;box-sizing:border-box}body{font:16px/1.75 -apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",Segoe UI,sans-serif;color:#1f2430;background:#fff;word-break:keep-all}
+main{max-width:760px;margin:0 auto;padding:48px 22px 96px}
+h1{font-size:1.7rem;letter-spacing:-.02em;margin-bottom:8px}
+h2{font-size:1.15rem;margin:30px 0 8px;letter-spacing:-.01em}
+h3{font-size:1rem;margin:18px 0 6px;color:#374151}
+h4{font-size:.95rem;margin:14px 0 4px;color:#4b5563}
+p{margin:8px 0}ul{margin:8px 0 8px 20px}li{margin:4px 0}
+code{background:#f1f3f5;padding:1px 5px;border-radius:5px;font-size:.9em}
+b{font-weight:700}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.92rem}
+th,td{border:1px solid #e5e8ee;padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#f7f8fa;font-weight:700}
+a{color:#2f6fed}
+nav{border-bottom:1px solid #eee;padding:14px 22px;font-size:.9rem}
+nav a{margin-right:14px;color:#6b7280;text-decoration:none}
+@media(prefers-color-scheme:dark){body{background:#0c0e13;color:#d7dbe3}th{background:#161a22}th,td{border-color:#232833}code{background:#161a22}h3,h4{color:#9aa3b2}nav{border-color:#232833}}</style></head><body><nav><a href='/poi/'>← POI</a><a href='/poi/privacy/'>개인정보처리방침</a><a href='/poi/terms/'>이용약관</a></nav><main><h1>POI 개인정보처리방침</h1>
+<p><b>시행일: 2026년 9월 9일</b></p>
+<p>한생(HANSAENG, 이하 &quot;회사&quot;)은 POI 언어 및 관련 도구·웹사이트(<code>https://hagora.kr/poi/</code>, 이하 &quot;서비스&quot;)를</p>
+<p>운영하면서 이용자의 개인정보를 중요하게 생각하며, 「개인정보 보호법」 등 관련 법령을 준수합니다.</p>
+<h2>1. 수집하는 개인정보 항목과 방법</h2>
+<p>POI 는 <b>설치형 도구</b>이며, 코드는 이용자의 컴퓨터에서 실행됩니다. 회사는 원칙적으로 개인정보를</p>
+<p>수집하지 않습니다. 다음의 경우에 한해 최소한의 정보가 처리됩니다.</p>
+<table>
+<tr><th>구분</th><th>항목</th><th>수집 방법</th><th>목적</th></tr>
+<tr><td>웹사이트 방문</td><td>접속 IP, 브라우저 종류, 방문 일시, 요청 경로</td><td>웹 서버 자동 기록</td><td>서비스 운영·보안·통계</td></tr>
+<tr><td>플레이그라운드</td><td>이용자가 입력한 코드(일시적), 실행 결과</td><td>이용자 직접 입력</td><td>코드 실행 결과 반환 (저장하지 않음)</td></tr>
+<tr><td>버전 확인</td><td>설치된 POI 버전</td><td>`poi` 실행 시 자동(끌 수 있음: `POI_NO_UPDATE_CHECK=1`)</td><td>새 버전 안내</td></tr>
+<tr><td>ChatGPT 연동(선택)</td><td>ChatGPT 계정 인증 토큰</td><td>이용자가 `poi haon login` 실행 시 OAuth</td><td>하온의 AI 응답 제공</td></tr>
+<tr><td>문의</td><td>이메일 주소, 문의 내용</td><td>이용자가 이메일·이슈로 문의 시</td><td>문의 응대</td></tr>
+</table>
+<ul>
+<li><b>플레이그라운드에 입력한 코드</b>는 실행을 위해 서버 메모리에서 처리되며, 별도의 데이터베이스에</li>
+</ul>
+<p>  <b>저장하지 않습니다</b>. 실행은 샌드박스(<code>--safe</code>)와 프로세스 격리로 제한됩니다.</p>
+<ul>
+<li><b>ChatGPT 인증 토큰</b>은 이용자 컴퓨터의 <code>~/.poi/chatgpt.json</code> 에만 저장되며(권한 0600),</li>
+</ul>
+<p>  회사 서버로 전송되지 않습니다. <code>poi haon logout</code> 으로 즉시 삭제됩니다.</p>
+<ul>
+<li>하온이 클라우드 LLM(Groq 등)을 사용할 때, 이용자가 하온에 보낸 질문·코드가 해당 LLM 제공자에게</li>
+</ul>
+<p>  전달될 수 있습니다. 로컬 LLM(Ollama) 사용 시에는 외부 전송이 없습니다.</p>
+<h2>2. 개인정보의 보유 및 이용 기간</h2>
+<ul>
+<li>웹 서버 접속 기록: 최대 <b>6개월</b> 보관 후 파기(보안 사고 조사 목적).</li>
+<li>플레이그라운드 코드: 실행 완료 즉시 메모리에서 소멸.</li>
+<li>문의 관련 정보: 문의 처리 완료 후 <b>1년</b> 보관 후 파기.</li>
+<li>관계 법령에서 별도 보관을 요구하는 경우 해당 기간을 따릅니다.</li>
+</ul>
+<h2>3. 개인정보의 제3자 제공</h2>
+<p>회사는 이용자의 개인정보를 제3자에게 제공하지 않습니다. 다만 다음의 경우는 예외로 합니다.</p>
+<ul>
+<li>이용자가 <b>선택적으로</b> ChatGPT 연동 또는 클라우드 LLM 기능을 사용하여, 그 입력이 해당 AI</li>
+</ul>
+<p>  제공자(OpenAI, Groq 등)에게 전달되는 경우. 각 제공자의 개인정보처리방침이 적용됩니다.</p>
+<ul>
+<li>법령에 근거하거나 수사기관의 적법한 요청이 있는 경우.</li>
+</ul>
+<h2>4. 개인정보 처리의 위탁</h2>
+<p>현재 위탁하는 업무는 없습니다. 웹 호스팅은 회사가 직접 운영하는 서버에서 이루어집니다.</p>
+<h2>5. 이용자의 권리와 행사 방법</h2>
+<p>이용자는 언제든지 자신의 개인정보에 대해 열람·정정·삭제·처리정지를 요구할 수 있습니다.</p>
+<p>아래 연락처로 요청하시면 지체 없이 조치합니다.</p>
+<ul>
+<li>브라우저 로그·통계는 개인을 식별하지 않는 형태로 처리되며, 개별 삭제 요청 시 접속 IP를 기준으로 파기합니다.</li>
+<li>ChatGPT 토큰·설정 파일은 이용자가 직접 <code>~/.poi/</code> 폴더에서 삭제할 수 있습니다.</li>
+</ul>
+<h2>6. 개인정보의 안전성 확보 조치</h2>
+<ul>
+<li>전송 구간 암호화(HTTPS), 접속 기록의 접근 통제 및 최소 보관.</li>
+<li>인증 토큰은 로컬 저장·파일 권한 제한, 로그·오류 메시지에 노출하지 않음.</li>
+<li>플레이그라운드는 샌드박스 + 프로세스 격리 + 실행 시간·출력량 제한.</li>
+</ul>
+<h2>7. 개인정보 보호책임자 및 연락처</h2>
+<ul>
+<li>운영자: <b>한생 (HANSAENG)</b> — <code>https://hagora.kr</code></li>
+<li>문의: <code>hagora.kr/poi</code> 안내 페이지의 연락처 또는 GitHub 저장소(<code>github.com/siwon2da/POI</code>) 이슈</li>
+<li>사업자 정보는 한생 대표 사이트(<code>hagora.kr</code>)에 고지된 바를 따릅니다.</li>
+</ul>
+<h2>8. 고지의 의무</h2>
+<p>이 방침은 시행일부터 적용되며, 내용 추가·삭제·수정이 있을 경우 시행 7일 전부터</p>
+<p><code>hagora.kr/poi/privacy</code> 를 통해 공지합니다.</p></main></body></html>
