@@ -1,0 +1,5 @@
+show regex.test("\d{2}", "42")
+show "탭\t끝"
+show "역슬래시\하나"
+test123 = 5
+show test123

@@ -1,0 +1,8 @@
+if true {}
+if false {} else { show "else ran" }
+fn noop()
+end
+noop()
+for i in [] {}
+match 99 {}
+show "all survived"

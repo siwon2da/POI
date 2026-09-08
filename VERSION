@@ -1,4 +1,4 @@
-1.5.0
-POI 1.5.0 — 선택적 정적 타입(poi check --types / poi run --types), 한국어 키워드 대폭 확장
-(기능·되풀이·각각·결과·만일·아니라면·붙잡기·마침…), 한국어 타입명(정수·문자·목록…),
-한국어 내장함수(문자·숫자·걸러내기·변환·합계…), 랜딩 모바일 UX. 올리기:  poi update
+1.5.1
+POI 1.5.1 — 디버깅 QA 후 버그 수정: 빈 블록(if true {} / fn f() end / match x {})의
+잘못된 들여쓰기, 정규식 문자열 \d 의 SyntaxWarning·이스케이프 처리, test 를 변수명으로,
+assert 메시지 포맷. 올리기:  poi update

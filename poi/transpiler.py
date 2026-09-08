@@ -46,12 +46,12 @@ class Transpiler:
 
     # -- statements ------------------------------------------
     def block(self, body):
+        self.ind += 1
         if not body:
             self.emit("pass")
-            return
-        self.ind += 1
-        for s in body:
-            self.stmt(s)
+        else:
+            for s in body:
+                self.stmt(s)
         self.ind -= 1
 
     _NO_TRACE = {"PyBlock", "FnDecl", "App", "GWindow", "GText", "GButton",
@@ -264,13 +264,13 @@ class Transpiler:
             self.stmt(n)
 
     def block_gui(self, body):
+        self.ind += 1
         if not body:
             self.emit("pass")
-            return
-        self.ind += 1
-        for s in body:
-            self.gui_emit(s) if s.kind.startswith("G") or s.kind in ("If", "ForIn") \
-                else self.stmt(s)
+        else:
+            for s in body:
+                self.gui_emit(s) if s.kind.startswith("G") or s.kind in ("If", "ForIn") \
+                    else self.stmt(s)
         self.ind -= 1
 
     def _next_h(self):
@@ -415,18 +415,37 @@ def _split_interp(v: str):
     return parts
 
 
+_POI_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\",
+                '"': '"', "'": "'", "0": "\0", "b": "\b", "f": "\f"}
+
+
+def _poi_unescape(v: str) -> str:
+    """POI 문자열의 이스케이프를 실제 문자로. 모르는 \\x 는 백슬래시 그대로."""
+    out = []
+    i = 0
+    while i < len(v):
+        c = v[i]
+        if c == "\\" and i + 1 < len(v):
+            nx = v[i + 1]
+            if nx in _POI_ESCAPES:
+                out.append(_POI_ESCAPES[nx])
+                i += 2
+                continue
+            out.append("\\")  # 알 수 없는 이스케이프(\d 등) → 백슬래시 유지
+            i += 1
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
 def _escape_fstring_literal(txt: str) -> str:
-    # 사용자가 쓴 \n \t 같은 이스케이프는 그대로 살린다.
-    txt = txt.replace('"""', '\\"\\"\\"').replace("{", "{{").replace("}", "}}")
-    if txt.endswith("\\") and not txt.endswith("\\\\"):
-        txt += "\\"
-    return txt
+    s = _poi_unescape(txt)
+    s = s.replace("\\", "\\\\").replace('"', '\\"')
+    s = s.replace("{", "{{").replace("}", "}}")
+    return s
 
 
 def _raw_str(v: str, prefix: str) -> str:
-    if "\n" in v or '"' in v:
-        body = v.replace('"""', '\\"\\"\\"')
-        if body.endswith('"'):
-            body += " "
-        return f'{prefix}"""{body}"""'
-    return f'{prefix}"{v}"'
+    # repr 이 항상 유효한 파이썬 리터럴을 만든다 (SyntaxWarning 없음).
+    return prefix + repr(_poi_unescape(v))

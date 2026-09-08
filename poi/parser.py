@@ -171,14 +171,15 @@ class Parser:
                 self.advance()
                 start = self.i
                 ex = self.expression()
-                src = " ".join(str(self.toks[j].value) for j in range(start, self.i))
+                src = _join_tokens(self.toks[start:self.i])
                 return Node("Assert", line=t.line, test=ex, src=src)
-            if t.value == "test":
+            if t.value == "test" and self.peek(1).type == "STRING":
                 self.advance()
-                name = self.expect("STRING", what="테스트 이름").value
+                name = self.advance().value
                 body, style = self.block(opener_col=t.col)
                 self._end(style)
                 return Node("TestBlock", line=t.line, name=name, body=body)
+            # 그밖의 'test' 는 값/변수 이름 (이스터에그, `test = ...` 등) → 아래로 흘려보냄
             if t.value == "match":
                 return self._match_stmt()
 
@@ -280,14 +281,14 @@ class Parser:
         count = self.expression()
         var = None
         if self.match("KEYWORD", "as"):
-            var = self.expect("IDENT", what="반복 변수").value
+            var = self._var_name("반복 변수")
         body, style = self.block(opener_col=t.col)
         self._end(style)
         return Node("Repeat", line=t.line, count=count, var=var, body=body)
 
     def _for_stmt(self, gui=False):
         t = self.advance()
-        var = self.expect("IDENT", what="반복 변수").value
+        var = self._var_name("반복 변수")
         self.expect("KEYWORD", "in")
         it = self.expression()
         if gui:
@@ -608,6 +609,14 @@ class Parser:
             return Node("UnaryOp", line=t.line, op=t.value, operand=self._unary())
         return self._postfix()
 
+    def _var_name(self, what="변수 이름"):
+        """변수 이름 자리 — IDENT, 또는 값으로도 쓰이는 문맥 키워드('test')."""
+        t = self.peek()
+        if t.type == "IDENT" or (t.type == "KEYWORD" and t.value == "test"):
+            self.advance()
+            return str(t.value)
+        raise POIError(f"{what}이(가) 필요합니다.", "P010", t.line, t.col)
+
     def _member_name(self):
         # `.` 뒤에는 이름 자리이므로 예약어(test/end/is 등)도 속성 이름으로 허용
         t = self.peek()
@@ -797,6 +806,19 @@ class Parser:
 
     def _skip_type(self):
         self.read_type()
+
+
+def _join_tokens(toks) -> str:
+    """토큰들을 사람이 읽기 좋은 소스 근사치로 (assert 메시지용)."""
+    out = []
+    no_space_before = {")", "]", ",", ".", "?.", "("}
+    no_space_after = {"(", "[", ".", "?."}
+    for i, t in enumerate(toks):
+        val = '"' + str(t.value) + '"' if t.type == "STRING" else str(t.value)
+        if out and val not in no_space_before and out[-1] not in no_space_after:
+            out.append(" ")
+        out.append(val)
+    return "".join(out).strip()
 
 
 def _tok_desc(t):
