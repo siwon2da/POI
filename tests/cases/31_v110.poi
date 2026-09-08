@@ -1,0 +1,14 @@
+# v1.10 — 구조 분해 + ai 모듈 존재
+user = { name: "시원", age: 16 }
+{ name, age } = user
+show name
+show age
+
+[a, b, c] = [10, 20, 30]
+show a + b + c
+
+pair = ["왼", "오"]
+[l, r] = pair
+show "{l}{r}"
+
+show ai.backends().mode

@@ -1,5 +1,31 @@
 # 변경 이력
 
+## v1.10.0 — 2026-09-08
+
+**`ai` 모듈** — import 없이 바로 (하온과 같은 백엔드: Groq → 로컬 Ollama)
+```poi
+show ai.ask("POI 가 뭐야?")                # 짧게
+code = ai.code("1부터 100까지 소수 출력")   # POI 코드만
+show ai.summarize(긴글)
+show ai.backends().mode                     # groq / ollama / rules
+ai.install()                                # 로컬 LLM 자동 설치
+```
+- `ai.chat(prompt, system:, model:)` — 시스템 프롬프트·모델 지정 가능
+- 안전 모드에서 `ai` 차단 (network). `system`·`dotenv`·`compress` 전역도 이제 안전 모드에서 차단
+
+**구조 분해**
+```poi
+user = { name: "시원", age: 16 }
+{ name, age } = user           # name = user.name; age = user.age
+[a, b, c] = [10, 20, 30]       # 순서대로
+[first, second] = 목록
+```
+- `const` 로 잡힌 이름을 구조 분해로 덮어쓰면 P019
+
+**회귀**: 31 케이스 + 300 연습문제.
+
+---
+
 ## v1.9.1 — 2026-09-08
 
 **하온 백엔드 확장** — Groq · 로컬 Ollama · 자동 설치

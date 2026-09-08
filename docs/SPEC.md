@@ -1,4 +1,4 @@
-# POI v1.9 문법 명세
+# POI v1.10 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -69,6 +69,15 @@ name: Text = "시원"     # 타입 표기 — 안 쓰면 무시, 쓰면 검사 �
 ```
 
 `const` 로 선언한 이름에 다시 `=` 하면 `POI Error P019`. 값을 바꿔야 하면 `const` 를 빼세요.
+
+### 구조 분해 (v1.10)
+
+```poi
+user = { name: "시원", age: 16 }
+{ name, age } = user           # name = user.name;  age = user.age
+[a, b, c] = [10, 20, 30]       # 순서대로
+[첫, 둘] = 목록
+```
 
 **타입은 옵션이다.** 안 쓰면 그냥 동적 언어. 쓰면 `poi check --types` 로 검사한다:
 
@@ -374,6 +383,7 @@ python {                     # 파이썬 코드 그대로
 | `dotenv` | `load(path)` → 읽은 값 Box, `os.environ` 에도 반영 (안전 모드 차단) |
 | `system` | `platform() release() python_version() poi_version() cpu_count() hostname() pid() cwd() args() env(name)` (안전 모드 차단) |
 | `uuid` | `v4() hex() short() is_valid(s)` |
+| `ai` | `chat(prompt, system:, model:) ask(p) code(p, lang) summarize(t) backends() install()` — 하온과 같은 백엔드(Groq → 로컬 Ollama). 안전 모드 차단 |
 
 `shell` 로 node·go 바이너리·git·ffmpeg 등 **어떤 언어·도구든** 부른다. `python { }` · `use py:` ·
 `use pyfile` · `use "./x.poi"` 와 함께 POI 는 사실상 모든 것과 이어진다.

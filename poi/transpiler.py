@@ -15,6 +15,8 @@ _STD_MODULES = {"file", "json", "web", "math", "time", "ui", "gui",
                 # v1.7 — 백엔드 · 보안 · 시스템
                 "crypto", "password", "jwt", "path", "url", "html", "compress",
                 "log", "cache", "bench", "dotenv", "system", "uuid",
+                # v1.10 — AI
+                "ai",
                 # 한국어 별칭
                 "암호", "비밀번호", "토큰", "경로", "주소", "압축", "기록",
                 "캐시", "성능측정", "시스템"}
@@ -85,6 +87,8 @@ class Transpiler:
             self.emit(self.ex(n.value), n.line)
         elif k == "Assign":
             self._assign(n)
+        elif k == "Destructure":
+            self._destructure(n)
         elif k == "FnDecl":
             self._fn(n)
         elif k == "Return":
@@ -162,6 +166,27 @@ class Transpiler:
                       n.line)
         elif t.kind == "Index":
             self.emit(f"{self.ex(t.obj)}[{self.ex(t.index)}] = {self.ex(n.value)}", n.line)
+
+    def _destructure(self, n):
+        tmp = f"_poi_de{self._next_h()}"
+        self.emit(f"{tmp} = {self.ex(n.value)}", n.line)
+        for nm in self._const_guard(n.names, n.line):
+            pass
+        if n.mode == "obj":
+            for nm in n.names:
+                self.emit(f'{nm} = poi_getattr({tmp}, "{nm}")', n.line)
+        else:
+            self.emit(f"{tmp} = list({tmp})", n.line)
+            for i, nm in enumerate(n.names):
+                self.emit(f"{nm} = {tmp}[{i}]", n.line)
+
+    def _const_guard(self, names, line):
+        for nm in names:
+            if nm in self._const:
+                raise POIError(
+                    f"'{nm}' 은(는) 상수(const)라서 다시 대입할 수 없어요.", "P019",
+                    line)
+        return names
 
     def _fn(self, n):
         params = []

@@ -20,7 +20,13 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.9 — POI IDLE 대개편  ✅ (현재)
+## v1.10 — AI 모듈 · 구조 분해  ✅ (현재)
+
+- [x] **`ai` 모듈** — `ai.chat/ask/code/summarize`, import 없이. 백엔드는 하온과 공유(Groq→Ollama). 안전 모드 차단
+- [x] **구조 분해** — `{ name, age } = user` · `[a, b] = pair`
+- [x] 안전 모드 강화 — `ai`·`system`·`dotenv`·`compress` 전역도 차단
+
+## v1.9 — POI IDLE 대개편  ✅
 
 - [x] **라이트 모드 기본** + 다크 토글(저장) · 메뉴바 · 툴바 정리
 - [x] **웹 서버 임시 켜기** — server/webapp 파일 F5 → 서버 기동 + 브라우저 + 실시간 요청 로그, `■ 서버 중지`
@@ -111,16 +117,15 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [x] Windows 설치 마법사 (`poi.iss` + `install.ps1`) · 로고 · 회귀 테스트 14개
 - [x] 한생(Galmuri)/토스 감성 소개 페이지 (hagora.kr/poi)
 
-## v1.10 — 패키지 · 동시성 · 네트워크
+## v1.11 — 패키지 · 동시성 · 네트워크
 
 - [ ] `poi add <이름>` / `poi add py:numpy` · `poi remove` · `poi install` — 프로젝트 전용 venv
 - [ ] `poi.toml` `[dependencies]`, `poi.lock`, POI 패키지 레지스트리 초안
 - [ ] `every 1 second { }` · `background { }` · `async fn` / `await` 고수준 동시성
 - [ ] `net`(소켓/websocket) · 고수준 `http` 클라이언트
-- [ ] 구조 분해: `{ name, age } = user`, `[a, b] = pair`
 - [ ] `poi fmt` CST 기반 전면 재작성 (콜론/`end` → 중괄호 통일), `poi lint` 규칙 확장
 
-## v1.11 — 웹 · GUI 심화
+## v1.12 — 웹 · GUI 심화
 
 - [ ] 클라이언트 반응형 (state 변경 → 부분 갱신, 새로고침 없이), 세션/인증 헬퍼, 미들웨어
 - [ ] `poi build --web` (정적 번들)

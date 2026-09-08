@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.8**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
+> 버전 기준: **POI v1.10**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
 
 ---
 
@@ -23,6 +23,8 @@
 10. **세미콜론 선택**. 한 줄에 여러 문장: `a = 1; b = 2; show a + b`.
 11. 함수 안에서 **바깥(전역) 변수를 재대입할 수 없다** (파이썬 클로저 제약과 같음).
     여러 함수가 공유하는 상태는 **객체에 담아** `상태.값 = ...` 처럼 바꾼다.
+12. **구조 분해**: `{ name, age } = user` · `[a, b] = pair`.
+13. **AI**: `ai.ask("...")` · `ai.code("...")` · `ai.chat(...)` — import 없이 (하온 백엔드: Groq → 로컬 Ollama).
 
 ---
 

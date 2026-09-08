@@ -38,7 +38,9 @@ _SAFE_NAMES = {
 _FORBIDDEN_STD = {"file", "web", "gui", "ui", "env", "shell",
                   # v1.7 — 파일/환경/네트워크에 닿는 것
                   "dotenv", "system", "compress",
-                  "압축", "시스템"}
+                  "압축", "시스템",
+                  # v1.10 — 외부 LLM 호출
+                  "ai"}
 
 
 def safe_builtins() -> dict:
@@ -71,6 +73,10 @@ def harden_globals(g: dict) -> dict:
     g["web"] = _Denied("네트워크")
     g["shell"] = _Denied("셸/외부 명령")
     g["env"] = _Denied("환경변수")
+    g["ai"] = _Denied("AI(외부 LLM) 호출")
+    g["system"] = _Denied("시스템 정보")
+    g["dotenv"] = _Denied(".env 읽기")
+    g["compress"] = _Denied("압축")
     g["pause"] = lambda *_a, **_kw: None          # 서버에선 멈출 수 없음
     g["poi_import_pyfile"] = _denied("다른 파일 불러오기")
     g["poi_import_module"] = _denied("다른 파일 불러오기")

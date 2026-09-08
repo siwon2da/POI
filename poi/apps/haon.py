@@ -139,7 +139,7 @@ def detect() -> dict:
     return info
 
 
-def _groq_chat(prompt: str, code: str) -> str:
+def _groq_chat(prompt: str, code: str, system: str = "") -> str:
     key = _groq_key()
     if not key:
         return ""
@@ -149,7 +149,7 @@ def _groq_chat(prompt: str, code: str) -> str:
                 "%d초 후에 다시 물어봐 주세요.\n"
                 "(오류는 '자동 수정' 버튼이 지금도 컴파일러로 고쳐 줍니다.)"
                 % (_RATE_WINDOW // 60, _RATE_MAX, wait))
-    msgs = [{"role": "system", "content": _POI_RULES}]
+    msgs = [{"role": "system", "content": system or _POI_RULES}]
     if code:
         msgs.append({"role": "user",
                      "content": "[현재 코드]\n" + code[:8000]})
@@ -301,19 +301,20 @@ def _pick_model(models: list) -> str:
     return models[0] if models else ""
 
 
-def chat(prompt: str, code: str = "", info: dict | None = None) -> str:
+def chat(prompt: str, code: str = "", info: dict | None = None,
+         system: str = "", model: str = "") -> str:
     info = info or detect()
     if info.get("groq"):
-        out = _groq_chat(prompt, code)
+        out = _groq_chat(prompt, code, system)
         if out:
             return out
     if info.get("ollama"):
-        model = _pick_model(info["models"])
+        mdl = model or _pick_model(info["models"])
         body = json.dumps({
-            "model": model, "stream": False,
-            "system": _POI_RULES,
+            "model": mdl, "stream": False,
+            "system": system or _POI_RULES,
             "prompt": (f"[현재 코드]\n{code[:6000]}\n\n" if code else "") + prompt,
-            "options": {"temperature": 0.2, "num_predict": 700},
+            "options": {"temperature": 0.2, "num_predict": 900},
         }).encode("utf-8")
         try:
             req = urllib.request.Request(OLLAMA + "/api/generate", data=body,

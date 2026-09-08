@@ -453,7 +453,30 @@ def open_database(target=":memory:"):
     return DB(target)
 
 
+# ── ai — LLM (하온 백엔드: Groq → 로컬 Ollama) ───────────────────────
+
+def _ai_chat(prompt, system=None, model=None, code=""):
+    from ..apps import haon
+    return haon.chat(str(prompt), str(code or ""), None,
+                     system=str(system or ""), model=str(model or ""))
+
+
+ai = SimpleNamespace(
+    chat=_ai_chat,
+    ask=lambda p: _ai_chat(p, system="사용자에게 한국어로, 3문장 안쪽으로 답해."),
+    code=lambda p, lang="poi": _ai_chat(
+        "다음 요청대로 " + str(lang) + " 코드만 출력해 (설명·마크다운 없이):\n" + str(p),
+        system="너는 정확한 코드 생성기다. 코드 블록 표시 없이 코드만."),
+    summarize=lambda text: _ai_chat("아래 내용을 3줄로 요약해:\n" + str(text)),
+    backends=lambda: __import__("poi.apps.haon",
+                                fromlist=["detect"]).detect(),
+    install=lambda: __import__("poi.apps.haon", fromlist=["ensure_model"])
+    .ensure_model(print),
+)
+
+
 MODULES = {
+    "ai": ai,
     "crypto": crypto,
     "password": password,
     "jwt": jwt,

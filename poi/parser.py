@@ -238,6 +238,12 @@ class Parser:
                             declared_type=dtype)
             self.i = save  # 되돌리기 (객체 접근 등 다른 문장)
 
+        # 구조 분해:  { a, b } = obj   또는   [ a, b ] = list
+        if t.type == "OP" and t.value in ("{", "["):
+            de = self._try_destructure()
+            if de is not None:
+                return de
+
         # 표현식 또는 대입
         expr = self.expression()
         if self.check("OP", "="):
@@ -248,6 +254,30 @@ class Parser:
                                hint="왼쪽은 변수 이름이거나 a.b / a[0] 형태여야 합니다.")
             return Node("Assign", line=t.line, target=expr, value=value, is_const=False)
         return Node("ExprStmt", line=t.line, value=expr)
+
+    def _try_destructure(self):
+        """{ a, b } = obj  /  [ a, b ] = list  이면 Destructure, 아니면 None(되돌림)."""
+        save = self.i
+        t = self.advance()               # { 또는 [
+        close = "}" if t.value == "{" else "]"
+        de_mode = "obj" if t.value == "{" else "arr"
+        names = []
+        self.skip_nl()
+        while not self.check("OP", close):
+            if not self.check("IDENT"):
+                self.i = save
+                return None
+            names.append(self.advance().value)
+            self.skip_nl()
+            if not self.match("OP", ","):
+                break
+            self.skip_nl()
+        if not self.match("OP", close) or not names or not self.check("OP", "="):
+            self.i = save
+            return None
+        self.advance()                   # =
+        return Node("Destructure", line=t.line, mode=de_mode, names=names,
+                    value=self.expression())
 
     def _const_decl(self):
         t = self.advance()

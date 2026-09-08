@@ -1,5 +1,4 @@
-1.9.1
-POI 1.9.1 — 하온 백엔드 확장. Groq API 키를 자동으로 찾아 쓰고(환경변수·~/.poi/groq.key,
-사용자별 5분 12회 레이트 리밋), 없으면 로컬 Ollama, 그것도 없으면 '⬇ 로컬 LLM 자동 설치'
-버튼 한 번으로 Ollama + 작은 코더 모델(qwen2.5-coder)을 알아서 깔고 실행. 규칙 기반
-오토픽스는 항상 동작. 문법 문서 반복 예제 self-contained 로 수정. 올리기:  poi update
+1.10.0
+POI 1.10.0 — AI 모듈 + 구조 분해. `ai.chat(...)` / `ai.ask(...)` / `ai.code(...)` — 하온과
+같은 백엔드(Groq → 로컬 Ollama), import 없이 바로. `{ name, age } = user` 와
+`[a, b] = pair` 구조 분해. 안전 모드에서 ai·system·dotenv·compress 도 차단. 올리기:  poi update
