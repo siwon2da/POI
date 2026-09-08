@@ -170,6 +170,25 @@ def do_install(dest: str, opts: dict, log):
         if os.path.exists(idle_dst):
             start_menu_idle(idle_dst, dest)
             log("시작 메뉴에 'POI IDLE' 추가")
+    if os.path.exists(idle_dst):
+        try:
+            desk = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "[Environment]::GetFolderPath('Desktop')"],
+                capture_output=True, text=True,
+                creationflags=0x08000000).stdout.strip() or \
+                os.path.join(os.path.expanduser("~"), "Desktop")
+            lnk = os.path.join(desk, "POI IDLE.lnk").replace("\\", "\\\\")
+            ps = (f'$w=New-Object -ComObject WScript.Shell;'
+                  f'$s=$w.CreateShortcut("{lnk}");$s.TargetPath="{idle_dst}";'
+                  f'$s.WorkingDirectory="{dest}";'
+                  f'$s.IconLocation="{idle_dst},0";$s.Save()')
+            subprocess.run(["powershell", "-NoProfile", "-NonInteractive",
+                            "-Command", ps], capture_output=True,
+                           creationflags=0x08000000)
+            log("바탕화면에 'POI IDLE' 바로가기 추가")
+        except Exception:
+            pass
 
     # 제거 정보
     try:
@@ -325,6 +344,16 @@ class Wizard(tk.Tk):
             self.pb.stop()
             return
         self.pb.stop()
+        # 설치 직후 POI IDLE 바로 켜기
+        idle_dst = os.path.join(self.dest.get().strip(), "poi-idle.exe")
+        if os.path.exists(idle_dst):
+            try:
+                subprocess.Popen([idle_dst], cwd=self.dest.get().strip(),
+                                 creationflags=getattr(subprocess,
+                                                       "DETACHED_PROCESS", 0))
+                self._log("POI IDLE 를 실행했습니다.")
+            except Exception:
+                pass
         self.after(400, lambda: self.show("finish"))
 
 

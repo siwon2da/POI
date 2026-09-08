@@ -854,8 +854,8 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
 <section class="band" id="roadmap">
   <div class="wrap">
     <div class="rise"><h2 class="pixel">한 언어 안에서 입문 → 전문으로</h2>
-      <p class="lede prose">v1.1 부터 v1.8 까지, 매 버전이 대규모 업데이트였습니다 —
-        작동하는 언어 → 형식 자유 → 전문 분야 → 한국어·패턴매칭 → 정적 타입 → 웹 → 표준 라이브러리·백엔드·IDLE → 언어 안정화.</p></div>
+      <p class="lede prose">v1.1 부터 v1.9 까지, 매 버전이 대규모 업데이트였습니다 —
+        작동하는 언어 → 형식 자유 → 전문 분야 → 한국어·패턴매칭 → 정적 타입 → 웹 → 표준 라이브러리·백엔드·IDLE → 언어 안정화 → POI IDLE 대개편.</p></div>
     <div class="road rise">
       <div class="r done"><div class="v">v1.1</div><h3>작동하는 언어</h3>
         <ul><li>Lexer · Parser · 컴파일러 · 런타임</li><li>조건·반복·함수·객체·파이프라인</li><li><b>inspect · watch · pause · --trace</b></li><li>use py: · python { } · 선언형 GUI</li><li>P-코드 오류 · 새 버전 알림 · CLI</li></ul></div>
@@ -871,9 +871,11 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
         <ul><li><code>server { get "/" { } }</code></li><li><code>webapp { page "/" { } }</code></li><li>CSRF·보안 헤더·ETag 기본값</li></ul></div>
       <div class="r done"><div class="v">v1.7</div><h3>표준 라이브러리 · 백엔드 · IDLE</h3>
         <ul><li>crypto·password·jwt·path·url·… 13 모듈</li><li><code>database(...)</code> SQLite · 서명 쿠키·레이트리밋·gzip</li><li><b>POI IDLE</b> — <code>poi idle</code> · <code>poi build --app idle</code></li></ul></div>
-      <div class="r done now"><div class="v">v1.8</div><h3>언어 안정화</h3>
+      <div class="r done"><div class="v">v1.8</div><h3>언어 안정화</h3>
         <ul><li><code>break</code>·<code>continue</code>·<code>while</code> · 진짜 <code>const</code></li><li>범위 <code>1..10</code> · <b><code>match</code> 식</b> · <code>catch ValueError as e</code> · <code>export</code></li><li><code>poi fmt</code> · <code>poi lint</code> · <code>elif</code>→<code>else if</code> 안내</li></ul></div>
-      <div class="r"><div class="v">v1.9</div><h3>패키지 · 동시성</h3>
+      <div class="r done now"><div class="v">v1.9</div><h3>POI IDLE 대개편</h3>
+        <ul><li>라이트 모드 기본 · 메뉴바 · 툴바</li><li><b>웹 서버 임시 켜기</b> — F5 로 <code>server</code>/<code>webapp</code> → 브라우저 자동 + 실시간 로그</li><li><b>하온</b> — 로컬 에이전트, 실제 컴파일러로 오류 자동 수정 (Ollama 있으면 LLM·GPU)</li></ul></div>
+      <div class="r"><div class="v">v1.10</div><h3>패키지 · 동시성</h3>
         <ul><li><code>poi add</code> · <code>poi.lock</code> · 레지스트리</li><li><code>async fn</code> / <code>await</code> · <code>every 1 second</code></li><li>구조 분해 · <code>net</code> · <code>poi fmt</code> 전면 재작성</li></ul></div>
       <div class="r"><div class="v">v2.0</div><h3>문법 정리 · 생태계</h3>
         <ul><li>블록은 <code>{ }</code>+들여쓰기만 정식 (<code>end</code>·콜론 정리)</li><li>POI Language Server · VS Code 확장 · <code>poi doctor</code></li><li>문법 고정 · play.poi.dev (브라우저 실행)</li></ul></div>
@@ -888,9 +890,9 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <p class="lede prose">파이썬이 없어도 됩니다. <code>poi.exe</code> 하나로 끝.</p></div>
 
     <div class="dl rise">
-      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.8.0.exe">
+      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.9.0.exe">
         <span class="dl-k">Windows 설치 마법사</span>
-        <span class="dl-t">poi-setup-1.8.0.exe</span>
+        <span class="dl-t">poi-setup-1.9.0.exe</span>
         <span class="dl-s">더블클릭 → 다음 → 설치. 파이썬 불필요</span>
       </a>
       <div class="dl-alt">
@@ -954,7 +956,7 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <span>MIT License</span><span>·</span>
       <a href="https://github.com/siwon2da/POI">github.com/siwon2da/POI</a><span>·</span>
       <a href="https://hagora.kr/poi/">hagora.kr/poi</a><span>·</span>
-      <span>made by SIWON</span><span>·</span><span>v1.8.0</span>
+      <span>made by SIWON</span><span>·</span><span>v1.9.0</span>
     </div>
   </div>
 </footer>

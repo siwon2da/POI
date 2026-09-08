@@ -1,5 +1,5 @@
-1.8.0
-POI 1.8.0 — 언어 안정화. break/continue, while, 진짜 const(재대입 오류), 범위 1..10 / 1..<10,
-match 식(값 반환), 타입 있는 catch (catch ValueError as e), raise Error/ValueError(...),
-반환 타입 검사 강화, export, poi fmt, poi lint, `poi check .` 프로젝트 단위, 그리고
-'elif'→'else if' 같은 친절한 오류 안내. 올리기:  poi update
+1.9.0
+POI 1.9.0 — POI IDLE 대개편. 라이트 모드 기본 + 다크 토글, 메뉴바·툴바 정리,
+웹 서버 임시 켜기(F5 로 server/webapp 파일 → 브라우저 자동, 요청 로그 실시간 콘솔),
+웹 폴더 열기(디렉토리 → 자동 서버), 하온(로컬 에이전트 — 실제 컴파일러로 오류 자동 수정,
+Ollama 있으면 LLM·GPU 자동), 설치 시 바탕화면 바로가기 + 자동 실행. 올리기:  poi update

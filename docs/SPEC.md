@@ -1,4 +1,4 @@
-# POI v1.8 문법 명세
+# POI v1.9 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -488,7 +488,7 @@ poi debug x.poi            # 위 전부
 | `poi test 파일` | 파일 안의 `test` 블록 실행·채점 |
 | `poi build 파일 [-o 이름]` | 단일 실행파일로 (PyInstaller 필요) |
 | `poi build --app idle` | POI IDLE 을 `poi-idle.exe` 로 빌드 |
-| `poi idle [파일]` | POI IDLE — POI 로 작성한 코드 편집기 (문법 강조·F5 실행) |
+| `poi idle [파일]` | POI IDLE — 라이트 모드·메뉴바·웹서버 임시 켜기·하온(로컬 에이전트) |
 | `poi fmt [파일\|.] [--check]` | 소스 정리 (탭·공백·블록 깊이). end/콜론 스타일은 공백만 |
 | `poi lint [파일\|.] [--strict]` | 안 쓴 변수(POI-W101)·const 재선언(W102)·죽은 코드(W103) |
 | `poi serve [폴더] [--port]` | 플레이그라운드 서버 (정적 서빙 + 안전 실행 `/run`) |

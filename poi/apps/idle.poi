@@ -76,9 +76,40 @@ python {
             pass
         return out
 
-    def _run_poi(src, base_dir):
+    _web_state = {"httpd": None, "url": None}
+
+    def _web_running():
+        return _web_state["httpd"] is not None
+
+    def _web_stop():
+        h = _web_state.get("httpd")
+        _web_state["httpd"] = None
+        _web_state["url"] = None
+        if h is not None:
+            try:
+                h.shutdown()
+                h.server_close()
+            except Exception:
+                pass
+
+    def _web_start(port_hint):
+        from poi.runtime import webserver as ws
+        last = None
+        for p in range(int(port_hint), int(port_hint) + 12):
+            try:
+                httpd, url = ws.start(p, "127.0.0.1", on_log=lambda s: _Q.put(s))
+                _web_state["httpd"] = httpd
+                _web_state["url"] = url
+                return url
+            except Exception as e:
+                last = e
+        _Q.put("웹 서버를 열지 못했어요: %s\n" % last)
+        return None
+
+    def _run_poi(src, base_dir, web_port=8900):
         from poi.interpreter import compile_source
         from poi.runtime import make_globals
+        from poi.runtime import webserver as _ws
 
         class _Pipe(io.TextIOBase):
             def write(self, s):
@@ -88,9 +119,12 @@ python {
 
         def job():
             _worker["tid"] = threading.get_ident()
+            _web_stop()
+            _ws.reset()
             g = make_globals()
             g["__name__"] = "__main__"
             g["__poi_dir__"] = base_dir or os.getcwd()
+            os.environ["POI_NO_SERVE"] = "1"     # 서버 기동은 IDLE 이 직접
             code = None
             try:
                 py, _lm, cn = compile_source(src, "<idle>")
@@ -117,6 +151,19 @@ python {
                         _Q.put("\n" + traceback.format_exc() + "\n")
                 finally:
                     os.chdir(cwd0)
+                if g.get("__poi_has_web__"):
+                    url = _web_start(web_port)
+                    if url:
+                        _Q.put("\n  🌐  웹 서버 실행 중  →  " + url + "\n")
+                        _Q.put("      (브라우저가 자동으로 열립니다. '■ 서버 중지' 로 종료)\n")
+                        try:
+                            import webbrowser
+                            webbrowser.open(url)
+                        except Exception:
+                            pass
+                        _worker["tid"] = None
+                        _Q.put("<<<idle-serving>>>")
+                        return
             _worker["tid"] = None
             _Q.put("<<<idle-done>>>")
 
@@ -168,6 +215,129 @@ python {
     def _open_target():
         p = os.environ.get("POI_IDLE_OPEN", "")
         return p if p and os.path.isfile(p) else ""
+
+    _WEB_RE = re.compile(r'(?m)^[ \t]*(server|webapp)\b')
+    _GUI_RE = re.compile(r'(?m)^[ \t]*(?:app[ \t]+"|window[ \t]*\{)')
+
+    def _has_web(src):
+        return bool(_WEB_RE.search(src or ""))
+
+    def _has_gui(src):
+        return bool(_GUI_RE.search(src or ""))
+
+    def _run_gui_subprocess(path, base_dir):
+        argv = _poi_launcher() + ["run", "--no-banner", path]
+        try:
+            if getattr(sys, "frozen", False) and os.name == "nt":
+                subprocess.Popen(argv, cwd=base_dir or None,
+                                 creationflags=getattr(subprocess,
+                                                       "DETACHED_PROCESS", 0))
+            else:
+                subprocess.Popen(argv, cwd=base_dir or None)
+            return True
+        except Exception as e:
+            _Q.put("GUI 실행 실패: %s\n" % e)
+            return False
+
+    def _web_entry(folder):
+        """폴더에서 server/webapp 이 있는 .poi 진입점을 찾는다."""
+        for name in ("main.poi", "app.poi", "server.poi", "web.poi", "index.poi"):
+            p = os.path.join(folder, name)
+            if os.path.isfile(p):
+                try:
+                    if _has_web(open(p, encoding="utf-8").read()):
+                        return p
+                except Exception:
+                    pass
+        try:
+            for name in sorted(os.listdir(folder)):
+                if name.endswith(".poi"):
+                    p = os.path.join(folder, name)
+                    if _has_web(open(p, encoding="utf-8").read()):
+                        return p
+        except Exception:
+            pass
+        return None
+
+    # ── 하온 (로컬 에이전트) ─────────────────────────────────────
+    _HAON_Q = queue.Queue()
+    try:
+        from poi.apps import haon as _haon
+        _HAON = _haon.detect()
+    except Exception:
+        _haon = None
+        _HAON = {"mode": "none", "gpu": None}
+
+    def _haon_badge():
+        if not _haon:
+            return "하온 — 사용 불가"
+        g = _HAON.get("gpu") or "CPU"
+        if _HAON.get("mode") == "llm":
+            return "하온 · LLM (%s)  ·  %s" % (
+                (_HAON["models"][0] if _HAON.get("models") else "ollama"), g)
+        return "하온 · 규칙 기반  ·  GPU: %s (Ollama 설치 시 LLM)" % g
+
+    def _haon_ask(q, code):
+        def job():
+            try:
+                _HAON_Q.put(("say", _haon.chat(q, code, _HAON)))
+            except Exception as e:
+                _HAON_Q.put(("say", "하온 오류: %s" % e))
+        threading.Thread(target=job, daemon=True).start()
+
+    def _haon_autofix(src):
+        def job():
+            try:
+                new, log = _haon.autofix(src)
+                _HAON_Q.put(("fix", new, "\n".join(log)))
+            except Exception as e:
+                _HAON_Q.put(("say", "자동 수정 오류: %s" % e))
+        threading.Thread(target=job, daemon=True).start()
+
+    def _haon_drain():
+        out = []
+        try:
+            while True:
+                out.append(_HAON_Q.get_nowait())
+        except queue.Empty:
+            pass
+        return out
+
+    # ── 테마 (라이트 기본 / 다크 토글) ────────────────────────────
+    THEMES = {
+        "light": {
+            "bg": "#ffffff", "bg2": "#f2f4f6", "panel": "#f7f8fa",
+            "ink": "#191f28", "ink2": "#4e5968", "ink3": "#8b95a1",
+            "line": "#e5e8eb", "blue": "#3182f6", "sel": "#d7e6ff",
+            "kw": "#0b62d6", "str": "#1a7f37", "com": "#8b95a1",
+            "num": "#b3560f", "fn": "#8250df", "octo": "#3182f6",
+            "console": "#f7f8fa", "consink": "#333d4b", "gutter": "#9aa3af",
+        },
+        "dark": {
+            "bg": "#0f1115", "bg2": "#161a20", "panel": "#0b0d10",
+            "ink": "#e6e9ef", "ink2": "#a9aeb8", "ink3": "#6b7480",
+            "line": "#2b2e36", "blue": "#3182f6", "sel": "#2a3b57",
+            "kw": "#5aa2ff", "str": "#63d19e", "com": "#6b7480",
+            "num": "#e0a458", "fn": "#c792ea", "octo": "#5aa2ff",
+            "console": "#0b0d10", "consink": "#c9cdd6", "gutter": "#4a525e",
+        },
+    }
+    _CFG = os.path.join(os.path.expanduser("~"), ".poi", "idle.json")
+
+    def _cfg_load():
+        try:
+            with open(_CFG, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def _cfg_save(d):
+        try:
+            os.makedirs(os.path.dirname(_CFG), exist_ok=True)
+            with open(_CFG, "w", encoding="utf-8") as f:
+                json.dump(d, f)
+        except Exception:
+            pass
 
     # ── 에디터 편의기능 (자동 들여쓰기 · 괄호 · 주석 · 확대) ────────
     _PAIRS = {"(": ")", "[": "]", "{": "}", '"': '"'}
@@ -327,7 +497,7 @@ python {
 }
 
 # ── 상태 · 위젯 보관함 (POI 함수는 전역 재대입을 안 하므로 Box 로) ────
-S = { file: null, dirty: false, running: false }
+S = { file: null, dirty: false, running: false, serving: false, port: 8900, splash: 0, theme: "light" }
 W = {}
 버전 = system.poi_version()
 
@@ -355,6 +525,7 @@ fn 본문설정(글)
     _highlight(W.editor)
     W.editor.edit_modified(false)
     W.gutter_refresh(null)
+    모드표시()
 
 fn 새파일()
     if S.dirty and not mb.askokcancel("새 파일", "저장하지 않은 변경이 있어요. 계속할까요?")
@@ -429,27 +600,73 @@ fn 펌프()
     for 조각 in _drain()
         if 조각 == "<<<idle-done>>>"
             실행끝()
+        else if 조각 == "<<<idle-serving>>>"
+            서버시작됨()
         else
             출력추가(조각)
-    if S.running
-        W.root.after(40, 펌프)
+    if S.running or S.serving
+        W.root.after(60, 펌프)
 
 fn 실행끝()
     S.running = false
-    W.run_btn.config(text: "▶  실행  (F5)", bg: "#3182f6")
+    W.run_btn.config(bg: "#3182f6", fg: "#ffffff")
+    모드표시()
+    로그("────────────────────────────────────────")
+
+fn 서버시작됨()
+    S.running = false
+    S.serving = true
+    W.run_btn.config(text: "■  서버 중지", bg: "#e03131", fg: "#ffffff")
+
+fn 서버중지()
+    _web_stop()
+    S.serving = false
+    W.run_btn.config(bg: "#3182f6", fg: "#ffffff")
+    모드표시()
+    로그("웹 서버를 멈췄어요.")
     로그("────────────────────────────────────────")
 
 fn 실행()
+    if S.serving
+        서버중지()
+        return
     if S.running
         _kill_worker()
         return
     콘솔지우기()
-    로그("▶  실행 중 …")
+    글 = 본문()
+    if _has_gui(글)
+        # GUI 앱은 별도 프로세스로 (IDLE 안에서 두 번째 tkinter 는 위험)
+        if S.file == null or S.dirty
+            저장()
+        if S.file != null
+            로그("🖥️  GUI 앱을 새 창으로 실행합니다 …")
+            _run_gui_subprocess(S.file, 현재폴더())
+        return
+    if _has_web(글)
+        로그("🌐  웹 서버 준비 중 …")
+    else
+        로그("▶  실행 중 …")
     S.running = true
-    W.run_btn.config(text: "■  중단", bg: "#e03131")
-    _run_poi(본문(), 현재폴더())
+    W.run_btn.config(text: "■  중단", bg: "#e03131", fg: "#ffffff")
+    _run_poi(글, 현재폴더(), S.port)
     W.root.after(40, 펌프)
-    W.root.after(8000, 시간초과)
+    if not _has_web(글)
+        W.root.after(8000, 시간초과)
+
+fn 모드표시()
+    글 = 본문()
+    if S.serving
+        return
+    if _has_web(글)
+        W.run_btn.config(text: "🌐  웹 서버 (F5)")
+        W.mode_lbl.config(text: "웹 서버")
+    else if _has_gui(글)
+        W.run_btn.config(text: "🖥️  GUI 실행 (F5)")
+        W.mode_lbl.config(text: "GUI 앱")
+    else
+        W.run_btn.config(text: "▶  실행  (F5)")
+        W.mode_lbl.config(text: "")
 
 fn 시간초과()
     if S.running
@@ -463,12 +680,29 @@ fn 터미널실행()
     if _run_terminal(S.file, 현재폴더())
         로그("터미널에서 실행했어요:  {S.file}")
 
+fn 웹폴더()
+    폴더 = fd.askdirectory(title: "웹으로 열 폴더")
+    if not 폴더
+        return
+    진입 = _web_entry(폴더)
+    if 진입
+        파일열기(진입)
+        로그("폴더의 서버 파일을 찾았어요:  {진입}")
+        실행()
+    else
+        본문설정("# " + 폴더 + " 를 정적 서버로\nserver {\n    static \"" + 폴더 + "\"\n}\n")
+        S.file = null
+        제목갱신()
+        로그("정적 서버로 폴더를 엽니다.")
+        실행()
+
 fn 편집됨(e)
     if W.editor.edit_modified()
         S.dirty = true
         제목갱신()
         _highlight(W.editor)
         W.editor.edit_modified(false)
+        모드표시()
 
 fn 커서이동(e)
     자리 = W.editor.index("insert").split(".")
@@ -478,6 +712,48 @@ fn 예제넣기()
     본문설정(SAMPLE)
     S.dirty = false
     제목갱신()
+
+# ── 하온 (로컬 에이전트) ────────────────────────────────────────────
+S.haon_open = false
+fn 하온기록(줄)
+    W.haon_log.config(state: "normal")
+    W.haon_log.insert("end", 줄 + "\n\n")
+    W.haon_log.see("end")
+    W.haon_log.config(state: "disabled")
+
+fn 하온토글()
+    if S.haon_open
+        W.haon_frame.pack_forget()
+        S.haon_open = false
+    else
+        W.haon_frame.pack(side: "right", fill: "y")
+        S.haon_open = true
+
+fn 하온묻기()
+    q = W.haon_in.get()
+    if not q
+        return
+    W.haon_in.delete(0, "end")
+    하온기록("나 ▸ " + q)
+    하온기록("하온이 생각 중…")
+    _haon_ask(q, 본문())
+
+fn 하온고치기()
+    if not S.haon_open
+        하온토글()
+    하온기록("이 파일을 검사하고 고치는 중…")
+    _haon_autofix(본문())
+
+fn 하온펌프()
+    for 항목 in _haon_drain()
+        if 항목[0] == "say"
+            하온기록("하온 ▸ " + 항목[1])
+        else if 항목[0] == "fix"
+            본문설정(항목[1])
+            S.dirty = true
+            제목갱신()
+            하온기록("하온 ▸ 수정했어요.\n" + 항목[2])
+    W.root.after(120, 하온펌프)
 
 # 부팅 스플래시 — 문어 로고가 콘솔에 쫘라락 (파란색)
 S.splash = 0
@@ -497,28 +773,117 @@ fn 스플래시()
     S.splash = S.splash + 1
     W.root.after(16, 스플래시)
 
+# ── 테마 ────────────────────────────────────────────────────────────
+설정 = _cfg_load()
+S.theme = "light"
+if 설정.get("theme") == "dark"
+    S.theme = "dark"
+T = boxify(THEMES[S.theme])
+
+fn 테마적용()
+    T2 = boxify(THEMES[S.theme])
+    W.root.configure(bg: T2.bg)
+    W.bar.configure(bg: T2.bg2)
+    W.mid.configure(bg: T2.bg)
+    W.editor.configure(bg: T2.bg, fg: T2.ink, insertbackground: T2.blue, selectbackground: T2.sel)
+    W.gutter.configure(bg: T2.bg2, fg: T2.gutter)
+    W.console.configure(bg: T2.console)
+    W.out_label.configure(bg: T2.console, fg: T2.ink3)
+    W.out.configure(bg: T2.console, fg: T2.consink)
+    W.out.tag_configure("octo", foreground: T2.octo)
+    W.status.configure(bg: T2.bg2, fg: T2.ink2)
+    W.editor.tag_configure("kw", foreground: T2.kw)
+    W.editor.tag_configure("str", foreground: T2.str)
+    W.editor.tag_configure("com", foreground: T2.com)
+    W.editor.tag_configure("num", foreground: T2.num)
+    W.editor.tag_configure("fn", foreground: T2.fn)
+    for b in W.buttons
+        스킨(b, false)
+    스킨(W.run_btn, true)
+    설정["theme"] = S.theme
+    _cfg_save(설정)
+
+fn 테마토글()
+    if S.theme == "light"
+        S.theme = "dark"
+    else
+        S.theme = "light"
+    테마적용()
+
+fn 스킨(b, 강조)
+    cur = boxify(THEMES[S.theme])
+    if 강조
+        b.configure(bg: cur.blue, fg: "#ffffff", activebackground: cur.blue, activeforeground: "#ffffff")
+    else
+        b.configure(bg: cur.bg2, fg: cur.ink2, activebackground: cur.line, activeforeground: cur.ink)
+
 # ── 창 만들기 ───────────────────────────────────────────────────────
 W.root = tk.Tk()
-W.root.geometry("1040x700")
-W.root.minsize(720, 480)
-W.root.configure(bg: "#0f1115")
+W.root.title("POI IDLE")
+W.root.geometry("1080x720")
+W.root.minsize(760, 500)
+W.root.configure(bg: T.bg)
+W.buttons = []
 
 글꼴 = tkfont.Font(family: "Consolas", size: 12)
 ui = tkfont.Font(family: "Segoe UI", size: 10)
 
 fn 버튼(부모, 라벨, 동작, 강조)
-    색 = "#242a33"
-    글자 = "#e6e9ef"
-    if 강조
-        색 = "#3182f6"
-        글자 = "#ffffff"
-    b = tk.Button(부모, text: 라벨, command: 동작, bg: 색, fg: 글자,
-                  activebackground: 색, activeforeground: 글자, relief: "flat",
+    b = tk.Button(부모, text: 라벨, command: 동작, relief: "flat",
                   font: ui, padx: 12, pady: 6, borderwidth: 0, cursor: "hand2")
+    스킨(b, 강조)
     b.pack(side: "left", padx: 4, pady: 7)
+    W.buttons.add(b)
     return b
 
-W.bar = tk.Frame(W.root, bg: "#161a20")
+# 메뉴바
+W.menu = tk.Menu(W.root)
+W.m_file = tk.Menu(W.menu, tearoff: false)
+W.m_file.add_command(label: "새 파일        Ctrl+N", command: 새파일)
+W.m_file.add_command(label: "열기…          Ctrl+O", command: 열기)
+W.m_file.add_command(label: "최근 파일", command: 최근)
+W.m_file.add_separator()
+W.m_file.add_command(label: "저장            Ctrl+S", command: 저장)
+W.m_file.add_command(label: "다른 이름으로   Ctrl+Shift+S", command: 다른이름저장)
+W.m_file.add_separator()
+W.m_file.add_command(label: "터미널에서 실행  Ctrl+R", command: 터미널실행)
+W.m_file.add_command(label: "끝내기", command: () => W.root.destroy())
+W.menu.add_cascade(label: "파일", menu: W.m_file)
+
+W.m_edit = tk.Menu(W.menu, tearoff: false)
+W.m_edit.add_command(label: "실행 취소  Ctrl+Z", command: () => W.editor.edit_undo())
+W.m_edit.add_command(label: "다시 실행  Ctrl+Y", command: () => W.editor.edit_redo())
+W.m_edit.add_separator()
+W.m_edit.add_command(label: "주석 토글  Ctrl+/", command: () => W.editor.event_generate("<Control-slash>"))
+W.m_edit.add_command(label: "찾기        Ctrl+F", command: () => W.editor.event_generate("<Control-f>"))
+W.menu.add_cascade(label: "편집", menu: W.m_edit)
+
+W.m_run = tk.Menu(W.menu, tearoff: false)
+W.m_run.add_command(label: "실행 / 중지 / 서버   F5", command: 실행)
+W.m_run.add_command(label: "콘솔 비우기", command: 콘솔지우기)
+W.menu.add_cascade(label: "실행", menu: W.m_run)
+
+W.m_view = tk.Menu(W.menu, tearoff: false)
+W.m_view.add_command(label: "라이트 / 다크 토글", command: 테마토글)
+W.m_view.add_command(label: "글자 크게  Ctrl+=", command: () => W.editor.event_generate("<Control-equal>"))
+W.m_view.add_command(label: "글자 작게  Ctrl+-", command: () => W.editor.event_generate("<Control-minus>"))
+W.menu.add_cascade(label: "보기", menu: W.m_view)
+
+W.m_help = tk.Menu(W.menu, tearoff: false)
+W.m_help.add_command(label: "POI 문법 (웹)", command: () => 웹열기("https://hagora.kr/poi/poi-for-llm.md"))
+W.m_help.add_command(label: "POI 입문서 (웹)", command: () => 웹열기("https://hagora.kr/poi/book/"))
+W.menu.add_cascade(label: "도움말", menu: W.m_help)
+W.root.config(menu: W.menu)
+
+fn 웹열기(주소)
+    try
+        use py:webbrowser as _wb
+        _wb.open(주소)
+    catch e
+        로그("{e}")
+
+# 툴바
+W.bar = tk.Frame(W.root, bg: T.bg2)
 W.bar.pack(side: "top", fill: "x")
 버튼(W.bar, "＋ 새로", 새파일, false)
 버튼(W.bar, "📂 열기", 열기, false)
@@ -526,47 +891,82 @@ W.bar.pack(side: "top", fill: "x")
 버튼(W.bar, "💾 저장", 저장, false)
 W.run_btn = 버튼(W.bar, "▶  실행  (F5)", 실행, true)
 버튼(W.bar, "⧉ 터미널", 터미널실행, false)
+버튼(W.bar, "📁 웹 폴더", 웹폴더, false)
 버튼(W.bar, "✦ 예제", 예제넣기, false)
 버튼(W.bar, "🧹 콘솔", 콘솔지우기, false)
+버튼(W.bar, "🐙 하온", 하온토글, false)
+버튼(W.bar, "◐ 테마", 테마토글, false)
+W.mode_lbl = tk.Label(W.bar, text: "", bg: T.bg2, fg: T.blue, font: ui)
+W.mode_lbl.pack(side: "right", padx: 12)
 
-W.mid = tk.Frame(W.root, bg: "#0f1115")
-W.mid.pack(side: "top", fill: "both", expand: true)
+W.body = tk.Frame(W.root, bg: T.bg)
+W.body.pack(side: "top", fill: "both", expand: true)
+
+W.mid = tk.Frame(W.body, bg: T.bg)
+W.mid.pack(side: "left", fill: "both", expand: true)
 
 W.editor = tk.Text(W.mid, wrap: "none", undo: true, font: 글꼴,
-                   bg: "#0f1115", fg: "#e6e9ef", insertbackground: "#3182f6",
-                   selectbackground: "#2a3b57", relief: "flat",
+                   bg: T.bg, fg: T.ink, insertbackground: T.blue,
+                   selectbackground: T.sel, relief: "flat",
                    padx: 14, pady: 12, spacing1: 2, spacing3: 2, maxundo: 500)
 
 W.gpair = _make_gutter(W.mid, W.editor, 글꼴)
 W.gutter = W.gpair[0]
 W.gutter_refresh = W.gpair[1]
+W.gutter.configure(bg: T.bg2, fg: T.gutter)
 W.gutter.pack(side: "left", fill: "y")
 W.editor.pack(side: "left", fill: "both", expand: true)
 W.scroll = tk.Scrollbar(W.mid, command: W.editor.yview)
 W.scroll.pack(side: "right", fill: "y")
 W.editor.configure(yscrollcommand: W.scroll.set)
 
-W.editor.tag_configure("kw", foreground: "#5aa2ff")
-W.editor.tag_configure("str", foreground: "#63d19e")
-W.editor.tag_configure("com", foreground: "#6b7480")
-W.editor.tag_configure("num", foreground: "#e0a458")
-W.editor.tag_configure("fn", foreground: "#c792ea")
+W.editor.tag_configure("kw", foreground: T.kw)
+W.editor.tag_configure("str", foreground: T.str)
+W.editor.tag_configure("com", foreground: T.com)
+W.editor.tag_configure("num", foreground: T.num)
+W.editor.tag_configure("fn", foreground: T.fn)
 
 _wire_editor(W.editor, 글꼴, 실행)
 
-W.console = tk.Frame(W.root, bg: "#0b0d10")
+# 하온 패널 (오른쪽, 처음엔 숨김)
+W.haon_frame = tk.Frame(W.body, bg: T.bg2, width: 360)
+W.haon_frame.pack_propagate(false)
+W.haon_head = tk.Label(W.haon_frame, text: "  🐙 하온", bg: T.bg2, fg: T.ink,
+                       font: ui, anchor: "w")
+W.haon_head.pack(side: "top", fill: "x", pady: 6)
+W.haon_sub = tk.Label(W.haon_frame, text: _haon_badge(), bg: T.bg2, fg: T.ink3,
+                      font: ui, anchor: "w", wraplength: 340, justify: "left")
+W.haon_sub.pack(side: "top", fill: "x", padx: 10)
+W.haon_log = tk.Text(W.haon_frame, wrap: "word", font: ui, bg: T.bg, fg: T.ink,
+                     relief: "flat", padx: 12, pady: 10, state: "disabled")
+W.haon_log.pack(side: "top", fill: "both", expand: true, padx: 8, pady: 8)
+W.haon_fix = tk.Button(W.haon_frame, text: "🔧  이 파일 오류 자동 수정", command: 하온고치기,
+                       bg: "#3182f6", fg: "#ffffff", relief: "flat", font: ui,
+                       pady: 8, borderwidth: 0, cursor: "hand2")
+W.haon_fix.pack(side: "top", fill: "x", padx: 8)
+W.haon_in = tk.Entry(W.haon_frame, font: ui, relief: "flat", bg: T.bg, fg: T.ink,
+                     insertbackground: T.blue)
+W.haon_in.pack(side: "top", fill: "x", padx: 8, pady: 8, ipady: 6)
+W.haon_in.bind("<Return>", (e) => 하온묻기())
+W.haon_send = tk.Button(W.haon_frame, text: "물어보기", command: 하온묻기,
+                        bg: T.line, fg: T.ink, relief: "flat", font: ui,
+                        pady: 6, borderwidth: 0, cursor: "hand2")
+W.haon_send.pack(side: "top", fill: "x", padx: 8, pady: 2)
+하온기록("무엇이든 물어보세요. 오류는 '자동 수정' 이 실제 컴파일러로 고칩니다.")
+
+W.console = tk.Frame(W.root, bg: T.console)
 W.console.pack(side: "top", fill: "both")
-W.out_label = tk.Label(W.console, text: "  출력", bg: "#0b0d10", fg: "#6b7480",
+W.out_label = tk.Label(W.console, text: "  출력 · 콘솔", bg: T.console, fg: T.ink3,
                        font: ui, anchor: "w")
 W.out_label.pack(side: "top", fill: "x", pady: 3)
 W.out = tk.Text(W.console, height: 12, wrap: "word", font: 글꼴,
-                bg: "#0b0d10", fg: "#c9cdd6", relief: "flat",
+                bg: T.console, fg: T.consink, relief: "flat",
                 padx: 16, pady: 10, state: "disabled")
 W.out.pack(side: "top", fill: "both")
-W.out.tag_configure("octo", foreground: "#5aa2ff")
+W.out.tag_configure("octo", foreground: T.octo)
 
-W.status = tk.Label(W.root, text: "  준비됨        POI {버전}", bg: "#161a20",
-                    fg: "#8b95a1", font: ui, anchor: "w")
+W.status = tk.Label(W.root, text: "  준비됨        POI {버전}", bg: T.bg2,
+                    fg: T.ink2, font: ui, anchor: "w")
 W.status.pack(side: "bottom", fill: "x")
 
 W.editor.bind("<<Modified>>", 편집됨)
@@ -587,4 +987,5 @@ else
 커서이동(null)
 W.editor.focus_set()
 W.root.after(120, 스플래시)
+W.root.after(250, 하온펌프)
 W.root.mainloop()

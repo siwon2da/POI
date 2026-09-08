@@ -133,6 +133,24 @@ def _startmenu_idle(idle_exe: str, folder: str):
                    capture_output=True, creationflags=0x08000000)
 
 
+def _desktop_shortcut(idle_exe: str, folder: str):
+    """바탕화면에 'POI IDLE' 바로가기."""
+    try:
+        p = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+             "[Environment]::GetFolderPath('Desktop')"],
+            capture_output=True, text=True, creationflags=0x08000000)
+        desk = p.stdout.strip() or os.path.join(os.path.expanduser("~"), "Desktop")
+    except Exception:
+        desk = os.path.join(os.path.expanduser("~"), "Desktop")
+    lnk = os.path.join(desk, "POI IDLE.lnk").replace("\\", "\\\\")
+    ps = (f'$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut("{lnk}");'
+          f'$s.TargetPath="{idle_exe}";'
+          f'$s.WorkingDirectory="{folder}";$s.IconLocation="{idle_exe},0";$s.Save()')
+    subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                   capture_output=True, creationflags=0x08000000)
+
+
 def _reg_delete_tree(root, path):
     """하위 키까지 재귀 삭제 (winreg.DeleteKeyEx 는 빈 키만 지운다)."""
     import winreg
@@ -226,9 +244,11 @@ def install(argv: list[str]) -> int:
             print("시작 메뉴에 'POI REPL'")
             if idle_dst:
                 _startmenu_idle(idle_dst, dest)
-                print("시작 메뉴에 'POI IDLE'")
+                _desktop_shortcut(idle_dst, dest)
+                print("시작 메뉴 + 바탕화면에 'POI IDLE'")
         except Exception:
             pass
+
     try:
         _uninstall_reg(exe_dst, dest, __version__)
     except Exception:
@@ -236,6 +256,15 @@ def install(argv: list[str]) -> int:
 
     print()
     print(f"완료. POI {__version__}. 새 터미널에서:  poi version")
+
+    # 설치 직후 POI IDLE 바로 켜기
+    if idle_dst and not os.environ.get("POI_NO_LAUNCH"):
+        try:
+            subprocess.Popen([idle_dst], cwd=dest,
+                             creationflags=getattr(subprocess, "DETACHED_PROCESS", 0))
+            print("POI IDLE 를 실행했습니다.")
+        except Exception:
+            pass
     return 0
 
 
@@ -255,5 +284,13 @@ def uninstall(_argv: list[str]) -> int:
                       r"Microsoft\Windows\Start Menu\Programs\POI")
     if os.path.isdir(sm):
         shutil.rmtree(sm, ignore_errors=True)
+    for d in (os.path.join(os.path.expanduser("~"), "Desktop"),
+              os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")):
+        lnk = os.path.join(d, "POI IDLE.lnk")
+        if os.path.isfile(lnk):
+            try:
+                os.remove(lnk)
+            except OSError:
+                pass
     print("POI 제거됨. 남은 폴더는 직접 지우세요:", dest)
     return 0

@@ -454,9 +454,7 @@ def _make_handler(routes, static_dirs, title, csrf_paths=None):
     return H
 
 
-def run_all(port: int = 8080, host: str = "127.0.0.1") -> int:
-    if not _APPS:
-        return 0
+def _build_handler():
     routes: dict = {}
     static_dirs: list = []
     csrf_paths: list = []
@@ -467,8 +465,41 @@ def run_all(port: int = 8080, host: str = "127.0.0.1") -> int:
         csrf_paths.extend(app.get("csrf_paths", []))
         if app.get("title"):
             title = app["title"]
+    return _make_handler(routes, static_dirs, title, csrf_paths), routes, static_dirs
 
-    handler = _make_handler(routes, static_dirs, title, csrf_paths)
+
+def start(port: int = 8080, host: str = "127.0.0.1", on_log=None):
+    """블로킹하지 않고 서버를 띄운다 (POI IDLE 용). (httpd, url) 반환.
+    on_log(str) 가 있으면 요청 로그를 그리로 보낸다."""
+    import threading
+    if not _APPS:
+        return None, None
+    handler, routes, static_dirs = _build_handler()
+    if on_log:
+        base = handler
+
+        class H2(base):
+            def log_message(self, fmt, *args):
+                try:
+                    on_log("  %s  %s\n" % (self.command,
+                                           (fmt % args).split('"')[0].strip()
+                                           or self.path))
+                except Exception:
+                    pass
+        handler = H2
+    try:
+        httpd = ThreadingHTTPServer((host, port), handler)
+    except OSError as e:
+        raise POIError(f"포트 {port} 를 열 수 없습니다: {e}", "P170",
+                       hint="다른 포트를 쓰거나, 쓰던 서버를 먼저 멈추세요.")
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd, f"http://{host}:{port}"
+
+
+def run_all(port: int = 8080, host: str = "127.0.0.1") -> int:
+    if not _APPS:
+        return 0
+    handler, routes, static_dirs = _build_handler()
     try:
         httpd = ThreadingHTTPServer((host, port), handler)
     except OSError as e:
