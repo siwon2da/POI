@@ -15,19 +15,26 @@ show 그림도구.blur(사진)
   import 경로 앞에 넣는다 → `use py:numpy` 가 프로젝트 venv 를 쓴다.
 
 **`uikit` — POI 전용 GUI 라이브러리** (명령형, tkinter 위, import 없이)
+
+tkinter 의 색·폰트·pack·이벤트 보일러플레이트를 걷어낸다.
+
 ```poi
+uikit.theme("dark")
 win = uikit.window("제목", 900, 600)
 bar = uikit.row(win)
 uikit.button(bar, "열기", 열기, true)
-s  = uikit.slider(bar, 0, 100, 바뀜, 50, 200, "밝기")
-cv = uikit.canvas(win, 800, 500)
-uikit.menu(win, { 파일: [["열기", 열기], null, ["끝", () => uikit.close(win)]] })
+s   = uikit.slider(bar, 0, 100, 바뀜, 50, 200, "밝기")
+탭  = uikit.tabs(win, ["편집", "설정"])
+uikit.tree(win, ["이름","점수"], [["시원","90"]], null, 8)
 uikit.run(win)
 ```
-- `window row column label button entry slider canvas listbox text statusbar menu`
-- `ask_open ask_save ask_color alert confirm every on run close`
-- `state(초기값)` + `watch(st, fn)` — 반응형 상태 (`st.v = 3` 하면 watcher 호출)
-- 선언형 `app { window { } }` 는 그대로. `uikit` 은 동적 UI 용.
+- 위젯: `window title row column grid cell tabs label button entry slider canvas
+  listbox text statusbar menu checkbox radio select progress image scroll tree
+  dialog tooltip`
+- 헬퍼: `theme(light/dark) value(위젯[,v]) set_text ask_open ask_save ask_color
+  alert confirm every on bind_key run close`
+- **반응형** `state(초기값)` + `watch(st, fn)` — `st.v = 3` 하면 watcher 자동 호출
+- 선언형 `app { window { } }` 는 그대로. `uikit` 은 동적 UI 용. 안전 모드 차단.
 
 **`poi photo` — POI 로 작성한 사진 편집기** (`uikit` + Pillow)
 - 열기·저장(PNG/JPEG), 밝기·대비·채도·선명 슬라이더 (원본에서 실시간 재계산)

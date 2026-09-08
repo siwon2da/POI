@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 """uikit — POI 전용 GUI 라이브러리 (명령형, tkinter 위).
 
-선언형 `app { window { } }` 와 달리 자유롭게 조립한다. 사진 편집기·에디터 같은
-동적 UI 를 위한 것. import 없이 `uikit` 으로 바로.
+tkinter 를 그대로 쓰면 매번 색·폰트·pack 옵션·이벤트 바인딩 보일러플레이트가 붙는다.
+uikit 은 그걸 다 없앤다:
+  · 통일된 라이트/다크 테마 (uikit.theme("dark"))
+  · 위젯 한 줄 생성 + 자동 배치
+  · 반응형 상태  st = uikit.state({v:0});  st.v = 3  →  watcher 자동 호출
+  · grid·tabs·select·checkbox·radio·progress·image·scroll·tree·dialog·tooltip
 
     win = uikit.window("제목", 900, 600)
     bar = uikit.row(win)
-    uikit.button(bar, "열기", on_open)
+    uikit.button(bar, "열기", on_open, true)
     s = uikit.slider(bar, 0, 100, on_change)
     cv = uikit.canvas(win, 800, 500)
     uikit.run(win)
-
-상태:  st = uikit.state({ v: 0 });  st.v = 3   (uikit.watch(st, fn) 로 변화 감지)
 """
 from __future__ import annotations
 
@@ -19,16 +21,31 @@ from types import SimpleNamespace
 
 from .boxes import Box
 
-_PAL = {  # 라이트 기본
+_LIGHT = {
     "bg": "#ffffff", "panel": "#f2f4f6", "ink": "#191f28", "ink2": "#4e5968",
     "line": "#e5e8eb", "accent": "#3182f6", "accent_ink": "#ffffff",
+    "field": "#ffffff", "sel": "#d7e6ff",
 }
+_DARK = {
+    "bg": "#15181e", "panel": "#1e222a", "ink": "#e6e9ef", "ink2": "#a9aeb8",
+    "line": "#2b2f38", "accent": "#4b93f8", "accent_ink": "#ffffff",
+    "field": "#1a1e25", "sel": "#2a3b57",
+}
+_PAL = dict(_LIGHT)
+UIFONT = ("Segoe UI", 10)
+
+
+def theme(name="light"):
+    """전역 테마 전환. 이후 만드는 위젯에 적용된다."""
+    _PAL.clear()
+    _PAL.update(_DARK if str(name).lower() == "dark" else _LIGHT)
+    return dict(_PAL)
 
 
 def _tk():
     import tkinter as tk
-    from tkinter import filedialog, colorchooser, messagebox
-    return tk, filedialog, colorchooser, messagebox
+    from tkinter import filedialog, colorchooser, messagebox, ttk
+    return tk, filedialog, colorchooser, messagebox, ttk
 
 
 def window(title="POI", w=880, h=560, resizable=True):
@@ -180,18 +197,18 @@ def ask_save(title="저장", ext="", types=None):
 
 
 def ask_color(initial="#3182f6"):
-    _tk_, _fd, cc, _mb = _tk()
+    _tk_, _fd, cc, _mb, _tt = _tk()
     r = cc.askcolor(color=initial)
     return r[1] if r and r[1] else ""
 
 
 def alert(msg, title="알림"):
-    *_ , mb = _tk()
+    _t, _f, _c, mb, _tt = _tk()
     mb.showinfo(title, str(msg))
 
 
 def confirm(msg, title="확인"):
-    *_ , mb = _tk()
+    _t, _f, _c, mb, _tt = _tk()
     return bool(mb.askokcancel(title, str(msg)))
 
 
@@ -206,6 +223,204 @@ def every(win, ms, fn):
 
 def on(widget, event, fn):
     widget.bind(event, lambda _ev: fn())
+
+
+def bind_key(win, key, fn):
+    win.bind(f"<{key}>", lambda _ev: fn())
+
+
+def title(win, text):
+    win.title(str(text))
+
+
+# ── 더 많은 위젯 ──────────────────────────────────────────────────
+
+def grid(parent, cols=2, gap=6):
+    """열 개수를 고정한 그리드 컨테이너. uikit.cell 로 칸을 채운다."""
+    tk, *_ = _tk()
+    f = tk.Frame(parent, bg=parent.cget("bg"))
+    for c in range(cols):
+        f.grid_columnconfigure(c, weight=1)
+    f._poi_cols = cols
+    f._poi_i = 0
+    f._poi_gap = gap
+    return _pack(f, side="top", fill="both", expand=True)
+
+
+def cell(gridf, widget=None):
+    i = gridf._poi_i
+    gridf._poi_i += 1
+    r, c = divmod(i, gridf._poi_cols)
+    if widget is not None:
+        widget.grid(row=r, column=c, padx=gridf._poi_gap, pady=gridf._poi_gap,
+                    sticky="nsew")
+    return (r, c)
+
+
+def tabs(parent, names):
+    """names 리스트 → 탭. 각 탭의 내용 프레임 리스트를 돌려준다."""
+    _t, _f, _c, _m, ttk = _tk()
+    nb = ttk.Notebook(parent)
+    frames = []
+    for nm in names:
+        fr = _t.Frame(nb, bg=_PAL["bg"])
+        nb.add(fr, text=str(nm))
+        frames.append(fr)
+    _pack(nb, side="top", fill="both", expand=True)
+    return frames
+
+
+def checkbox(parent, text, checked=False, on_toggle=None):
+    tk, *_ = _tk()
+    var = tk.BooleanVar(value=bool(checked))
+    cb = tk.Checkbutton(parent, text=text, variable=var, bg=parent.cget("bg"),
+                        fg=_PAL["ink"], activebackground=parent.cget("bg"),
+                        selectcolor=_PAL["field"], font=("Segoe UI", 10),
+                        command=(lambda: on_toggle(var.get())) if on_toggle else None)
+    cb._poi_var = var
+    return _pack(cb, side="left", pad=4)
+
+
+def radio(parent, options, value=None, on_change=None):
+    tk, *_ = _tk()
+    var = tk.StringVar(value=value if value is not None else (options[0] if options else ""))
+    box = tk.Frame(parent, bg=parent.cget("bg"))
+    for opt in options:
+        tk.Radiobutton(box, text=str(opt), value=str(opt), variable=var,
+                       bg=box.cget("bg"), fg=_PAL["ink"], font=("Segoe UI", 10),
+                       activebackground=box.cget("bg"), selectcolor=_PAL["field"],
+                       command=(lambda: on_change(var.get())) if on_change else None
+                       ).pack(side="left")
+    box._poi_var = var
+    return _pack(box, side="left", pad=4)
+
+
+def select(parent, options, value=None, on_change=None, width=18):
+    _t, _f, _c, _m, ttk = _tk()
+    box = _t.Frame(parent, bg=parent.cget("bg"))
+    var = _t.StringVar(value=value if value is not None else (options[0] if options else ""))
+    cb = ttk.Combobox(box, textvariable=var, values=list(options), width=width,
+                      state="readonly")
+    cb.pack(side="left")
+    if on_change:
+        cb.bind("<<ComboboxSelected>>", lambda _e: on_change(var.get()))
+    box._poi_var = var
+    return _pack(box, side="left", pad=4)
+
+
+def progress(parent, value=0, maximum=100):
+    _t, _f, _c, _m, ttk = _tk()
+    pb = ttk.Progressbar(parent, maximum=maximum, value=value, length=220)
+    return _pack(pb, side="top", pad=6)
+
+
+def image(parent, path=None, w=None, h=None):
+    """이미지 뷰. path 주면 바로 로드. .set(path) 로 교체."""
+    tk, *_ = _tk()
+    lb = tk.Label(parent, bg=parent.cget("bg"))
+
+    def _set(p):
+        try:
+            from PIL import Image as _I, ImageTk as _IT
+            im = _I.open(p)
+            if w or h:
+                im.thumbnail((w or 10000, h or 10000))
+            lb._poi_img = _IT.PhotoImage(im)
+        except Exception:
+            lb._poi_img = tk.PhotoImage(file=p)
+        lb.config(image=lb._poi_img)
+    lb.set = _set
+    if path:
+        _set(path)
+    return _pack(lb, side="top")
+
+
+def scroll(parent, h=300):
+    """세로 스크롤 되는 프레임. 안쪽 프레임을 돌려준다."""
+    tk, *_ = _tk()
+    outer = tk.Frame(parent, bg=parent.cget("bg"))
+    cv = tk.Canvas(outer, bg=_PAL["bg"], highlightthickness=0, height=h)
+    sb = tk.Scrollbar(outer, orient="vertical", command=cv.yview)
+    inner = tk.Frame(cv, bg=_PAL["bg"])
+    inner.bind("<Configure>",
+               lambda _e: cv.configure(scrollregion=cv.bbox("all")))
+    cv.create_window((0, 0), window=inner, anchor="nw")
+    cv.configure(yscrollcommand=sb.set)
+    cv.pack(side="left", fill="both", expand=True)
+    sb.pack(side="right", fill="y")
+    _pack(outer, side="top", fill="both", expand=True)
+    return inner
+
+
+def tree(parent, columns, rows=None, on_select=None, height=12):
+    """표(treeview). columns=["이름","나이"], rows=[["시원","16"], ...]."""
+    _t, _f, _c, _m, ttk = _tk()
+    tv = ttk.Treeview(parent, columns=list(columns), show="headings",
+                      height=height)
+    for c in columns:
+        tv.heading(c, text=str(c))
+        tv.column(c, width=120)
+    for r in (rows or []):
+        tv.insert("", "end", values=list(r))
+    if on_select:
+        tv.bind("<<TreeviewSelect>>",
+                lambda _e: on_select(tv.item(tv.selection()[0])["values"]
+                                     if tv.selection() else None))
+    _pack(tv, side="top", fill="both", expand=True)
+    return tv
+
+
+def dialog(parent, title_text="", w=360, h=220):
+    """모달 창. 내용 프레임을 돌려준다. uikit.close 로 닫는다."""
+    tk, *_ = _tk()
+    top = tk.Toplevel(parent)
+    top.title(str(title_text))
+    top.geometry(f"{w}x{h}")
+    top.configure(bg=_PAL["bg"])
+    top.transient(parent)
+    top.grab_set()
+    return top
+
+
+def tooltip(widget, text):
+    tk, *_ = _tk()
+    tip = {"w": None}
+
+    def enter(_e):
+        if tip["w"]:
+            return
+        x = widget.winfo_rootx() + 12
+        y = widget.winfo_rooty() + widget.winfo_height() + 4
+        t = tk.Toplevel(widget)
+        t.wm_overrideredirect(True)
+        t.wm_geometry(f"+{x}+{y}")
+        tk.Label(t, text=str(text), bg="#191f28", fg="#ffffff",
+                 font=("Segoe UI", 9), padx=8, pady=3).pack()
+        tip["w"] = t
+
+    def leave(_e):
+        if tip["w"]:
+            tip["w"].destroy()
+            tip["w"] = None
+    widget.bind("<Enter>", enter)
+    widget.bind("<Leave>", leave)
+
+
+def value(widget, v=None):
+    """위젯 값 읽기/쓰기 (slider·checkbox·radio·select·entry)."""
+    var = getattr(widget, "_poi_var", None)
+    if var is None and hasattr(widget, "get"):     # Entry
+        if v is None:
+            return widget.get()
+        widget.delete(0, "end")
+        widget.insert(0, str(v))
+        return v
+    if var is None:
+        return None
+    if v is None:
+        return var.get()
+    var.set(v)
+    return v
 
 
 def run(win):
@@ -226,15 +441,20 @@ class State(Box):
         super().__init__(initial or {})
         object.__setattr__(self, "_watchers", [])
 
-    def __setattr__(self, k, v):
-        super().__setattr__(k, v)
-        for w in getattr(self, "_watchers", []):
+    def _fire(self):
+        for w in list(object.__getattribute__(self, "_watchers")):
             try:
                 w(self)
             except Exception:
                 pass
 
-    __setitem__ = __setattr__
+    def __setattr__(self, k, v):
+        dict.__setitem__(self, k, v)
+        self._fire()
+
+    def __setitem__(self, k, v):
+        dict.__setitem__(self, k, v)
+        self._fire()
 
 
 def state(initial=None):
@@ -247,10 +467,13 @@ def watch(st, fn):
 
 
 uikit = SimpleNamespace(
-    window=window, row=row, column=column, label=label, button=button,
-    entry=entry, slider=slider, canvas=canvas, listbox=listbox,
-    text=text_area, statusbar=statusbar, set_text=set_text, menu=menu,
+    theme=theme, window=window, title=title, row=row, column=column,
+    label=label, button=button, entry=entry, slider=slider, canvas=canvas,
+    listbox=listbox, text=text_area, statusbar=statusbar, set_text=set_text,
+    menu=menu, grid=grid, cell=cell, tabs=tabs, checkbox=checkbox, radio=radio,
+    select=select, progress=progress, image=image, scroll=scroll, tree=tree,
+    dialog=dialog, tooltip=tooltip, value=value,
     ask_open=ask_open, ask_save=ask_save, ask_color=ask_color,
-    alert=alert, confirm=confirm, every=every, on=on, run=run, close=close,
-    state=state, watch=watch, palette=_PAL,
+    alert=alert, confirm=confirm, every=every, on=on, bind_key=bind_key,
+    run=run, close=close, state=state, watch=watch, palette=_PAL,
 )

@@ -1,0 +1,44 @@
+# uikit — POI 전용 GUI 라이브러리 데모.   실행:  poi run examples/gui_showcase.poi
+
+st = uikit.state({ count: 0, mode: "밝게" })
+
+fn 더하기()
+    st.count = st.count + 1
+
+fn 갱신()
+    uikit.set_text(W_count, "카운트: {st.count}   ·   모드: {st.mode}")
+
+W = {}
+
+win = uikit.window("uikit 데모", 620, 460)
+uikit.menu(win, {
+    파일: [["새로", () => 0], null, ["끝내기", () => uikit.close(win)]]
+})
+
+top = uikit.row(win)
+uikit.button(top, "＋ 하나", 더하기, true)
+uikit.button(top, "테마 다크", () => uikit.theme("dark"), false)
+W_count = uikit.label(uikit.row(win), "카운트: 0")
+
+uikit.watch(st, (s) => 갱신())
+
+tabs = uikit.tabs(win, ["입력", "표"])
+
+f = tabs[0]
+uikit.label(uikit.row(f), "이름")
+name = uikit.entry(uikit.row(f), "시원", 20, null)
+uikit.checkbox(uikit.row(f), "알림 받기", true, null)
+uikit.radio(uikit.row(f), ["작게", "보통", "크게"], "보통", null)
+sel = uikit.select(uikit.row(f), ["한국어", "English", "日本語"], "한국어",
+                   (v) => uikit.set_text(W_pick, "선택: {v}"))
+W_pick = uikit.label(uikit.row(f), "선택: 한국어")
+uikit.progress(f, 65, 100)
+
+uikit.tree(tabs[1], ["이름", "점수", "등급"],
+    [["시원", "95", "A"], ["민수", "82", "B"], ["지연", "77", "C"]], null, 8)
+
+uikit.statusbar(win, "  uikit — window·row·tabs·tree·state/watch")
+uikit.bind_key(win, "space", 더하기)
+
+갱신()
+uikit.run(win)
