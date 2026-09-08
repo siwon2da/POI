@@ -612,11 +612,10 @@ def cmd_haon(args: list[str]) -> int:
         print(h._POI_RULES)
         return 0
     if sub in ("agent", "do"):
-        folder = "."
-        task = ""
         pos = [a for a in rest if not a.startswith("-")]
-        if pos and (os.path.isdir(pos[0]) or "/" not in pos[0] and "\\" not in pos[0]
-                    and not pos[0].endswith((".poi",)) and len(pos) > 1):
+        folder, task = ".", ""
+        # 인자가 2개 이상이면 첫 번째를 폴더로 (없으면 만든다)
+        if len(pos) >= 2 and not pos[0].endswith(".poi") and " " not in pos[0]:
             folder, task = pos[0], " ".join(pos[1:])
         else:
             task = " ".join(pos)

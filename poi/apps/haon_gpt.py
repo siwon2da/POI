@@ -357,6 +357,7 @@ def agent(task: str, folder: str, log=print, max_rounds: int = 14, info=None):
             {"role": "user",
              "content": f"폴더: {folder}\n요청: {task}\n"
              f"현재 파일: {', '.join(sorted(os.listdir(folder))) or '(비어있음)'}"}]
+    seen = []
     for rnd in range(1, max_rounds + 1):
         raw = _llm(msgs, info)
         m = re.search(r"\{.*\}", raw or "", re.S)
@@ -370,6 +371,13 @@ def agent(task: str, folder: str, log=print, max_rounds: int = 14, info=None):
             return {"ok": False, "message": raw[:400]}
         if step.get("thought"):
             log(f"[{rnd}] {step['thought']}")
+        # 같은 액션을 3번 반복하면 멈춘다 (작은 모델 무한루프 방지)
+        sig = json.dumps(step.get("actions", []), sort_keys=True, ensure_ascii=False)
+        seen.append(sig)
+        if len(seen) >= 3 and seen[-1] == seen[-2] == seen[-3]:
+            log("  (같은 동작 반복 — 멈춤. 더 똑똑한 백엔드는 poi haon login)")
+            return {"ok": bool(os.listdir(folder)),
+                    "message": "반복 감지로 중단", "files": sorted(os.listdir(folder))}
         msgs.append({"role": "assistant", "content": m.group(0)})
         if step.get("done"):
             log("✓ " + step.get("message", "완료"))
