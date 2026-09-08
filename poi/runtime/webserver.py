@@ -355,8 +355,37 @@ def _render_str(text, ctx):
         while k < len(toks):
             t = toks[k]
             if t.startswith("{{") and t.endswith("}}"):
-                val = _tpl_eval(t[2:-2], ctx)
-                raw = t[2:-2].strip().endswith("| raw") or t[2:-2].strip().startswith("raw ")
+                expr = t[2:-2].strip()
+                raw = False
+                pipes = [p.strip() for p in expr.split("|")]
+                val = _tpl_eval(pipes[0], ctx)
+                for filt in pipes[1:]:
+                    fn = filt.split()[0] if filt else ""
+                    if fn == "raw":
+                        raw = True
+                    elif fn == "length":
+                        try:
+                            val = len(val)
+                        except Exception:
+                            val = 0
+                    elif fn == "upper":
+                        val = str(val).upper()
+                    elif fn == "lower":
+                        val = str(val).lower()
+                    elif fn == "json":
+                        val = _json.dumps(val, ensure_ascii=False, default=str)
+                        raw = True
+                    elif fn == "default":
+                        arg = filt.split(None, 1)[1].strip().strip('"').strip("'") \
+                            if len(filt.split(None, 1)) > 1 else ""
+                        if val in (None, "", 0, False):
+                            val = arg
+                    elif fn == "round":
+                        try:
+                            n = int(filt.split()[1]) if len(filt.split()) > 1 else 0
+                            val = round(float(val), n)
+                        except Exception:
+                            pass
                 res.append(str(val) if raw else _esc(str(val)))
                 k += 1
             elif t.startswith("{%") and t.endswith("%}"):

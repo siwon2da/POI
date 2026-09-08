@@ -1,0 +1,55 @@
+{% include "head.html" %}
+
+<span class=tag>POI 가 POI 를 실행합니다 · --safe 샌드박스</span>
+<h2 style="margin:16px 0 6px">플레이그라운드</h2>
+<p class=muted style="margin-bottom:18px">
+  아래 코드는 이 서버가 <code>poi.interpreter.run_source(코드, safe=true)</code> 로 직접 돌립니다.
+  파일·네트워크·무한 루프는 차단됩니다.
+</p>
+
+<div class="grid g2">
+  <div>
+    <textarea id=code spellcheck=false style="width:100%;height:340px;background:var(--panel2);
+      color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:16px;
+      font-family:var(--mono);font-size:.95rem;line-height:1.6;resize:vertical">fn 피보(n)
+    if n < 2 { return n }
+    return 피보(n - 1) + 피보(n - 2)
+
+for i in 0..10 {
+    show "피보({i}) = {피보(i)}"
+}
+
+이름 = ["시원", "민수", "지연"]
+show 이름 |> map(n => "안녕 {n}") |> reverse_of</textarea>
+    <button class=btn id=run style="margin-top:12px;width:100%">▶  실행 (Ctrl+Enter)</button>
+  </div>
+  <div>
+    <div class=muted style="font-size:.85rem;margin-bottom:6px">출력</div>
+    <pre id=out style="height:340px;white-space:pre-wrap;color:var(--ink)">여기에 결과가 나옵니다.</pre>
+    <div id=meta class=muted style="font-size:.82rem;margin-top:8px"></div>
+  </div>
+</div>
+
+<script>
+  const $ = s => document.querySelector(s);
+  async function run(){
+    const btn = $('#run'); btn.disabled = true; btn.textContent = '실행 중…';
+    $('#out').textContent = ''; $('#meta').textContent = '';
+    try{
+      const r = await fetch('/api/run', {method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({code: $('#code').value})});
+      const j = await r.json();
+      $('#out').textContent = j.out || (j.err ? '' : '(출력 없음)');
+      if(j.err){ $('#out').textContent += (j.out ? '\n' : '') + '⚠ ' + j.err; }
+      $('#meta').textContent = (j.ok ? '✓ 성공' : '✗ 실패') + (j.ms!=null ? '  ·  ' + j.ms + ' ms' : '');
+    }catch(e){ $('#out').textContent = '요청 실패: ' + e; }
+    btn.disabled = false; btn.textContent = '▶  실행 (Ctrl+Enter)';
+  }
+  $('#run').addEventListener('click', run);
+  $('#code').addEventListener('keydown', e => {
+    if((e.ctrlKey||e.metaKey) && e.key === 'Enter'){ e.preventDefault(); run(); }
+  });
+</script>
+
+{% include "foot.html" %}

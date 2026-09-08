@@ -1,0 +1,55 @@
+{% include "head.html" %}
+
+<section style="padding:24px 0 8px">
+  <span class=tag>v{{ 버전 }} · 방문 {{ 방문수 }} · 회원 {{ 회원수 }}</span>
+  <h1 style="margin:18px 0 14px">상상하는 건<br>무엇이든 만든다.</h1>
+  <p class=muted style="font-size:1.15rem;max-width:620px">
+    POI 는 우리가 만든 언어입니다. 문법은 파이썬보다 쉽고, 쓸 수 있는 범위는 더 넓게 —
+    파이썬 생태계를 첫날부터 그대로 쓰면서 웹·GUI·동시성이 언어 기본기입니다.
+  </p>
+  <div style="display:flex;gap:12px;margin-top:26px;flex-wrap:wrap">
+    <a class=btn href="/play">브라우저에서 실행해 보기 →</a>
+    <a class="btn ghost" href="https://hagora.kr/poi/" target=_blank>설치 · 문서</a>
+  </div>
+</section>
+
+<section style="margin-top:14px">
+<pre><code># 이 페이지를 띄운 코드의 축약판
+server {
+    get "/" {
+        render("landing.html", {
+            방문수: db.value("select count(*) from hit"),
+            특징: 특징, 로드맵: 로드맵
+        })
+    }
+    post "/api/run" { respond.json(코드실행(body.code)) }
+}
+on_request(auth.guard("/login", only: ["/dashboard"]))</code></pre>
+</section>
+
+<section style="margin-top:48px">
+  <h2>왜 POI 인가</h2>
+  <div class="grid g3" style="margin-top:16px">
+  {% for f in 특징 %}
+    <div class=card>
+      <div style="font-size:1.5rem;color:var(--accent)">{{ f.icon }}</div>
+      <div style="font-weight:700;margin:8px 0 4px">{{ f.title }}</div>
+      <div class=muted style="font-size:.94rem">{{ f.body }}</div>
+    </div>
+  {% endfor %}
+  </div>
+</section>
+
+<section style="margin-top:48px">
+  <h2>지나온 길</h2>
+  <div class=card style="margin-top:14px">
+  {% for r in 로드맵 %}
+    <div style="display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--line)">
+      <code style="color:var(--accent);min-width:56px">{{ r.v }}</code>
+      <span>{{ r.t }}</span>
+    </div>
+  {% endfor %}
+  </div>
+</section>
+
+{% include "foot.html" %}

@@ -1,0 +1,26 @@
+{% include "head.html" %}
+
+<div class=card style="max-width:400px;margin:40px auto">
+  <h2 style="margin-bottom:4px">로그인</h2>
+  <p class=muted style="font-size:.9rem;margin-bottom:18px">
+    데모 계정 — <code>siwon</code> / <code>1234</code>  또는  <code>admin</code> / <code>poi</code>
+  </p>
+  {% if 오류 %}
+    <div style="background:color-mix(in srgb,var(--warn) 16%,transparent);border:1px solid var(--warn);
+      color:var(--warn);padding:10px 12px;border-radius:10px;font-size:.9rem;margin-bottom:14px">
+      {{ 오류 }}
+    </div>
+  {% endif %}
+  <form method=post action="/login" style="display:grid;gap:12px">
+    <input name=name placeholder="이름" autofocus
+      style="background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px;color:var(--ink);font:inherit">
+    <input name=pw type=password placeholder="비밀번호"
+      style="background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px;color:var(--ink);font:inherit">
+    <button class=btn type=submit>들어가기</button>
+  </form>
+  <p class=muted style="font-size:.82rem;margin-top:14px">
+    <code>/dashboard</code> 는 <code>auth.guard("/login", only: ["/dashboard"])</code> 미들웨어가 지킵니다.
+  </p>
+</div>
+
+{% include "foot.html" %}

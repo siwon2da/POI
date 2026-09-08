@@ -11,4 +11,4 @@ pair = ["왼", "오"]
 [l, r] = pair
 show "{l}{r}"
 
-show ai.backends().mode
+show (ai.backends().mode.length > 0)

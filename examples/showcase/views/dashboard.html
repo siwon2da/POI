@@ -1,0 +1,48 @@
+{% include "head.html" %}
+
+<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+  <h2 style="margin:0">대시보드</h2>
+  <span class=tag>{{ 나.role }} · {{ 나.name }}</span>
+  <span class=sp style="flex:1"></span>
+  <a href="/logout" class=muted style="font-size:.88rem">로그아웃</a>
+</div>
+<p class=muted style="font-size:.9rem;margin:6px 0 22px">
+  <code>auth.current(headers)</code> 로 신원 확인 · 데이터는 <code>database(":memory:")</code> 에서 실시간 집계.
+</p>
+
+<div class="grid g3" style="margin-bottom:24px">
+  <div class=card><div class=muted style="font-size:.82rem">총 방문</div>
+    <div style="font-size:2rem;font-weight:750;font-family:var(--mono)">{{ 방문수 }}</div></div>
+  <div class=card><div class=muted style="font-size:.82rem">회원</div>
+    <div style="font-size:2rem;font-weight:750;font-family:var(--mono)">{{ 회원|length }}</div></div>
+  <div class=card><div class=muted style="font-size:.82rem">엔진</div>
+    <div style="font-size:2rem;font-weight:750;font-family:var(--mono)">v{{ 버전 }}</div></div>
+</div>
+
+<div class=card style="margin-bottom:20px">
+  <div style="font-weight:700;margin-bottom:14px">경로별 방문 (실시간)</div>
+  {% for b in 막대 %}
+    <div style="display:flex;align-items:center;gap:12px;margin:9px 0">
+      <code style="min-width:120px;color:var(--ink2)">{{ b.path }}</code>
+      <div style="flex:1;background:var(--panel2);border-radius:8px;height:22px;overflow:hidden">
+        <div style="height:100%;width:{{ b.pct }}%;background:linear-gradient(90deg,var(--accent),var(--accent2));
+          border-radius:8px;min-width:4px"></div>
+      </div>
+      <b style="min-width:34px;text-align:right;font-family:var(--mono)">{{ b.c }}</b>
+    </div>
+  {% endfor %}
+</div>
+
+<div class=card>
+  <div style="font-weight:700;margin-bottom:10px">회원</div>
+  <table style="width:100%;border-collapse:collapse;font-size:.92rem">
+    <tr style="color:var(--ink2);text-align:left"><th style="padding:6px 0">이름</th><th>역할</th></tr>
+    {% for m in 회원 %}
+    <tr style="border-top:1px solid var(--line)">
+      <td style="padding:8px 0"><code>{{ m.name }}</code></td><td>{{ m.role }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% include "foot.html" %}

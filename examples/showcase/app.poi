@@ -1,0 +1,127 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  POI 쇼케이스 — POI 로만 작성한 웹사이트 (server + render + auth)  ║
+# ║  실행:  poi run examples/showcase/app.poi   →  http://127.0.0.1:8080 ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+버전 = system.poi_version()
+
+# ── 데이터 (실제 SQLite, 0 설정) ─────────────────────────────────────
+db = database(":memory:")
+db.exec("create table hit(id integer primary key, path text, at text)")
+db.exec("create table member(id integer primary key, name text, pw text, role text)")
+db.run("insert into member(name, pw, role) values(?, ?, ?)",
+       ["admin", auth.hash("poi"), "관리자"])
+db.run("insert into member(name, pw, role) values(?, ?, ?)",
+       ["siwon", auth.hash("1234"), "개발자"])
+
+특징 = [
+    { icon: "◆", title: "파이썬을 안 버린다", body: "numpy·pandas·torch 전부 첫날부터. use py:이름 하나면 끝." },
+    { icon: "◈", title: "문법이 자유롭다", body: "중괄호·들여쓰기·콜론·end — 아무거나. 파이썬 def·elif·lambda 도 그대로 흡수." },
+    { icon: "◉", title: "웹·GUI가 기본기", body: "server { get \"/\" { } } 로 서버, uikit 으로 창. Hello World 다음이 창 띄우기." },
+    { icon: "◇", title: "오류는 사람 말로", body: "파이썬 traceback 대신 P-코드 + POI 줄 + 해결 힌트." },
+    { icon: "○", title: "빠르다", body: "컴파일 캐시 — 안 바뀐 파일은 변환을 통째로 건너뛴다 (39배)." },
+    { icon: "●", title: "안전하게 실행", body: "--safe 샌드박스 + 프로세스 격리. 모르는 코드도 '실행해 보세요'가 위험하지 않게." }
+]
+
+로드맵 = [
+    { v: "v1.6", t: "웹 — server / webapp" },
+    { v: "v1.7", t: "표준 라이브러리 · 백엔드 · IDLE" },
+    { v: "v1.10", t: "AI 모듈 · 구조 분해" },
+    { v: "v1.11", t: "확장성 · uikit GUI · 사진 편집기" },
+    { v: "v1.12", t: "동시성 · 네트워크 · 폴리글롯" },
+    { v: "v1.13", t: "전문화 — 캐시 · 웹 템플릿 · auth" }
+]
+
+fn 회원찾기(이름)
+    return db.one("select * from member where name = ?", [이름])
+
+# ── 미들웨어 ────────────────────────────────────────────────────────
+on_request((req) => {
+    db.run("insert into hit(path, at) values(?, ?)", [req.path, time.now()])
+    return null
+})
+on_request(auth.guard("/login", only: ["/dashboard"]))
+on_response((req, res) => res)          # (자리표시 — 그대로 통과)
+
+# ── 사이트 ──────────────────────────────────────────────────────────
+server {
+    static "examples/showcase/static"
+
+    get "/" {
+        render("landing.html", {
+            제목: "홈", 버전: 버전, 특징: 특징, 로드맵: 로드맵,
+            방문수: db.value("select count(*) from hit"),
+            회원수: db.value("select count(*) from member")
+        })
+    }
+
+    # POI 가 POI 를 돌린다 — 브라우저에서 친 코드를 --safe 로 실행
+    get "/play" {
+        render("play.html", { 제목: "플레이그라운드", 버전: 버전 })
+    }
+    post "/api/run" {
+        코드 = body.code ?? ""
+        응답 = 코드실행(코드)
+        respond.json(응답)
+    }
+
+    get "/api/stats" {
+        경로별 = db.query("select path, count(*) c from hit group by path order by c desc limit 8")
+        respond.json({ 방문: db.value("select count(*) from hit"), 경로별: 경로별 })
+    }
+
+    get "/login" {
+        render("login.html", { 제목: "로그인", 버전: 버전, 오류: query.e ?? "" })
+    }
+    post "/login" {
+        u = 회원찾기(body.name ?? "")
+        if u == null or not auth.check(body.pw ?? "", u.pw) {
+            return redirect("/login?e=이름 또는 비밀번호가 틀렸어요")
+        }
+        respond("", 303, {
+            "Location": "/dashboard",
+            "Set-Cookie": auth.issue({ name: u.name, role: u.role })
+        })
+    }
+    get "/logout" {
+        respond("", 303, { "Location": "/", "Set-Cookie": auth.logout() })
+    }
+
+    get "/dashboard" {
+        나 = auth.current(headers)
+        경로별 = db.query("select path, count(*) c from hit group by path order by c desc limit 6")
+        최대 = db.value("select max(c) from (select count(*) c from hit group by path)")
+        막대 = []
+        for r in 경로별
+            막대 = 막대 + [{ path: r.path, c: r.c, pct: (r.c * 100) / 최대 }]
+        render("dashboard.html", {
+            제목: "대시보드", 버전: 버전, 나: 나, 막대: 막대,
+            방문수: db.value("select count(*) from hit"),
+            회원: db.query("select name, role from member")
+        })
+    }
+}
+
+# ── /api/run 구현 — 파이썬 상호운용으로 POI 컴파일러를 --safe 로 호출 ──
+python {
+    import io, contextlib, time as _t
+
+    def 코드실행(code):
+        code = str(code or "").strip()
+        if not code:
+            return {"ok": False, "out": "", "err": "코드를 입력하세요."}
+        if len(code) > 4000:
+            return {"ok": False, "out": "", "err": "너무 깁니다 (4000자 제한)."}
+        from poi.interpreter import run_source
+        buf = io.StringIO()
+        t0 = _t.perf_counter()
+        try:
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+                rc = run_source(code, "play.poi", safe=True, time_limit=3.0,
+                                output_limit=16000)
+            ms = (_t.perf_counter() - t0) * 1000
+            return {"ok": rc == 0, "out": buf.getvalue()[:16000],
+                    "err": "" if rc == 0 else "실행 실패", "ms": round(ms, 1)}
+        except Exception as e:
+            return {"ok": False, "out": buf.getvalue()[:16000], "err": str(e)}
+}
