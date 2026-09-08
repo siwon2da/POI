@@ -115,6 +115,58 @@ def _pip(root: str, args: list[str]) -> int:
     return subprocess.run([py, "-m", "pip", *args]).returncode
 
 
+# ── poi.lock — 잠금 파일 (설치된 정확한 버전을 기록해 재현 가능하게) ─────
+
+def _lock_path(root: str) -> str:
+    return os.path.join(root, "poi.lock")
+
+
+def _freeze(root: str) -> dict:
+    py = _venv_python(root)
+    if not py:
+        return {}
+    try:
+        out = subprocess.run([py, "-m", "pip", "freeze", "--all"],
+                             capture_output=True, text=True, check=False).stdout
+    except Exception:
+        return {}
+    locked = {}
+    for line in out.splitlines():
+        if "==" in line and not line.startswith(("#", "-")):
+            k, _, v = line.partition("==")
+            locked[k.strip().lower()] = v.strip()
+    return locked
+
+
+def _write_lock(root: str) -> None:
+    locked = _freeze(root)
+    if not locked:
+        return
+    p = _lock_path(root)
+    lines = ["# poi.lock — 자동 생성.  손대지 마세요.  `poi install` 이 이 버전을 씁니다.",
+             "[locked]"]
+    for k, v in sorted(locked.items()):
+        lines.append(f'{k} = "{v}"')
+    with open(p, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def _read_lock(root: str) -> dict:
+    p = _lock_path(root)
+    if not os.path.isfile(p):
+        return {}
+    locked, section = {}, None
+    for line in open(p, encoding="utf-8"):
+        s = line.strip()
+        if s.startswith("[") and s.endswith("]"):
+            section = s[1:-1]
+            continue
+        if section == "locked" and "=" in s and not s.startswith("#"):
+            k, _, v = s.partition("=")
+            locked[k.strip().lower()] = v.strip().strip('"').strip("'")
+    return locked
+
+
 def _norm(name: str) -> str:
     return name[3:] if name.startswith("py:") else name
 
@@ -133,7 +185,8 @@ def cmd_add(args: list[str]) -> int:
         base = n.split("==")[0].split(">")[0].split("<")[0].strip()
         deps[base] = ("==" + n.split("==")[1]) if "==" in n else "*"
     _write_deps(root, deps)
-    print(f"\n추가함: {', '.join(names)}   (poi.toml + {VENV})")
+    _write_lock(root)
+    print(f"\n추가함: {', '.join(names)}   (poi.toml + poi.lock + {VENV})")
     return 0
 
 
@@ -148,16 +201,35 @@ def cmd_remove(args: list[str]) -> int:
     for n in names:
         deps.pop(n.split("==")[0], None)
     _write_deps(root, deps)
+    _write_lock(root)
     print(f"제거함: {', '.join(names)}")
     return 0
 
 
-def cmd_install(_args: list[str]) -> int:
+def cmd_install(args: list[str]) -> int:
     root = "."
+    frozen = "--frozen" in args or "--locked" in args
+    lock = _read_lock(root)
     deps = _read_deps(root)
+    if lock and (frozen or not deps):
+        spec = [f"{k}=={v}" for k, v in lock.items()]
+        print(f"poi.lock 에서 정확한 버전 {len(spec)}개 설치")
+        return _pip(root, ["install", *spec])
     if not deps:
         print("poi.toml 에 [dependencies] 가 없어요.  poi add <이름> 으로 추가하세요.")
         return 0
-    spec = [k + (v if v != "*" else "") for k, v in deps.items()]
+    if lock:
+        # poi.toml 의 이름은 poi.lock 의 고정 버전으로 좁혀서 설치 (재현성)
+        spec = []
+        for k, v in deps.items():
+            if v == "*" and k.lower() in lock:
+                spec.append(f"{k}=={lock[k.lower()]}")
+            else:
+                spec.append(k + (v if v != "*" else ""))
+    else:
+        spec = [k + (v if v != "*" else "") for k, v in deps.items()]
     print("설치:", ", ".join(spec))
-    return _pip(root, ["install", *spec])
+    rc = _pip(root, ["install", *spec])
+    if rc == 0:
+        _write_lock(root)
+    return rc

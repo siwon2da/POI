@@ -880,8 +880,8 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
 <section class="band" id="roadmap">
   <div class="wrap">
     <div class="rise"><h2 class="pixel">한 언어 안에서 입문 → 전문으로</h2>
-      <p class="lede prose">v1.1 부터 v1.11 까지, 매 버전이 대규모 업데이트였습니다 —
-        작동하는 언어 → 형식 자유 → 전문 분야 → 한국어·패턴매칭 → 정적 타입 → 웹 → 표준 라이브러리·백엔드·IDLE → 언어 안정화 → POI IDLE 대개편.</p></div>
+      <p class="lede prose">v1.1 부터 v1.12 까지, 매 버전이 대규모 업데이트였습니다 —
+        작동하는 언어 → 형식 자유 → 전문 분야 → 한국어·패턴매칭 → 정적 타입 → 웹 → 표준 라이브러리·백엔드·IDLE → 언어 안정화 → POI IDLE 대개편 → AI·구조 분해 → 확장성·GUI → 동시성·네트워크.</p></div>
     <div class="road rise">
       <div class="r done"><div class="v">v1.1</div><h3>작동하는 언어</h3>
         <ul><li>Lexer · Parser · 컴파일러 · 런타임</li><li>조건·반복·함수·객체·파이프라인</li><li><b>inspect · watch · pause · --trace</b></li><li>use py: · python { } · 선언형 GUI</li><li>P-코드 오류 · 새 버전 알림 · CLI</li></ul></div>
@@ -903,10 +903,10 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
         <ul><li>라이트 모드 기본 · 메뉴바 · 툴바</li><li><b>웹 서버 임시 켜기</b> — F5 로 <code>server</code>/<code>webapp</code> → 브라우저 자동 + 실시간 로그</li><li><b>하온</b> — 로컬 에이전트, 실제 컴파일러로 오류 자동 수정 (Groq/Ollama·GPU)</li></ul></div>
       <div class="r done"><div class="v">v1.10</div><h3>AI 모듈 · 구조 분해</h3>
         <ul><li><code>ai.chat/ask/code</code> — import 없이 (하온 백엔드 공유)</li><li><code>{ name, age } = user</code> · <code>[a, b] = pair</code></li><li>안전 모드에서 <code>ai</code>·<code>system</code>·<code>dotenv</code> 차단</li></ul></div>
-      <div class="r done now"><div class="v">v1.11</div><h3>확장성 · GUI · 사진 편집기</h3>
+      <div class="r done"><div class="v">v1.11</div><h3>확장성 · GUI · 사진 편집기</h3>
         <ul><li><code>use pkg:이름</code> 재사용 모듈 · <code>poi add</code> 프로젝트 <code>.venv</code></li><li><code>uikit</code> — 명령형 GUI (slider·canvas·menu·<code>state</code>/<code>watch</code>)</li><li><b><code>poi photo</code></b> — POI 로 쓴 사진 편집기 (보정·필터·회전·undo)</li></ul></div>
-      <div class="r"><div class="v">v1.12</div><h3>동시성 · 네트워크</h3>
-        <ul><li><code>async fn</code> / <code>await</code> · <code>every 1 second</code></li><li><code>net</code>(소켓·websocket) · <code>poi.lock</code> · 레지스트리</li><li><code>poi fmt</code> CST 전면 재작성</li></ul></div>
+      <div class="r done now"><div class="v">v1.12</div><h3>확장성 · 동시성 · 네트워크</h3>
+        <ul><li><code>task.run/all/channel</code> · 문장 <code>background { }</code> · <code>every 1 second { }</code></li><li><code>http.get/post</code> (JSON 자동) · <code>net.tcp</code> · 블록 화살표 함수 <code>() => { }</code></li><li><code>poi.lock</code> — <code>poi install --frozen</code> 재현 설치</li></ul></div>
       <div class="r"><div class="v">v2.0</div><h3>문법 정리 · 생태계</h3>
         <ul><li>블록은 <code>{ }</code>+들여쓰기만 정식 (<code>end</code>·콜론 정리)</li><li>POI Language Server · VS Code 확장 · <code>poi doctor</code></li><li>문법 고정 · play.poi.dev (브라우저 실행)</li></ul></div>
     </div>
@@ -920,9 +920,9 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <p class="lede prose">파이썬이 없어도 됩니다. <code>poi.exe</code> 하나로 끝.</p></div>
 
     <div class="dl rise">
-      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.11.0.exe">
+      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.12.0.exe">
         <span class="dl-k">Windows 설치 마법사</span>
-        <span class="dl-t">poi-setup-1.11.0.exe</span>
+        <span class="dl-t">poi-setup-1.12.0.exe</span>
         <span class="dl-s">더블클릭 → 다음 → 설치. 파이썬 불필요</span>
       </a>
       <div class="dl-alt">
@@ -986,7 +986,7 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <span>MIT License</span><span>·</span>
       <a href="https://github.com/siwon2da/POI">github.com/siwon2da/POI</a><span>·</span>
       <a href="https://hagora.kr/poi/">hagora.kr/poi</a><span>·</span>
-      <span>made by SIWON</span><span>·</span><span>v1.11.0</span>
+      <span>made by SIWON</span><span>·</span><span>v1.12.0</span>
     </div>
   </div>
 </footer>

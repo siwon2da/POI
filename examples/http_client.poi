@@ -1,0 +1,12 @@
+# HTTP 클라이언트 — http 모듈 (v1.12).   실행:  poi run examples/http_client.poi
+응답 = http.get("https://api.github.com/repos/python/cpython",
+                headers: { Accept: "application/vnd.github+json" })
+show "상태 {응답.status} · ok {응답.ok}"
+if 응답.ok
+    저장소 = 응답.json
+    show "{저장소.full_name} — 별 {저장소.stargazers_count}개"
+    show "설명: {저장소.description}"
+
+# POST (JSON 자동 직렬화) — httpbin 에 그대로 돌려받기
+에코 = http.post("https://httpbin.org/post", json: { 이름: "시원", 버전: "1.12" })
+show "에코된 이름: {에코.json.json.이름}"

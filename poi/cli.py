@@ -25,7 +25,8 @@ POI v{ver}  -  Power Of Imagination
   poi build <파일.poi> [-o 이름]        단일 실행파일(.exe) 로 빌드
   poi idle [파일.poi]                  POI IDLE — POI 로 만든 코드 편집기
   poi photo [사진]                     POI 로 만든 사진 편집기 (Pillow 필요)
-  poi add / remove / install          프로젝트 파이썬 의존성 (.venv + poi.toml)
+  poi add / remove / install          프로젝트 파이썬 의존성 (.venv + poi.toml + poi.lock)
+       install --frozen               poi.lock 그대로 설치 (재현용)
   poi fmt [파일 | .] [--check]         소스 정리 (탭·공백·들여쓰기)
   poi lint [파일 | .] [--strict]       안 쓴 변수 등 가벼운 점검
   poi serve [폴더] [--port 8900]       플레이그라운드 서버 (정적 서빙 + 안전 실행 /run)

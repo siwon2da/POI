@@ -19,9 +19,12 @@ _STD_MODULES = {"file", "json", "web", "math", "time", "ui", "gui",
                 "ai",
                 # v1.11 — GUI 라이브러리
                 "uikit", "유아이", "지유아이",
+                # v1.12 — 동시성 · 네트워크
+                "task", "http", "net",
                 # 한국어 별칭
                 "암호", "비밀번호", "토큰", "경로", "주소", "압축", "기록",
-                "캐시", "성능측정", "시스템"}
+                "캐시", "성능측정", "시스템",
+                "작업", "동시성", "요청", "망", "네트워크"}
 
 
 class Transpiler:
@@ -77,7 +80,8 @@ class Transpiler:
         self.ind -= 1
 
     _NO_TRACE = {"PyBlock", "FnDecl", "App", "GWindow", "GText", "GButton",
-                 "GRow", "GColumn", "GCard", "GInput", "GState", "GOn", "TestBlock"}
+                 "GRow", "GColumn", "GCard", "GInput", "GState", "GOn", "TestBlock",
+                 "Background", "Every"}
 
     def stmt(self, n):
         k = n.kind
@@ -141,6 +145,16 @@ class Transpiler:
             self._match(n)
         elif k == "PyBlock":
             self._pyblock(n)
+        elif k == "Background":
+            fn = f"_poi_bg{self._next_h()}"
+            self.emit(f"def {fn}():", n.line)
+            self.block(n.body)
+            self.emit(f"task.run({fn})", n.line)
+        elif k == "Every":
+            fn = f"_poi_every{self._next_h()}"
+            self.emit(f"def {fn}():", n.line)
+            self.block(n.body)
+            self.emit(f"task.every({self.ex(n.seconds)}, {fn})", n.line)
         elif k == "App":
             self._app(n)
         elif k == "Server":
@@ -510,6 +524,11 @@ class Transpiler:
             return f"({self.ex(n.body)} if {self.ex(n.cond)} else {self.ex(n.alt)})"
         if k == "Lambda":
             params = ", ".join(n.params)
+            if getattr(n, "is_block", False):
+                name = f"_poi_lam{self._next_h()}"
+                self.emit(f"def {name}({params}):", n.line)
+                self.block(n.body)
+                return name
             return f"(lambda {params}: {self.ex(n.body)})"
         if k == "Coalesce":
             return (f"poi_coalesce(lambda: {self.ex(n.left)}, "

@@ -1,0 +1,40 @@
+# 동시성 — task · channel · background · every   (v1.12)
+#   실행:  poi run examples/concurrency.poi
+
+# 1) 병렬 map — 5개 작업을 동시에
+fn 무겁게(n)
+    task.sleep(0.05)
+    return n * n
+
+시작 = task.now()
+결과들 = task.all(무겁게, [1, 2, 3, 4, 5])
+show "결과 {결과들}   ({task.now() - 시작 |> (s => s * 1000) } ms — 순차라면 250ms)"
+
+# 2) 핸들 — 지금 시작해 놓고 나중에 결과 받기
+핸들 = task.run(() => { task.sleep(0.03); return "완료!" })
+show "다른 일 하는 중..."
+show task.wait(핸들)
+
+# 3) 채널 — 생산자/소비자
+큐 = task.channel()
+fn 생산자()
+    for i in 1..5
+        큐.send("항목 {i}")
+    큐.close()
+task.run(생산자)
+for 항목 in 큐
+    show "받음: {항목}"
+
+# 4) background + every + 공유 상태(Box)
+상태 = { 틱: 0, 합: 0 }
+
+타이머 = task.every(0.02, () => { 상태.틱 = 상태.틱 + 1 })
+
+background {
+    for i in 1..10
+        상태.합 = 상태.합 + i
+}
+
+task.sleep(0.15)
+타이머.stop()
+show "틱 {상태.틱}회, 합 {상태.합}"

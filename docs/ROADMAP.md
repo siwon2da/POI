@@ -20,7 +20,16 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.11 — 확장성 · GUI 라이브러리 · 사진 편집기  ✅ (현재)
+## v1.12 — 확장성: 동시성 · 네트워크  ✅ (현재)
+
+- [x] **`task`** — `run/wait/gather/all/race/map/sleep`, `channel`(스레드 큐), `every`/`after` 타이머, `lock`, `cpu_count`. import 없이
+- [x] **문장 문법** — `background { }` · `every 1 second { }` (ms·sec·min·hour·초·분·시간)
+- [x] **`http`** — `get/post/put/patch/delete/request/download`, 응답 `Box{status,ok,text,json,headers,url}`, 4xx/5xx 도 응답
+- [x] **`net`** — 원시 TCP (`tcp/connect · listen · resolve · local_ip · free_port`)
+- [x] 안전 모드 — `http`·`net`·`task`·`background`·`every` 차단 (P210/P211)
+- [x] **`poi.lock`** — `poi add`/`install` 이 정확한 버전 기록, `poi install --frozen` 재현 설치
+
+## v1.11 — 확장성 · GUI 라이브러리 · 사진 편집기  ✅
 
 - [x] **`use pkg:이름`** — `poi_modules/` · `~/.poi/modules/` · `POI_PATH` 에서 재사용 모듈 로드 (export 존중)
 - [x] **`poi add / remove / install`** — 프로젝트 `.venv` + `poi.toml [dependencies]`, `poi run` 자동 활성화
@@ -124,15 +133,11 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [x] Windows 설치 마법사 (`poi.iss` + `install.ps1`) · 로고 · 회귀 테스트 14개
 - [x] 한생(Galmuri)/토스 감성 소개 페이지 (hagora.kr/poi)
 
-## v1.12 — 동시성 · 네트워크
+## v1.13 — 남은 확장성 · 웹 · GUI 심화
 
-- [ ] `poi.lock` · POI 패키지 레지스트리 · `poi add` 로 POI 모듈 설치
-- [ ] `every 1 second { }` · `background { }` · `async fn` / `await` 고수준 동시성
-- [ ] `net`(소켓/websocket) · 고수준 `http` 클라이언트
+- [ ] POI 패키지 레지스트리 (`poi add pkg:이름` 으로 원격 POI 모듈 설치) · `poi publish`
+- [ ] `task` 위 `async fn` / `await` 문법 설탕, websocket 클라이언트/서버
 - [ ] `poi fmt` CST 기반 전면 재작성 (콜론/`end` → 중괄호 통일), `poi lint` 규칙 확장
-
-## v1.13 — 웹 · GUI 심화
-
 - [ ] 클라이언트 반응형 (state 변경 → 부분 갱신, 새로고침 없이), 세션/인증 헬퍼, 미들웨어
 - [ ] `poi build --web` (정적 번들)
 - [ ] 반응형 GUI 렌더, `grid`, 전역 `style`, 웹뷰 / Qt 백엔드

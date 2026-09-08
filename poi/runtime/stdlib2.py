@@ -476,10 +476,15 @@ ai = SimpleNamespace(
 
 
 from .uikit import uikit as _uikit
+from .concurrency import task as _task
+from .net import http as _http, net as _net
 
 MODULES = {
     "ai": ai,
     "uikit": _uikit,
+    "task": _task,
+    "http": _http,
+    "net": _net,
     "crypto": crypto,
     "password": password,
     "jwt": jwt,
@@ -500,4 +505,5 @@ KO_MODULES = {
     "암호": crypto, "비밀번호": password, "토큰": jwt, "경로": path,
     "주소": url, "압축": compress, "기록": log, "캐시": cache,
     "성능측정": bench, "시스템": system, "유아이": _uikit, "지유아이": _uikit,
+    "작업": _task, "동시성": _task, "요청": _http, "망": _net, "네트워크": _net,
 }

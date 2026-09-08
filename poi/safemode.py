@@ -40,7 +40,10 @@ _FORBIDDEN_STD = {"file", "web", "gui", "ui", "env", "shell",
                   "dotenv", "system", "compress",
                   "압축", "시스템",
                   # v1.10/1.11 — 외부 LLM · GUI
-                  "ai", "uikit", "유아이", "지유아이"}
+                  "ai", "uikit", "유아이", "지유아이",
+                  # v1.12 — 네트워크 · 백그라운드 스레드
+                  "http", "net", "task",
+                  "요청", "망", "네트워크", "작업", "동시성"}
 
 
 def safe_builtins() -> dict:
@@ -74,6 +77,9 @@ def harden_globals(g: dict) -> dict:
     g["shell"] = _Denied("셸/외부 명령")
     g["env"] = _Denied("환경변수")
     g["ai"] = _Denied("AI(외부 LLM) 호출")
+    g["http"] = _Denied("네트워크 요청")
+    g["net"] = _Denied("네트워크")
+    g["task"] = _Denied("백그라운드 작업")
     g["system"] = _Denied("시스템 정보")
     g["dotenv"] = _Denied(".env 읽기")
     g["compress"] = _Denied("압축")
@@ -102,6 +108,10 @@ def assert_safe(program) -> None:
         if k in ("Server", "WebApp"):
             raise POIError("안전 모드에서는 server / webapp (포트 열기) 를 쓸 수 없습니다.",
                            "P211", getattr(node, "line", None))
+        if k in ("Background", "Every"):
+            raise POIError(
+                "안전 모드에서는 background / every (백그라운드 스레드) 를 쓸 수 없습니다.",
+                "P211", getattr(node, "line", None))
         if k == "PyBlock":
             raise POIError("안전 모드에서는 python { ... } 블록을 쓸 수 없습니다.",
                            "P211", getattr(node, "line", None),

@@ -14,6 +14,15 @@ _GUI_WORDS = {"window", "text", "title", "button", "row", "column",
               "grid", "card", "input", "password", "state", "on"}
 _EXPR_START_KEYWORDS = {"true", "false", "null", "not", "ask", "match"}
 
+# every 1 <단위> { }  — 시간 단위 → 초
+_TIME_UNITS = {
+    "ms": 0.001, "msec": 0.001, "millis": 0.001,
+    "millisecond": 0.001, "milliseconds": 0.001, "밀리초": 0.001,
+    "s": 1.0, "sec": 1.0, "secs": 1.0, "second": 1.0, "seconds": 1.0, "초": 1.0,
+    "m": 60.0, "min": 60.0, "mins": 60.0, "minute": 60.0, "minutes": 60.0, "분": 60.0,
+    "h": 3600.0, "hr": 3600.0, "hour": 3600.0, "hours": 3600.0, "시간": 3600.0,
+}
+
 # 다른 언어 습관 → POI 로 안내 (문장 첫머리에서만)
 _FOREIGN_HINT = {
     "elif": "else if", "elsif": "else if", "elseif": "else if",
@@ -208,6 +217,20 @@ class Parser:
             if t.value == "match":
                 return self._match_stmt()
 
+        # background { ... }  — 백그라운드 스레드로 실행
+        if t.type == "IDENT" and t.value == "background" \
+                and self.peek(1).type == "OP" and self.peek(1).value == "{":
+            self.advance()
+            return Node("Background", line=t.line, body=self._brace_block())
+
+        # every 1 second { ... }  — 프로그램이 사는 동안 반복
+        if t.type == "IDENT" and t.value == "every" \
+                and not (self.peek(1).type == "OP"
+                         and self.peek(1).value in ("=", ".", "(", "[", ",")):
+            ev = self._every_stmt()
+            if ev is not None:
+                return ev
+
         # app "제목" { ... }
         if t.type == "IDENT" and t.value == "app" and self.peek(1).type == "STRING" \
                 and self.peek(2).type == "OP" and self.peek(2).value == "{":
@@ -308,6 +331,26 @@ class Parser:
         body, style = self.block(opener_col=t.col)
         self._end(style)
         return Node("While", line=t.line, cond=cond, body=body)
+
+    def _every_stmt(self):
+        """every <수> <단위>? { ... }  → Every.  아니면 되돌리고 None."""
+        save = self.i
+        t = self.advance()  # every
+        try:
+            amount = self._addsub()
+        except POIError:
+            self.i = save
+            return None
+        secs = amount
+        if self.check("IDENT") and self.peek().value in _TIME_UNITS:
+            mult = _TIME_UNITS[self.advance().value]
+            if mult != 1.0:
+                secs = Node("BinOp", line=t.line, op="*", left=amount,
+                            right=Node("Num", line=t.line, value=mult))
+        if not self.check("OP", "{"):
+            self.i = save
+            return None
+        return Node("Every", line=t.line, seconds=secs, body=self._brace_block())
 
     def _range(self):
         node = self._addsub()
@@ -791,6 +834,9 @@ class Parser:
         if t.type == "IDENT" and self.peek(1).type == "OP" and self.peek(1).value == "=>":
             self.advance()
             self.advance()
+            if self.check("OP", "{"):
+                return Node("Lambda", line=t.line, params=[t.value],
+                            body=self._brace_block(), is_block=True)
             return Node("Lambda", line=t.line, params=[t.value], body=self.expression())
         # ( a, b ) => ...
         if t.type == "OP" and t.value == "(":
@@ -811,6 +857,9 @@ class Parser:
                     break
             if ok and self.match("OP", ")") and self.check("OP", "=>"):
                 self.advance()
+                if self.check("OP", "{"):
+                    return Node("Lambda", line=t.line, params=params,
+                                body=self._brace_block(), is_block=True)
                 return Node("Lambda", line=t.line, params=params, body=self.expression())
             self.i = save
         return None

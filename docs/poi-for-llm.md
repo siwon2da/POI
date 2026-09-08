@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.11**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
+> 버전 기준: **POI v1.12**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
 
 ---
 
@@ -354,6 +354,40 @@ show ver
 
 한국어 별칭: `암호`(crypto) `비밀번호`(password) `경로`(path) `주소`(url) `압축`(compress) `기록`(log) `캐시`(cache) `시스템`(system).
 
+### 동시성 · 네트워크 (v1.12) — import 없이, 안전 모드 전부 차단
+
+| 모듈 | 함수 |
+|---|---|
+| `task` | `run(fn,*a) wait(h) gather(hs) all(fn,목록) race([fn…]) map(fn,목록,workers=8) sleep(초) every(초,fn) after(초,fn) channel(크기=0) lock() cpu_count()` |
+| `http` | `get(url,headers?,params?) post(url,body?,json?,headers?) put patch delete request(method,url,…) download(url,경로)` → `Box{status,ok,text,json,headers,url}` |
+| `net` | `tcp(host,port,timeout?) connect listen(port,fn,host?) resolve(host) hostname() local_ip() free_port() get_json(url)` |
+
+```poi
+show task.all((x) => x * x, [1, 2, 3, 4])   # [1, 4, 9, 16]  병렬
+h = task.run(무거운작업);  show task.wait(h)
+
+ch = task.channel()
+task.run(() => { ch.send("a"); ch.close() })
+for v in ch { show v }
+
+t = task.every(1, () => show "tick")         # → .stop() 로 멈춤
+
+r = http.get("https://api.example.com/x", headers: { Authorization: 키 })
+show r.status;  show r.json.name             # JSON 자동 파싱, 4xx/5xx 도 응답
+http.post(url, json: { name: "시원" })
+```
+
+**문장 문법** (모듈 아님):
+
+```poi
+background { 오래걸리는일() }                 # 백그라운드 스레드로
+every 1 second { 상태.n = 상태.n + 1 }        # 프로그램이 사는 동안 반복
+every 250 ms { … }   # 단위: ms · s/sec/second(s) · m/min/minute(s) · h/hour(s) · 초 · 분 · 시간
+```
+
+`background`/`every`/`task` 안의 함수도 `fn` 과 같아서 **바깥 변수는 읽기만** — 공유 상태는 Box(`상태.x = …`).
+한국어 별칭: `작업`(task) · `요청`(http) · `망`/`네트워크`(net).
+
 ---
 
 ## 14. 데이터베이스 — `database(...)` (import 없이, 0설정 SQLite)
@@ -497,7 +531,8 @@ app "제목" {
 ### 안전 모드 `--safe` 가 막는 것
 
 `python { }` · `use py:` · `use pyfile` · `file.*` · `web.*` · `shell.*` · `env.*` · `system.*` ·
-`compress.*` · `dotenv.*` · `database(...)` · `server`/`webapp` · 위험한 파이썬 내장 · 무한 루프 · 출력 폭탄.
+`compress.*` · `dotenv.*` · `database(...)` · `server`/`webapp` · `http.*` · `net.*` · `task.*` ·
+`background`/`every` · `ai.*` · `uikit.*` · 위험한 파이썬 내장 · 무한 루프 · 출력 폭탄.
 `crypto` `password` `jwt` `path` `url` `html` `cache` `bench` `log` `math` `json` `regex` 등은 허용.
 
 ---
@@ -532,3 +567,5 @@ app "제목" {
 > `try/except→try/catch`, `raise "msg"`. 변수는 그냥 `x = 1`. 블록은 `{ }` 또는 들여쓰기.
 > 표준 모듈(math, file, json, crypto, jwt, password, path, url, database, …)은 import 없이 바로.
 > 파이썬 라이브러리는 `use py:이름`. 웹은 `server { get "/" { } }` / `webapp { page "/" { } }`.
+> 동시성: `task.run/wait/all/channel`, 문장 `background { }` · `every 1 second { }`.
+> 네트워크: `http.get/post(url, json:{})` → `r.status/r.json`, `net.tcp(host,port)`. (안전 모드 차단)

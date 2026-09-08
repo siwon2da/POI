@@ -1,4 +1,4 @@
-# POI v1.11 문법 명세
+# POI v1.12 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -342,6 +342,49 @@ poi install               # poi.toml 의 의존성 전부
 
 `.venv` 가 있으면 `poi run` 이 자동으로 그 site-packages 를 import 경로 앞에 넣는다.
 
+### 동시성 — `task` · `background` · `every` (v1.12)
+
+```poi
+fn 제곱(x) => x * x
+show task.all(제곱, [1, 2, 3, 4])       # [1, 4, 9, 16]  전부 병렬
+h = task.run(무거운작업)                 # 바로 시작, 핸들
+show task.wait(h)                       # 결과 (오류는 그대로 다시 던짐)
+
+ch = task.channel()                     # 스레드 사이 큐
+task.run(() => ch.send(1))
+for v in ch { show v }                  # close 까지 순회
+
+background { 긴계산() }                  # 백그라운드 스레드
+every 1 second { 상태.틱 = 상태.틱 + 1 } # 프로그램이 사는 동안 반복
+every 500 ms { ... }                    # ms · sec/second(s) · min/minute(s) · hour(s) · 초 · 분 · 시간
+```
+
+`task`: `run · wait · gather · all(fn,목록) · race([...]) · map(fn,목록,workers=8) ·
+sleep(초) · every/after(초,fn)→타이머(.stop()) · channel()(.send .recv .close .take_all, for 순회) ·
+lock()(.run(fn)) · cpu_count()`. 스레드 기반 — `fn` 처럼 바깥 변수는 읽기만, 공유 상태는 Box 로.
+
+### 네트워크 — `http` · `net` (v1.12)
+
+```poi
+r = http.get("https://api.example.com/x", headers: { Authorization: 키 })
+show r.status                          # 200 ;  r.ok / r.text / r.json / r.headers / r.url
+http.post(url, json: { name: "시원" }) # body: 는 폼, json: 는 JSON
+http.download(url, "big.zip")
+
+s = net.tcp("example.com", 80)
+s.send("GET / HTTP/1.0\r\n\r\n")
+show s.line()
+net.listen(9010, (conn) => conn.send("hi"))
+```
+
+응답은 `Box{ status, ok, text, json, headers, url }` — 4xx/5xx 도 예외 없이 응답으로 돌려준다.
+한국어 별칭: `작업`(task) · `요청`(http) · `망`/`네트워크`(net). 안전 모드 전부 차단.
+
+### 재현 가능한 설치 — `poi.lock` (v1.12)
+
+`poi add` / `poi install` 은 설치 후 `poi.lock` 에 정확한 버전을 적는다. `poi install` 은
+lock 이 있으면 그 버전으로 좁혀 설치하고, `poi install --frozen` 은 `poi.lock` 만 그대로 설치한다.
+
 ### export (v1.8)
 
 ```poi
@@ -541,7 +584,8 @@ poi debug x.poi            # 위 전부
 
 모르는 사람의 코드를 받아 실행할 때(플레이그라운드) 쓴다. 막는 것:
 `python { }` · `use py:` · `use pyfile` · `file.*` · `web.*` · `shell.*` · `env.*` · `system.*` · `compress.*` · `dotenv.*` ·
-`database(...)` · `server`/`webapp` · 위험한 파이썬 내장(`open`/`eval`/`exec`/`__import__` 등) ·
+`database(...)` · `server`/`webapp` · `http`/`net`/`task` · `background`/`every` · `ai` · `uikit` ·
+위험한 파이썬 내장(`open`/`eval`/`exec`/`__import__` 등) ·
 무한 루프(벽시계 제한) · 출력 폭탄(바이트 상한). `crypto`·`password`·`jwt`·`path`·`url`·`html`·`cache`·`bench`·`log` 는 허용.
 `poi serve` 는 여기에 **별도 프로세스 격리**를 더한다.
 

@@ -1,5 +1,63 @@
 # 변경 이력
 
+## v1.12.0 — 2026-09-08  (대규모 업데이트 — 확장성: 동시성 · 네트워크)
+
+**동시성 — `task` (import 없이 바로)**
+```poi
+fn 제곱(x) => x * x
+show task.all(제곱, [1, 2, 3, 4, 5])      # [1, 4, 9, 16, 25]  (전부 병렬)
+
+h = task.run(무거운작업)                    # 바로 시작, 핸들 반환
+show task.wait(h)                          # 결과 (오류는 그대로 다시 던짐)
+
+ch = task.channel()                        # 스레드 사이 큐
+task.run(() => ch.send(1))
+for v in ch { show v }                     # close 까지 순회
+```
+- `task.run / wait / gather` · `task.all(fn, 목록)` · `task.race([...])` ·
+  `task.map(fn, 목록, workers=8)` (동시 개수 제한) · `task.sleep(초)` ·
+  `task.every(초, fn)` / `task.after(초, fn)` → 타이머(`.stop()`) ·
+  `task.channel()` (`.send .recv .close .take_all`, `for` 순회) ·
+  `task.lock()` (`.run(fn)` 또는 `.acquire()/.release()`) · `task.cpu_count()`
+- 스레드 기반. 새 VM·이벤트 루프 없음. 파이썬 `threading`/`queue` 만 사용.
+
+**문장 문법 — `background` · `every`**
+```poi
+background {                 # 백그라운드 스레드에서 실행
+    긴계산()
+}
+
+every 1 second {             # 프로그램이 사는 동안 반복
+    상태.틱 = 상태.틱 + 1
+}
+every 500 ms { ... }         # 단위: ms · sec/second(s) · min/minute(s) · hour(s) · 초/분/시간
+```
+- `fn` 처럼 바깥 변수는 읽기만 됨 — 공유 상태는 Box(`상태.x = ...`)로.
+
+**네트워크 — `http` · `net` (import 없이, 안전 모드 차단)**
+```poi
+r = http.get("https://api.example.com/things", headers: { Authorization: 키 })
+show r.status                              # 200
+show r.json.items[0].name                  # JSON 자동 파싱
+http.post(url, json: { name: "시원" })
+http.download("https://.../big.zip", "big.zip")
+
+s = net.tcp("example.com", 80)             # 원시 TCP
+s.send("GET / HTTP/1.0\r\n\r\n")
+show s.line()
+net.listen(9010, (conn) => conn.send("hi"))  # 연결마다 스레드
+```
+- `http.get/post/put/patch/delete/request/download` — `urllib` 만. 응답 =
+  `Box{ status, ok, text, json, headers, url }`. 4xx/5xx 도 예외 없이 응답으로.
+- `net.tcp/connect · listen · resolve · local_ip · free_port · hostname`
+- 한국어 별칭: `작업`(task) · `요청`(http) · `망`/`네트워크`(net)
+- 안전 모드: `http` · `net` · `task` · `background` · `every` 전부 차단 (P210/P211)
+
+**`poi.lock` — 재현 가능한 설치**
+- `poi add` / `poi install` 이 설치 후 `poi.lock` 에 정확한 버전을 기록.
+- `poi install` 은 lock 이 있으면 그 버전으로 좁혀 설치. `poi install --frozen` 은
+  `poi.lock` 만 그대로 설치 (CI 재현용).
+
 ## v1.11.0 — 2026-09-08  (대규모 업데이트 — 확장성 · GUI 라이브러리 · 사진 편집기)
 
 **확장성 — 재사용 모듈 & 패키지**
