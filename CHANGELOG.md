@@ -1,5 +1,23 @@
 # 변경 이력
 
+## v1.9.1 — 2026-09-08
+
+**하온 백엔드 확장** — Groq · 로컬 Ollama · 자동 설치
+- **Groq** — `GROQ_API_KEY` 환경변수 / `~/.poi/groq.key` / `.env` 에서 키를 자동으로 찾아 사용
+  (`llama-3.3-70b-versatile`). **사용자별 레이트 리밋** 기본 5분에 12회
+  (`POI_HAON_MAX` / `POI_HAON_WINDOW`), 초과 시 규칙 기반으로 안내
+- **로컬 Ollama** — 돌고 있으면 그걸로 (GPU 자동)
+- **`⬇ 로컬 LLM 자동 설치·실행`** — 둘 다 없을 때 버튼 한 번으로:
+  winget(또는 OllamaSetup.exe) 로 Ollama 설치 → `ollama serve` → `qwen2.5-coder:1.5b` pull,
+  진행 상황을 하온 패널에 스트리밍. 끝나면 자동으로 LLM 모드 전환
+- 우선순위: Groq → Ollama → 규칙 기반. 규칙 기반 오토픽스는 항상 동작
+- 하온 패널 뱃지가 현재 백엔드/남은 횟수 표시
+
+**문서** — 문법 문서의 `§반복` 예제가 `users`/`n` 을 안 만들고 써서 붙여넣어 실행하면
+P102 가 나던 것을, 그 자체로 실행되도록 수정.
+
+---
+
 ## v1.9.0 — 2026-09-08  (대규모 업데이트 — POI IDLE 대개편)
 
 POI IDLE 을 본격 편집기로. (언어 자체는 v1.8 그대로 + 웹서버 non-blocking `start()`.)

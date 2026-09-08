@@ -271,11 +271,17 @@ python {
     def _haon_badge():
         if not _haon:
             return "하온 — 사용 불가"
-        g = _HAON.get("gpu") or "CPU"
-        if _HAON.get("mode") == "llm":
-            return "하온 · LLM (%s)  ·  %s" % (
-                (_HAON["models"][0] if _HAON.get("models") else "ollama"), g)
-        return "하온 · 규칙 기반  ·  GPU: %s (Ollama 설치 시 LLM)" % g
+        m = _HAON.get("mode")
+        if m == "groq":
+            left, wait = _haon.rate_state()
+            return "하온 · Groq (%s)  ·  이번 창에서 %d번 더 (5분 창)" % (
+                _HAON.get("groq_model", "llama-3.3"), left)
+        if m == "ollama":
+            return "하온 · 로컬 LLM (%s)  ·  %s" % (
+                (_HAON["models"][0] if _HAON.get("models") else "ollama"),
+                _HAON.get("gpu") or "CPU")
+        return ("하온 · 규칙 기반 (실제 컴파일러로 오류 수정).  "
+                "Groq 쓰려면 GROQ_API_KEY 또는 ~/.poi/groq.key")
 
     def _haon_ask(q, code):
         def job():
@@ -292,6 +298,26 @@ python {
                 _HAON_Q.put(("fix", new, "\n".join(log)))
             except Exception as e:
                 _HAON_Q.put(("say", "자동 수정 오류: %s" % e))
+        threading.Thread(target=job, daemon=True).start()
+
+    _HAON_BUSY = {"v": False}
+
+    def _haon_install():
+        if _HAON_BUSY["v"] or not _haon:
+            return
+        _HAON_BUSY["v"] = True
+
+        def job():
+            try:
+                ok = _haon.ensure_model(lambda s: _HAON_Q.put(("say", s)))
+                if ok:
+                    _HAON.clear()
+                    _HAON.update(_haon.detect())
+                    _HAON_Q.put(("badge", ""))
+            except Exception as e:
+                _HAON_Q.put(("say", "설치 오류: %s" % e))
+            finally:
+                _HAON_BUSY["v"] = False
         threading.Thread(target=job, daemon=True).start()
 
     def _haon_drain():
@@ -748,12 +774,21 @@ fn 하온펌프()
     for 항목 in _haon_drain()
         if 항목[0] == "say"
             하온기록("하온 ▸ " + 항목[1])
+        else if 항목[0] == "badge"
+            W.haon_sub.config(text: _haon_badge())
+            하온기록("하온 ▸ 이제 로컬 LLM 으로 답합니다.")
         else if 항목[0] == "fix"
             본문설정(항목[1])
             S.dirty = true
             제목갱신()
             하온기록("하온 ▸ 수정했어요.\n" + 항목[2])
     W.root.after(120, 하온펌프)
+
+fn 하온설치()
+    if not S.haon_open
+        하온토글()
+    하온기록("로컬 LLM 을 자동으로 설치·실행할게요. (Ollama + 작은 코더 모델, 1~2GB)")
+    _haon_install()
 
 # 부팅 스플래시 — 문어 로고가 콘솔에 쫘라락 (파란색)
 S.splash = 0
@@ -943,7 +978,11 @@ W.haon_log.pack(side: "top", fill: "both", expand: true, padx: 8, pady: 8)
 W.haon_fix = tk.Button(W.haon_frame, text: "🔧  이 파일 오류 자동 수정", command: 하온고치기,
                        bg: "#3182f6", fg: "#ffffff", relief: "flat", font: ui,
                        pady: 8, borderwidth: 0, cursor: "hand2")
-W.haon_fix.pack(side: "top", fill: "x", padx: 8)
+W.haon_fix.pack(side: "top", fill: "x", padx: 8, pady: 2)
+W.haon_llm = tk.Button(W.haon_frame, text: "⬇  로컬 LLM 자동 설치·실행", command: 하온설치,
+                       bg: T.line, fg: T.ink, relief: "flat", font: ui,
+                       pady: 6, borderwidth: 0, cursor: "hand2")
+W.haon_llm.pack(side: "top", fill: "x", padx: 8, pady: 2)
 W.haon_in = tk.Entry(W.haon_frame, font: ui, relief: "flat", bg: T.bg, fg: T.ink,
                      insertbackground: T.blue)
 W.haon_in.pack(side: "top", fill: "x", padx: 8, pady: 8, ipady: 6)
