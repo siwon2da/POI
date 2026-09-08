@@ -1,0 +1,12 @@
+{
+  "updated": "2026-09-09",
+  "note": "POI 패키지 레지스트리. 항목 추가는 github.com/siwon2da/POI 에 PR.",
+  "packages": {
+    "도형": {
+      "version": "1.0.0",
+      "summary": "넓이·둘레 등 기본 도형 계산 (예제 모듈)",
+      "url": "https://hagora.kr/poi/registry/pkg/도형-1.0.0.zip",
+      "author": "poi"
+    }
+  }
+}
