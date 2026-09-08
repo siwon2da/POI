@@ -204,11 +204,15 @@ grade = match score {
 ## 8. 반복
 
 ```poi
+users = ["시원", "예성"]
+
 repeat 10 { show "안녕" }              # 10번
 repeat 10 as i { show i }              # i = 0..9
 for user in users { show user }        # 배열 순회
 for i in 1..10 { show i }              # 범위 (양끝 포함)
 for i in 1..<10 { show i }             # 10 미포함
+
+n = 3
 while n > 0 { n = n - 1 }              # 조건 반복
 
 repeat 100 as i {
