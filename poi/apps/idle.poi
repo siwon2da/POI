@@ -307,6 +307,11 @@ python {
         parent.after(60, refresh)
         return g, refresh
 
+    try:
+        from poi.octopus_art import LINES as OCTO
+    except Exception:
+        OCTO = []
+
     SAMPLE = (
         '# POI 에 오신 걸 환영해요. F5 를 누르면 실행됩니다.\n\n'
         'show "안녕하세요, POI!"\n\n'
@@ -474,6 +479,24 @@ fn 예제넣기()
     S.dirty = false
     제목갱신()
 
+# 부팅 스플래시 — 문어 로고가 콘솔에 쫘라락 (파란색)
+S.splash = 0
+fn 스플래시줄(줄)
+    W.out.config(state: "normal")
+    W.out.insert("end", "  " + 줄 + "\n", "octo")
+    W.out.see("end")
+    W.out.config(state: "disabled")
+
+fn 스플래시()
+    if S.splash >= len(OCTO)
+        로그("")
+        로그("POI IDLE   ·   POI {버전}   —   F5 로 실행")
+        로그("────────────────────────────────────────")
+        return
+    스플래시줄(OCTO[S.splash])
+    S.splash = S.splash + 1
+    W.root.after(16, 스플래시)
+
 # ── 창 만들기 ───────────────────────────────────────────────────────
 W.root = tk.Tk()
 W.root.geometry("1040x700")
@@ -540,6 +563,7 @@ W.out = tk.Text(W.console, height: 12, wrap: "word", font: 글꼴,
                 bg: "#0b0d10", fg: "#c9cdd6", relief: "flat",
                 padx: 16, pady: 10, state: "disabled")
 W.out.pack(side: "top", fill: "both")
+W.out.tag_configure("octo", foreground: "#5aa2ff")
 
 W.status = tk.Label(W.root, text: "  준비됨        POI {버전}", bg: "#161a20",
                     fg: "#8b95a1", font: ui, anchor: "w")
@@ -562,4 +586,5 @@ else
     예제넣기()
 커서이동(null)
 W.editor.focus_set()
+W.root.after(120, 스플래시)
 W.root.mainloop()

@@ -1,9 +1,11 @@
 """부팅 배너 — `poi` 로고가 켜질 때.
 
-터미널에서 POI 를 그냥 실행하거나 REPL 을 켜면, ASCII 블록 글자 "POI" 가
-한 줄씩 살아나고 "Power Of Imagination" 이 뜬다. 색은 #0af 계열.
+터미널에서 POI 를 그냥 실행하거나 REPL 을 켜면, 문어 로고(점자 아트)가
+위에서 아래로 쫘라락 나타나고 파란 그라데이션으로 물든 뒤
+"Power Of Imagination" 이 뜬다.
 
 끄기:  POI_NO_BANNER=1   또는   출력이 터미널이 아닐 때 자동으로 조용.
+동작만 끄기:  POI_NO_MOTION=1
 """
 from __future__ import annotations
 
@@ -11,7 +13,9 @@ import os
 import sys
 import time
 
-_ART = [
+from .octopus_art import LINES as _OCTO
+
+_WORD = [
     r" ██████╗   ██████╗  ██╗",
     r" ██╔══██╗ ██╔═══██╗ ██║",
     r" ██████╔╝ ██║   ██║ ██║",
@@ -19,8 +23,7 @@ _ART = [
     r" ██║      ╚██████╔╝ ██║",
     r" ╚═╝       ╚═════╝  ╚═╝",
 ]
-
-_ART_ASCII = [
+_WORD_ASCII = [
     r"  ____    ___    ___ ",
     r" |  _ \  / _ \  |_ _|",
     r" | |_) || | | |  | | ",
@@ -28,25 +31,28 @@ _ART_ASCII = [
     r" |_|     \___/  |___|",
 ]
 
-
-def _art_for(stream):
-    enc = (getattr(stream, "encoding", None) or "").lower()
-    if enc in ("utf-8", "utf8", "utf-16", "utf-16-le", "cp65001"):
-        return _ART
-    try:
-        "█╗╔╝".encode(enc or "ascii")
-        return _ART
-    except (LookupError, UnicodeEncodeError):
-        return _ART_ASCII
-
-# #0af 를 중심으로 한 그라데이션 (256색 xterm)
-_RAMP = ["\033[38;5;33m", "\033[38;5;39m", "\033[38;5;45m",
-         "\033[38;5;51m", "\033[38;5;45m", "\033[38;5;39m"]
-_CYAN = "\033[38;5;45m"       # ≈ #0af
-_DIM = "\033[38;5;24m"
+# 로고 파랑 그라데이션 (위=하늘색 → 아래=인디고). 256색 xterm.
+_BLUE = [117, 117, 111, 111, 75, 75, 69, 69, 63, 63, 62, 61]
+_DIM = "\033[38;5;60m"
+_INK = "\033[38;5;75m"
 _RESET = "\033[0m"
 _HIDE = "\033[?25l"
 _SHOW = "\033[?25h"
+
+
+def _fg(n: int) -> str:
+    return f"\033[38;5;{n}m"
+
+
+def _utf_ok(stream) -> bool:
+    enc = (getattr(stream, "encoding", None) or "").lower()
+    if enc in ("utf-8", "utf8", "utf-16", "utf-16-le", "cp65001"):
+        return True
+    try:
+        "⠿█╗".encode(enc or "ascii")
+        return True
+    except (LookupError, UnicodeEncodeError):
+        return False
 
 
 def _enabled(stream) -> bool:
@@ -64,8 +70,7 @@ def show(stream=None, animate: bool = True) -> None:
     if not _enabled(out):
         return
 
-    # Windows 콘솔 ANSI 켜기
-    if os.name == "nt":
+    if os.name == "nt":                       # Windows 콘솔 ANSI 켜기
         try:
             import ctypes
             k = ctypes.windll.kernel32
@@ -74,37 +79,44 @@ def show(stream=None, animate: bool = True) -> None:
         except Exception:
             pass
 
-    reduce = os.environ.get("POI_NO_MOTION") or not animate
-    art = _art_for(out)
+    reduce = bool(os.environ.get("POI_NO_MOTION")) or not animate
+    utf = _utf_ok(out)
+    word = _WORD if utf else _WORD_ASCII
     try:
         out.write("\n")
         if not reduce:
             out.write(_HIDE)
-        for i, line in enumerate(art):
-            color = _RAMP[i % len(_RAMP)]
-            if reduce:
-                out.write(f"{color}{line}{_RESET}\n")
-            else:
-                # 왼쪽에서 오른쪽으로 쓸어 나타나기
-                for j in range(2, len(line) + 1, 3):
-                    out.write(f"\r{color}{line[:j]}{_RESET}")
+
+        if utf:
+            n = len(_OCTO)
+            for i, line in enumerate(_OCTO):
+                col = _fg(_BLUE[min(len(_BLUE) - 1, i * len(_BLUE) // n)])
+                out.write(f"  {col}{line}{_RESET}\n")
+                if not reduce:
                     out.flush()
-                    time.sleep(0.006)
-                out.write(f"\r{color}{line}{_RESET}\n")
+                    time.sleep(0.014)          # 쫘라락
+            out.write("\n")
+
+        for i, line in enumerate(word):
+            col = _fg(_BLUE[min(len(_BLUE) - 1, 4 + i)])
+            out.write(f"   {col}{line}{_RESET}\n")
+            if not reduce:
                 out.flush()
+                time.sleep(0.02)
+
         tag = "Power Of Imagination"
         if reduce:
-            out.write(f"   {_DIM}{tag}{_RESET}   {_DIM}v{__version__}{_RESET}\n\n")
+            out.write(f"   {_DIM}{tag}   ·   v{__version__}{_RESET}\n\n")
         else:
             out.write("   ")
             for ch in tag:
-                out.write(f"{_CYAN}{ch}{_RESET}")
+                out.write(f"{_INK}{ch}{_RESET}")
                 out.flush()
-                time.sleep(0.012)
-            out.write(f"   {_DIM}v{__version__}{_RESET}\n\n")
+                time.sleep(0.010)
+            out.write(f"   {_DIM}·   v{__version__}{_RESET}\n\n")
             out.flush()
     except Exception:
-        pass  # 배너는 장식일 뿐 — 실패해도 조용히
+        pass                                  # 배너는 장식 — 실패해도 조용히
     finally:
         try:
             if not reduce:
@@ -115,5 +127,6 @@ def show(stream=None, animate: bool = True) -> None:
 
 
 def plain(ascii_only: bool = False) -> str:
-    art = _ART_ASCII if ascii_only else _ART
-    return "\n".join(art) + "\n   Power Of Imagination\n"
+    word = _WORD_ASCII if ascii_only else _WORD
+    octo = "" if ascii_only else "\n".join(_OCTO) + "\n\n"
+    return octo + "\n".join(word) + "\n   Power Of Imagination\n"
