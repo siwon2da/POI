@@ -28,7 +28,8 @@ def run_one(poi_path: str):
         src = f.read()
     out_buf, err_buf = io.StringIO(), io.StringIO()
     with redirect_stdout(out_buf), redirect_stderr(err_buf):
-        rc = run_source(src, os.path.basename(poi_path))
+        rc = run_source(src, os.path.basename(poi_path),
+                        base_dir=os.path.dirname(os.path.abspath(poi_path)))
     return rc, out_buf.getvalue(), err_buf.getvalue()
 
 

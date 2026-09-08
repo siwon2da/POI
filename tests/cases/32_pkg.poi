@@ -1,0 +1,3 @@
+use pkg:util
+show util.twice(21)
+show util.NAME

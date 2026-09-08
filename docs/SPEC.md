@@ -1,4 +1,4 @@
-# POI v1.10 문법 명세
+# POI v1.11 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -323,6 +323,25 @@ show u.함수(1, 2)
 
 파이썬 파일은 `use pyfile "./x.py"`, 파이썬 라이브러리는 `use py:이름`.
 
+### 재사용 모듈 — `use pkg:이름` (v1.11)
+
+```poi
+use pkg:도형          # ./poi_modules/도형/main.poi  →  또는 __init__.poi / <이름>.poi / <이름>.py
+show 도형.넓이(10, 4)
+```
+
+찾는 순서: `./poi_modules/` → `~/.poi/modules/` → `POI_PATH`(경로 목록). `export` 를 쓴 모듈은 명시한 것만 공개.
+
+### 파이썬 의존성 — `poi add` (v1.11)
+
+```bash
+poi add numpy pillow      # 프로젝트 .venv 에 설치 + poi.toml [dependencies] 기록
+poi remove numpy
+poi install               # poi.toml 의 의존성 전부
+```
+
+`.venv` 가 있으면 `poi run` 이 자동으로 그 site-packages 를 import 경로 앞에 넣는다.
+
 ### export (v1.8)
 
 ```poi
@@ -383,6 +402,7 @@ python {                     # 파이썬 코드 그대로
 | `dotenv` | `load(path)` → 읽은 값 Box, `os.environ` 에도 반영 (안전 모드 차단) |
 | `system` | `platform() release() python_version() poi_version() cpu_count() hostname() pid() cwd() args() env(name)` (안전 모드 차단) |
 | `uuid` | `v4() hex() short() is_valid(s)` |
+| `uikit` | `window row column label button entry slider canvas listbox text statusbar menu ask_open ask_save ask_color alert confirm every on run close` · `state(v)` + `watch(st, fn)` — 명령형 GUI. 안전 모드 차단 |
 | `ai` | `chat(prompt, system:, model:) ask(p) code(p, lang) summarize(t) backends() install()` — 하온과 같은 백엔드(Groq → 로컬 Ollama). 안전 모드 차단 |
 
 `shell` 로 node·go 바이너리·git·ffmpeg 등 **어떤 언어·도구든** 부른다. `python { }` · `use py:` ·
@@ -503,6 +523,8 @@ poi debug x.poi            # 위 전부
 | `poi build 파일 [-o 이름]` | 단일 실행파일로 (PyInstaller 필요) |
 | `poi build --app idle` | POI IDLE 을 `poi-idle.exe` 로 빌드 |
 | `poi idle [파일]` | POI IDLE — 라이트 모드·메뉴바·웹서버 임시 켜기·하온(로컬 에이전트) |
+| `poi photo [사진]` | POI 로 작성한 사진 편집기 (Pillow 필요) |
+| `poi add / remove / install` | 프로젝트 파이썬 의존성 (`.venv` + `poi.toml [dependencies]`) |
 | `poi fmt [파일\|.] [--check]` | 소스 정리 (탭·공백·블록 깊이). end/콜론 스타일은 공백만 |
 | `poi lint [파일\|.] [--strict]` | 안 쓴 변수(POI-W101)·const 재선언(W102)·죽은 코드(W103) |
 | `poi serve [폴더] [--port]` | 플레이그라운드 서버 (정적 서빙 + 안전 실행 `/run`) |

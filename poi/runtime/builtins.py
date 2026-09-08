@@ -300,6 +300,58 @@ def poi_range(a, b, inclusive=True):
     return list(range(a, max(a, stop)))
 
 
+def _load_poi_file(full):
+    import os
+    from ..interpreter import compile_source
+    from . import make_globals
+    with open(full, encoding="utf-8") as f:
+        src = f.read()
+    py, linemap, cname = compile_source(src, os.path.basename(full))
+    g2 = make_globals()
+    base_keys = set(g2)
+    g2["__name__"] = "__poi_module__"
+    g2["__poi_file__"] = full
+    g2["__poi_dir__"] = os.path.dirname(full)
+    g2["__poi_source__"] = src
+    g2["__poi_linemap__"] = linemap
+    exec(compile(py, cname, "exec"), g2)  # noqa: S102
+    exports = g2.get("__poi_exports__")
+    if exports:
+        return Box({k: g2[k] for k in exports if k in g2})
+    return Box({k: v for k, v in g2.items()
+                if k not in base_keys and not k.startswith("__")})
+
+
+def poi_import_pkg(name):
+    """use pkg:name  →  poi_modules / ~/.poi/modules / POI_PATH 에서 모듈을 찾아 로드.
+
+    확장성의 핵심 — 재사용 가능한 POI/파이썬 모듈을 폴더로 배포해서 쓴다.
+    폴더면 main.poi / __init__.poi / <name>.poi 를, 아니면 <name>.poi / <name>.py 를 찾는다.
+    """
+    import os
+    import sys as _sys
+    frame = _sys._getframe(1)
+    here = frame.f_globals.get("__poi_dir__") or os.getcwd()
+    bases = [os.path.join(here, "poi_modules"),
+             os.path.join(os.path.expanduser("~"), ".poi", "modules")]
+    bases += [p for p in os.environ.get("POI_PATH", "").split(os.pathsep) if p]
+    tried = []
+    for base in bases:
+        d = os.path.join(base, name)
+        cands = [os.path.join(d, "main.poi"), os.path.join(d, "__init__.poi"),
+                 os.path.join(d, name + ".poi"),
+                 os.path.join(base, name + ".poi"),
+                 os.path.join(base, name + ".py"), os.path.join(d, name + ".py")]
+        for c in cands:
+            tried.append(c)
+            if os.path.isfile(c):
+                return poi_import_pyfile(c) if c.endswith(".py") \
+                    else _load_poi_file(c)
+    raise POIError(f"패키지 모듈을 찾을 수 없습니다: {name}", "P303",
+                   hint="찾은 곳:\n  " + "\n  ".join(tried[:6]) +
+                        "\n poi_modules/ 폴더에 두거나 POI_PATH 를 설정하세요.")
+
+
 def poi_import_pyfile(path):
     spec = importlib.util.spec_from_file_location("_poi_pyfile", path)
     if spec is None or spec.loader is None:

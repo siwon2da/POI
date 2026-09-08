@@ -38,16 +38,24 @@ def main() -> int:
     poi_exe = os.path.join(ROOT, "dist", "exe", "poi.exe")
     idle_exe = os.path.join(ROOT, "dist", "exe", "poi-idle.exe")
 
+    def _pil():
+        try:
+            import PIL  # noqa: F401
+            return ["--collect-all", "PIL"]
+        except Exception:
+            return []
+
     print(f"[1/3] poi.exe  (POI {ver})")
     _pyi(["--console", "--name", "poi", "--collect-submodules", "poi",
-          "--collect-data", "poi", "--paths", ROOT] +
+          "--collect-data", "poi", "--collect-submodules", "tkinter",
+          "--paths", ROOT] + _pil() +
          (["--icon", ico] if os.path.exists(ico) else []) +
          [os.path.join(HERE, "poi_entry.py")])
 
     print(f"[2/3] poi-idle.exe")
     _pyi(["--noconsole", "--name", "poi-idle", "--collect-submodules", "poi",
           "--collect-data", "poi", "--collect-submodules", "tkinter",
-          "--paths", ROOT] +
+          "--paths", ROOT] + _pil() +
          (["--icon", ico] if os.path.exists(ico) else []) +
          [os.path.join(HERE, "idle_entry.py")])
 

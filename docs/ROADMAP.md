@@ -20,7 +20,14 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.10 — AI 모듈 · 구조 분해  ✅ (현재)
+## v1.11 — 확장성 · GUI 라이브러리 · 사진 편집기  ✅ (현재)
+
+- [x] **`use pkg:이름`** — `poi_modules/` · `~/.poi/modules/` · `POI_PATH` 에서 재사용 모듈 로드 (export 존중)
+- [x] **`poi add / remove / install`** — 프로젝트 `.venv` + `poi.toml [dependencies]`, `poi run` 자동 활성화
+- [x] **`uikit`** — 명령형 GUI 라이브러리 (window·row·slider·canvas·menu·`state`/`watch` 반응형)
+- [x] **`poi photo`** — POI 로 작성한 사진 편집기 (보정 슬라이더·필터·회전·undo/redo)
+
+## v1.10 — AI 모듈 · 구조 분해  ✅
 
 - [x] **`ai` 모듈** — `ai.chat/ask/code/summarize`, import 없이. 백엔드는 하온과 공유(Groq→Ollama). 안전 모드 차단
 - [x] **구조 분해** — `{ name, age } = user` · `[a, b] = pair`
@@ -117,15 +124,14 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [x] Windows 설치 마법사 (`poi.iss` + `install.ps1`) · 로고 · 회귀 테스트 14개
 - [x] 한생(Galmuri)/토스 감성 소개 페이지 (hagora.kr/poi)
 
-## v1.11 — 패키지 · 동시성 · 네트워크
+## v1.12 — 동시성 · 네트워크
 
-- [ ] `poi add <이름>` / `poi add py:numpy` · `poi remove` · `poi install` — 프로젝트 전용 venv
-- [ ] `poi.toml` `[dependencies]`, `poi.lock`, POI 패키지 레지스트리 초안
+- [ ] `poi.lock` · POI 패키지 레지스트리 · `poi add` 로 POI 모듈 설치
 - [ ] `every 1 second { }` · `background { }` · `async fn` / `await` 고수준 동시성
 - [ ] `net`(소켓/websocket) · 고수준 `http` 클라이언트
 - [ ] `poi fmt` CST 기반 전면 재작성 (콜론/`end` → 중괄호 통일), `poi lint` 규칙 확장
 
-## v1.12 — 웹 · GUI 심화
+## v1.13 — 웹 · GUI 심화
 
 - [ ] 클라이언트 반응형 (state 변경 → 부분 갱신, 새로고침 없이), 세션/인증 헬퍼, 미들웨어
 - [ ] `poi build --web` (정적 번들)

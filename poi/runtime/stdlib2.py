@@ -475,8 +475,11 @@ ai = SimpleNamespace(
 )
 
 
+from .uikit import uikit as _uikit
+
 MODULES = {
     "ai": ai,
+    "uikit": _uikit,
     "crypto": crypto,
     "password": password,
     "jwt": jwt,
@@ -496,5 +499,5 @@ MODULES = {
 KO_MODULES = {
     "암호": crypto, "비밀번호": password, "토큰": jwt, "경로": path,
     "주소": url, "압축": compress, "기록": log, "캐시": cache,
-    "성능측정": bench, "시스템": system,
+    "성능측정": bench, "시스템": system, "유아이": _uikit, "지유아이": _uikit,
 }

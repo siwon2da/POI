@@ -17,6 +17,8 @@ _STD_MODULES = {"file", "json", "web", "math", "time", "ui", "gui",
                 "log", "cache", "bench", "dotenv", "system", "uuid",
                 # v1.10 — AI
                 "ai",
+                # v1.11 — GUI 라이브러리
+                "uikit", "유아이", "지유아이",
                 # 한국어 별칭
                 "암호", "비밀번호", "토큰", "경로", "주소", "압축", "기록",
                 "캐시", "성능측정", "시스템"}
@@ -231,6 +233,8 @@ class Transpiler:
             self.emit(f"{n.alias} = poi_import_pyfile({n.target!r})", n.line)
         elif n.use_kind == "poimod":
             self.emit(f"{n.alias} = poi_import_module({n.target!r})", n.line)
+        elif n.use_kind == "pkgmod":
+            self.emit(f"{n.alias} = poi_import_pkg({n.target!r})", n.line)
         else:
             if n.target not in _STD_MODULES:
                 raise POIError(

@@ -481,6 +481,15 @@ class Parser:
             if self.match("KEYWORD", "as"):
                 alias = self.expect("IDENT").value
             return Node("Use", line=t.line, use_kind="py", target=".".join(parts), alias=alias)
+        if nxt.type == "IDENT" and nxt.value == "pkg" and self.peek(1).value == ":":
+            self.advance()
+            self.advance()
+            name = self.expect("IDENT", what="패키지 이름").value
+            alias = None
+            if self.match("KEYWORD", "as"):
+                alias = self.expect("IDENT").value
+            return Node("Use", line=t.line, use_kind="pkgmod", target=name,
+                        alias=alias or name)
         if nxt.type == "IDENT" and nxt.value == "pyfile":
             self.advance()
             path = self.expect("STRING", what="파일 경로").value

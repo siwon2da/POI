@@ -39,8 +39,8 @@ _FORBIDDEN_STD = {"file", "web", "gui", "ui", "env", "shell",
                   # v1.7 — 파일/환경/네트워크에 닿는 것
                   "dotenv", "system", "compress",
                   "압축", "시스템",
-                  # v1.10 — 외부 LLM 호출
-                  "ai"}
+                  # v1.10/1.11 — 외부 LLM · GUI
+                  "ai", "uikit", "유아이", "지유아이"}
 
 
 def safe_builtins() -> dict:
@@ -80,6 +80,7 @@ def harden_globals(g: dict) -> dict:
     g["pause"] = lambda *_a, **_kw: None          # 서버에선 멈출 수 없음
     g["poi_import_pyfile"] = _denied("다른 파일 불러오기")
     g["poi_import_module"] = _denied("다른 파일 불러오기")
+    g["poi_import_pkg"] = _denied("패키지 모듈 불러오기")
     g["poi_std"] = _guard_std(g.get("poi_std"))
     g["database"] = _denied("데이터베이스 열기")
     return g
@@ -107,7 +108,7 @@ def assert_safe(program) -> None:
                            hint="POI 문법과 표준 모듈(math·time·json)만 쓰세요.")
         if k == "Use":
             uk = getattr(node, "use_kind", "")
-            if uk in ("py", "pyfile", "poimod"):
+            if uk in ("py", "pyfile", "poimod", "pkgmod"):
                 raise POIError("안전 모드에서는 다른 파일·라이브러리를 불러올 수 없습니다.",
                                "P211", getattr(node, "line", None))
             if uk == "std" and getattr(node, "target", "") in _FORBIDDEN_STD:

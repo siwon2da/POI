@@ -1,4 +1,5 @@
-1.10.0
-POI 1.10.0 — AI 모듈 + 구조 분해. `ai.chat(...)` / `ai.ask(...)` / `ai.code(...)` — 하온과
-같은 백엔드(Groq → 로컬 Ollama), import 없이 바로. `{ name, age } = user` 와
-`[a, b] = pair` 구조 분해. 안전 모드에서 ai·system·dotenv·compress 도 차단. 올리기:  poi update
+1.11.0
+POI 1.11.0 — 확장성 + POI GUI 라이브러리 + 사진 편집기. use pkg:이름 으로 재사용 모듈을
+poi_modules/·~/.poi/modules/·POI_PATH 에서 로드. poi add/remove/install 로 프로젝트 .venv +
+poi.toml [dependencies]. uikit — 명령형 GUI 라이브러리(window·row·slider·canvas·menu·state·
+watch…). poi photo — POI 로 쓴 사진 편집기(밝기·대비·채도·필터·회전·undo/redo). 올리기:  poi update

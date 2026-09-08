@@ -24,6 +24,8 @@ POI v{ver}  -  Power Of Imagination
   poi test [파일.poi]                  파일 안의 test 블록 실행
   poi build <파일.poi> [-o 이름]        단일 실행파일(.exe) 로 빌드
   poi idle [파일.poi]                  POI IDLE — POI 로 만든 코드 편집기
+  poi photo [사진]                     POI 로 만든 사진 편집기 (Pillow 필요)
+  poi add / remove / install          프로젝트 파이썬 의존성 (.venv + poi.toml)
   poi fmt [파일 | .] [--check]         소스 정리 (탭·공백·들여쓰기)
   poi lint [파일 | .] [--strict]       안 쓴 변수 등 가벼운 점검
   poi serve [폴더] [--port 8900]       플레이그라운드 서버 (정적 서빙 + 안전 실행 /run)
@@ -142,6 +144,13 @@ def _run(args: list[str], *, force_debug: bool = False) -> int:
     if not os.path.exists(path):
         print(f"파일이 없습니다: {path}", file=sys.stderr)
         return 1
+    if not safe:
+        try:
+            from .pkg import activate as _pkg_activate
+            _pkg_activate(os.path.dirname(os.path.abspath(path)) or ".")
+            _pkg_activate(".")
+        except Exception:
+            pass
     if want_types:
         _typecheck_file(path, block=False)
     rc = run_file(path, emit_python=emit, argv=rest[1:],
@@ -371,6 +380,19 @@ def cmd_idle(args: list[str]) -> int:
     return run_file(path)
 
 
+def cmd_photo(args: list[str]) -> int:
+    """poi photo [사진] — POI 로 작성한 사진 편집기."""
+    path = _app_path("photo")
+    if not os.path.isfile(path):
+        print("POI 사진 편집기를 찾을 수 없습니다.", file=sys.stderr)
+        return 1
+    target = next((a for a in args if not a.startswith("-")), None)
+    if target and os.path.isfile(target):
+        os.environ["POI_PHOTO_OPEN"] = os.path.abspath(target)
+    os.environ["POI_NO_SERVE"] = "1"
+    return run_file(path)
+
+
 _REPL_HELP = """\
 POI REPL 도움말
   show <값>              값 출력          예:  show "안녕"   /   show 2 + 3
@@ -482,7 +504,11 @@ def main(argv: list[str] | None = None) -> int:
         "update": cmd_update, "upgrade": cmd_update, "debug": cmd_debug,
         "serve": cmd_serve, "playground": cmd_serve, "exercises": cmd_exercises,
         "ex": cmd_exercises, "test": cmd_test, "idle": cmd_idle,
-        "lint": cmd_lint,
+        "lint": cmd_lint, "photo": cmd_photo,
+        "add": lambda a: __import__("poi.pkg", fromlist=["cmd_add"]).cmd_add(a),
+        "remove": lambda a: __import__("poi.pkg", fromlist=["cmd_remove"]).cmd_remove(a),
+        "rm": lambda a: __import__("poi.pkg", fromlist=["cmd_remove"]).cmd_remove(a),
+        "install": lambda a: __import__("poi.pkg", fromlist=["cmd_install"]).cmd_install(a),
     }
     if cmd in table:
         return table[cmd](rest)

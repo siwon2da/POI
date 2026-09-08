@@ -93,6 +93,8 @@ def build(args: list[str]) -> int:
            "--console" if console else "--noconsole", boot]
     if "tkinter" in py_src:      # GUI 앱 — tkinter 하위 모듈까지 챙긴다
         cmd[3:3] = ["--collect-submodules", "tkinter"]
+    if "PIL" in py_src or "Pillow" in py_src:
+        cmd[3:3] = ["--collect-all", "PIL"]
     ico = os.path.join(repo, "installer", "poi.ico")
     if os.path.isfile(ico):
         cmd[3:3] = ["--icon", ico]

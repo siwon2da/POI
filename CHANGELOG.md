@@ -1,5 +1,44 @@
 # 변경 이력
 
+## v1.11.0 — 2026-09-08  (대규모 업데이트 — 확장성 · GUI 라이브러리 · 사진 편집기)
+
+**확장성 — 재사용 모듈 & 패키지**
+```poi
+use pkg:그림도구            # poi_modules/그림도구/main.poi  (또는 .poi / .py)
+show 그림도구.blur(사진)
+```
+- `use pkg:이름` — `./poi_modules/` → `~/.poi/modules/` → `POI_PATH` 순으로 찾는다.
+  폴더면 `main.poi`/`__init__.poi`/`<이름>.poi`, 아니면 `<이름>.poi` / `<이름>.py`.
+  `export` 를 쓴 모듈은 명시한 것만 공개. 안전 모드 차단.
+- **`poi add <패키지>`** / `poi remove` / `poi install` — 프로젝트 전용 `.venv` +
+  `poi.toml [dependencies]`. `poi run` 은 `.venv` 가 있으면 자동으로 그 site-packages 를
+  import 경로 앞에 넣는다 → `use py:numpy` 가 프로젝트 venv 를 쓴다.
+
+**`uikit` — POI 전용 GUI 라이브러리** (명령형, tkinter 위, import 없이)
+```poi
+win = uikit.window("제목", 900, 600)
+bar = uikit.row(win)
+uikit.button(bar, "열기", 열기, true)
+s  = uikit.slider(bar, 0, 100, 바뀜, 50, 200, "밝기")
+cv = uikit.canvas(win, 800, 500)
+uikit.menu(win, { 파일: [["열기", 열기], null, ["끝", () => uikit.close(win)]] })
+uikit.run(win)
+```
+- `window row column label button entry slider canvas listbox text statusbar menu`
+- `ask_open ask_save ask_color alert confirm every on run close`
+- `state(초기값)` + `watch(st, fn)` — 반응형 상태 (`st.v = 3` 하면 watcher 호출)
+- 선언형 `app { window { } }` 는 그대로. `uikit` 은 동적 UI 용.
+
+**`poi photo` — POI 로 작성한 사진 편집기** (`uikit` + Pillow)
+- 열기·저장(PNG/JPEG), 밝기·대비·채도·선명 슬라이더 (원본에서 실시간 재계산)
+- 필터: 흑백·세피아·반전·블러·샤픈·윤곽·자동 보정
+- 회전(90°)·좌우/상하 뒤집기, **undo/redo**(Ctrl+Z/Y), 원본으로
+- `poi photo [사진]`, `poi build --app photo` (Pillow 없으면 `poi add pillow` 안내)
+
+**회귀**: 31 케이스 + 300 연습문제.
+
+---
+
 ## v1.10.0 — 2026-09-08
 
 **`ai` 모듈** — import 없이 바로 (하온과 같은 백엔드: Groq → 로컬 Ollama)

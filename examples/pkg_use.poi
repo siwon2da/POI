@@ -1,0 +1,6 @@
+# use pkg: — poi_modules/ 에서 재사용 모듈 불러오기
+use pkg:도형
+
+show 도형.넓이(10, 4)          # 20
+show 도형.파이
+show "원 둘레(r=5): {도형.둘레(5)}"
