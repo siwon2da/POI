@@ -440,6 +440,25 @@ def _render_str(text, ctx):
                         with open(p, encoding="utf-8") as fh:
                             res.append(_render_str(fh.read(), ctx))
                     k += 1
+                elif stmt.startswith("component "):
+                    # {% component "card.html" title="x" n=3 %}
+                    import shlex
+                    try:
+                        parts = shlex.split(stmt[10:])
+                    except ValueError:
+                        parts = stmt[10:].split()
+                    if parts:
+                        p = _find_template(parts[0])
+                        sub = dict(ctx)
+                        for kv in parts[1:]:
+                            if "=" in kv:
+                                kk, vv = kv.split("=", 1)
+                                sub[kk.strip()] = _tpl_eval(vv, ctx) if not (
+                                    vv[:1] in "\"'" and vv[-1:] in "\"'") else vv[1:-1]
+                        if p:
+                            with open(p, encoding="utf-8") as fh:
+                                res.append(_render_str(fh.read(), sub))
+                    k += 1
                 else:
                     k += 1
             else:
@@ -448,6 +467,42 @@ def _render_str(text, ctx):
         return "".join(res)
 
     return render_seq(tokens, ctx)
+
+
+# htmx-lite — data-poi-get / data-poi-post 로 부분 갱신 (새로고침 없이)
+_LIVE_JS = r"""
+window.__poiLive=1;
+(function(){
+  function target(el){ var s=el.getAttribute("data-poi-target"); return s?document.querySelector(s):el; }
+  function swap(el,html){
+    var t=target(el), how=el.getAttribute("data-poi-swap")||"inner";
+    if(how==="outer") t.outerHTML=html;
+    else if(how==="append") t.insertAdjacentHTML("beforeend",html);
+    else if(how==="prepend") t.insertAdjacentHTML("afterbegin",html);
+    else t.innerHTML=html;
+  }
+  async function go(el, url, opts){
+    el.setAttribute("aria-busy","true");
+    try{ var r=await fetch(url,opts); swap(el, await r.text()); }
+    catch(e){ console.error("poi-live",e); }
+    el.removeAttribute("aria-busy");
+  }
+  document.addEventListener("click", function(e){
+    var el=e.target.closest("[data-poi-get]"); if(!el) return;
+    e.preventDefault(); go(el, el.getAttribute("data-poi-get"), {});
+  });
+  document.addEventListener("submit", function(e){
+    var f=e.target.closest("form[data-poi-post]"); if(!f) return;
+    e.preventDefault();
+    go(f, f.getAttribute("data-poi-post"), {method:"POST", body:new URLSearchParams(new FormData(f))});
+  });
+  document.querySelectorAll("[data-poi-load]").forEach(function(el){
+    go(el, el.getAttribute("data-poi-load"), {});
+    var iv=parseInt(el.getAttribute("data-poi-every")||"0");
+    if(iv>0) setInterval(function(){ go(el, el.getAttribute("data-poi-load"), {}); }, iv);
+  });
+})();
+"""
 
 
 def render(name, data=None):
@@ -464,6 +519,8 @@ def render(name, data=None):
         _TPL_CACHE[key] = text
     ctx = dict(data or {})
     html = _render_str(text, ctx)
+    if "data-poi-" in html and "__poiLive" not in html:
+        html += "\n<script>" + _LIVE_JS + "</script>"
     return {"__poi_response__": True, "status": 200, "body": html,
             "headers": {}, "content_type": "text/html; charset=utf-8"}
 
@@ -719,7 +776,7 @@ def serve_request(method, full_path, raw_body, req_headers, client_ip):
             if "json" in ctype:
                 body = boxify(_json.loads(text))
             elif "multipart/form-data" in ctype:
-                body = Box({"raw": text})
+                body = _parse_multipart(raw, ctype)
             else:
                 body = boxify({k: v[0] for k, v in
                                _up.parse_qs(text, keep_blank_values=True).items()})
@@ -775,6 +832,40 @@ def serve_request(method, full_path, raw_body, req_headers, client_ip):
 
     return 404, "<h1>404</h1><p>없는 경로입니다.</p>".encode("utf-8"), \
         "text/html; charset=utf-8", {}
+
+
+def _parse_multipart(raw: bytes, ctype: str):
+    """multipart/form-data → Box{필드..., files: [{name, filename, content_type, data, text}]}."""
+    m = _re.search(r'boundary=(?:"([^"]+)"|([^;]+))', ctype)
+    if not m:
+        return Box({"raw": raw.decode("utf-8", "replace")})
+    boundary = (m.group(1) or m.group(2)).strip().encode("latin-1")
+    parts = raw.split(b"--" + boundary)
+    out = Box()
+    files = []
+    for part in parts:
+        part = part.strip(b"\r\n")
+        if not part or part == b"--":
+            continue
+        head, _, data = part.partition(b"\r\n\r\n")
+        heads = head.decode("utf-8", "replace")
+        dm = _re.search(r'name="([^"]*)"', heads)
+        if not dm:
+            continue
+        name = dm.group(1)
+        fm = _re.search(r'filename="([^"]*)"', heads)
+        if fm:
+            cm = _re.search(r"Content-Type:\s*([^\r\n]+)", heads, _re.I)
+            files.append(Box({
+                "name": name, "filename": fm.group(1),
+                "content_type": cm.group(1).strip() if cm else "application/octet-stream",
+                "data": data, "size": len(data),
+                "text": data.decode("utf-8", "replace"),
+            }))
+        else:
+            out[name] = data.decode("utf-8", "replace")
+    out["files"] = files
+    return out
 
 
 def _err_response(status, detail):

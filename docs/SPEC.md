@@ -1,4 +1,4 @@
-# POI v1.14 문법 명세
+# POI v1.15 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -341,6 +341,43 @@ poi install               # poi.toml 의 의존성 전부
 ```
 
 `.venv` 가 있으면 `poi run` 이 자동으로 그 site-packages 를 import 경로 앞에 넣는다.
+
+### 3D 웹 — `scene3d` (v1.15)
+
+선언형 3D 씬 그래프 → 자체 완결 HTML(Three.js 는 cdnjs, 셋업 JS 인라인). 서버 불필요.
+
+```poi
+장면 = scene3d.scene({ bg: "#0b0e14", camera: [4,3,7], fov: 55 })
+scene3d.box(장면,    { color: "#5b9dff", spin: true })
+scene3d.sphere(장면, { pos: [2.6,0,0], color: "#37d39b", float: true })
+scene3d.torus(장면,  { pos: [-2.6,0,0], color: "#ffb454", spin: true, spinSpeed: 1.6 })
+scene3d.light(장면, "sun")          # "ambient" · "point" 도. { pos, intensity }
+scene3d.orbit(장면);  scene3d.autorotate(장면);  scene3d.grid(장면)
+html scene3d.render(장면, { height: 480 })          # webapp{} / render() 안에서
+# file.write("3d.html", scene3d.page(장면))         # 완전한 문서로
+```
+
+도형 `box sphere plane cylinder cone torus dodeca` · `model(url)` · `light(kind)`.
+노드 옵션: `pos scale rotate color size` + 애니메이션 `spin`(`spinSpeed`) `float` `pulse`.
+한국어 별칭 `삼차원` · `입체`.
+
+### htmx-lite — 새로고침 없는 부분 갱신 (v1.15)
+
+라우트가 HTML 조각을 돌려주면 클라이언트가 지정한 자리에 끼운다. `render()` 결과에
+`data-poi-*` 가 있으면 ~1KB 런타임을 자동 주입.
+
+```html
+<button data-poi-get="/frag" data-poi-target="#slot">불러오기</button>
+<div id=slot data-poi-load="/stats" data-poi-every="3000"></div>
+<form data-poi-post="/save" data-poi-target="#msg">…</form>
+```
+`data-poi-swap` = `inner`(기본) · `outer` · `append` · `prepend`.
+
+### 템플릿 `{% component %}` · 파일 업로드 · 정적 굽기 (v1.15)
+
+- `{% component "card.html" title="시원" n=95 %}` — 인자를 넘겨 부분 템플릿 렌더.
+- multipart 업로드 — `body.files` → `[{ name, filename, content_type, data, text, size }]`.
+- `poi build --site 앱.poi -o dist` — 파라미터 없는 GET 라우트를 정적 HTML 로. `static` 폴더도 복사.
 
 ### 컴파일 캐시 (v1.13)
 

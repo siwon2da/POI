@@ -1,5 +1,6 @@
-1.14.0
-POI 1.14.0 — 프로덕션 & 개발자 경험. WSGI 어댑터(poi wsgi app.poi → gunicorn/waitress/uvicorn),
-공용 디스패치(HTTP·WSGI 공유), /healthz 자동, POI_ENV=production 오류 마스킹, poi run --host/--prod.
-poi doctor(환경 진단), poi new <이름> --web|--api|--cli(템플릿). examples/showcase — POI 로만 작성한
-웹사이트(server·render·auth·미들웨어·DB·POI가 POI를 실행). 올리기:  poi update
+1.15.0
+POI 1.15.0 — 웹 최강 + 3D 웹. scene3d — 선언형 3D 씬 그래프 → 자체 완결 HTML(Three.js@cdnjs),
+서버 불필요. box/sphere/torus/cone/dodeca/light/orbit/autorotate/grid, spin/float/pulse.
+htmx-lite: data-poi-get/post/target/load/every 로 새로고침 없는 부분 갱신(자동 주입).
+{% component "x.html" k=v %} 템플릿, multipart 파일 업로드(body.files), poi build --site(정적 굽기).
+올리기:  poi update

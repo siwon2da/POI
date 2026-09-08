@@ -1,0 +1,17 @@
+# v1.15 — scene3d 씬 그래프 (결정적 부분만)
+장면 = scene3d.scene({ bg: "#0b0e14" })
+scene3d.box(장면, { color: "#5b9dff", spin: true })
+scene3d.sphere(장면, { pos: [2, 0, 0], color: "#37d39b" })
+scene3d.light(장면, "sun")
+scene3d.orbit(장면)
+
+show 장면.nodes.length
+show 장면.bg
+show 장면.orbit
+show 장면.nodes.first.kind
+show 장면.nodes.first.spin
+
+h = scene3d.render(장면, { height: 300 })
+show h.contains("data-poi3d")
+show h.contains("three.js")
+show h.contains("canvas")

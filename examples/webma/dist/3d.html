@@ -1,0 +1,90 @@
+<!doctype html><html lang=ko><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>POI 3D</title><style>*{margin:0}html,body{height:100%}body{background:#0b0e14;display:flex;align-items:center;justify-content:center}#wrap{width:min(960px,94vw)}</style></head><body><div id=wrap><div style="width:100%;height:600px;border-radius:14px;overflow:hidden;background:#0b0e14"><canvas id="poi3d_33a01534" data-poi3d="{&quot;bg&quot;: &quot;#0b0e14&quot;, &quot;camera&quot;: [4, 3, 7], &quot;fov&quot;: 55, &quot;orbit&quot;: true, &quot;autorotate&quot;: true, &quot;grid&quot;: true, &quot;shadows&quot;: true, &quot;nodes&quot;: [{&quot;color&quot;: &quot;#5b9dff&quot;, &quot;spin&quot;: true, &quot;kind&quot;: &quot;box&quot;, &quot;pos&quot;: [0, 0, 0]}, {&quot;pos&quot;: [2.6, 0, 0], &quot;color&quot;: &quot;#37d39b&quot;, &quot;float&quot;: true, &quot;kind&quot;: &quot;sphere&quot;}, {&quot;pos&quot;: [-2.6, 0, 0], &quot;color&quot;: &quot;#ffb454&quot;, &quot;spin&quot;: true, &quot;spinSpeed&quot;: 1.6, &quot;kind&quot;: &quot;torus&quot;}, {&quot;pos&quot;: [0, 2.2, -1], &quot;color&quot;: &quot;#c792ea&quot;, &quot;pulse&quot;: true, &quot;kind&quot;: &quot;dodeca&quot;}, {&quot;pos&quot;: [0, -1.6, 2], &quot;color&quot;: &quot;#ff6b6b&quot;, &quot;kind&quot;: &quot;cone&quot;}, {&quot;kind&quot;: &quot;light&quot;, &quot;light&quot;: &quot;sun&quot;}, {&quot;kind&quot;: &quot;light&quot;, &quot;pos&quot;: [-4, 3, 4], &quot;intensity&quot;: 0.8, &quot;light&quot;: &quot;point&quot;}]}" style="width:100%;height:100%;display:block"></canvas></div>
+<script type="module">
+import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js";
+
+function boot(canvas, S){
+  const rr = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+  rr.setPixelRatio(Math.min(devicePixelRatio,2));
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(S.bg);
+  const cam = new THREE.PerspectiveCamera(S.fov, 1, 0.1, 200);
+  cam.position.set(S.camera[0], S.camera[1], S.camera[2]);
+  cam.lookAt(0,0,0);
+
+  if(S.grid){ const g = new THREE.GridHelper(20, 20, 0x334, 0x223); g.position.y=-1.2; scene.add(g); }
+
+  let haveLight = false;
+  const spinners = [], floaters = [], pulsers = [];
+
+  function mat(c){ return new THREE.MeshStandardMaterial({color:c, roughness:.45, metalness:.15}); }
+  function geom(n){
+    const s = n.size || 1;
+    if(n.kind==="box")      return new THREE.BoxGeometry(s,s,s);
+    if(n.kind==="sphere")   return new THREE.SphereGeometry(s*.7, 48, 32);
+    if(n.kind==="plane")    return new THREE.PlaneGeometry(s*3, s*3);
+    if(n.kind==="cylinder") return new THREE.CylinderGeometry(s*.6, s*.6, s*1.4, 40);
+    if(n.kind==="cone")     return new THREE.ConeGeometry(s*.7, s*1.4, 40);
+    if(n.kind==="torus")    return new THREE.TorusGeometry(s*.7, s*.26, 24, 64);
+    if(n.kind==="dodeca")   return new THREE.DodecahedronGeometry(s*.8);
+    return new THREE.BoxGeometry(s,s,s);
+  }
+
+  for(const n of S.nodes){
+    if(n.kind==="light"){
+      haveLight = true;
+      if(n.light==="ambient"){ scene.add(new THREE.AmbientLight(0xffffff, n.intensity ?? .6)); }
+      else if(n.light==="point"){ const L=new THREE.PointLight(0xffffff, n.intensity ?? 1.2, 0); L.position.set(...(n.pos||[3,4,3])); scene.add(L); }
+      else { const L=new THREE.DirectionalLight(0xffffff, n.intensity ?? 1.1); L.position.set(...(n.pos||[4,6,3])); scene.add(L); scene.add(new THREE.AmbientLight(0xffffff,.35)); }
+      continue;
+    }
+    if(n.kind==="model"){ continue; }  // glTF loader 는 선택 기능 — 자리표시
+    const m = new THREE.Mesh(geom(n), mat(n.color));
+    m.position.set(...(n.pos||[0,0,0]));
+    if(n.rotate) m.rotation.set(...(n.rotate.map ? n.rotate : [n.rotate,n.rotate,0]));
+    const sc = n.scale || 1; m.scale.setScalar(sc);
+    scene.add(m);
+    if(n.spin)  spinners.push([m, n.spinSpeed || 1]);
+    if(n.float) floaters.push([m, m.position.y]);
+    if(n.pulse) pulsers.push([m, sc]);
+  }
+  if(!haveLight){
+    const L = new THREE.DirectionalLight(0xffffff, 1.1); L.position.set(4,6,3); scene.add(L);
+    scene.add(new THREE.AmbientLight(0xffffff,.4));
+  }
+
+  // 미니 오빗 (외부 의존 없이)
+  let drag=false, px=0, py=0, theta=Math.atan2(cam.position.x,cam.position.z), phi=Math.acos(cam.position.y/cam.position.length()), rad=cam.position.length();
+  function place(){ cam.position.set(rad*Math.sin(phi)*Math.sin(theta), rad*Math.cos(phi), rad*Math.sin(phi)*Math.cos(theta)); cam.lookAt(0,0,0); }
+  if(S.orbit){
+    canvas.style.cursor="grab";
+    canvas.addEventListener("pointerdown", e=>{drag=true;px=e.clientX;py=e.clientY;canvas.style.cursor="grabbing";});
+    addEventListener("pointerup", ()=>{drag=false;canvas.style.cursor="grab";});
+    addEventListener("pointermove", e=>{ if(!drag) return; theta -= (e.clientX-px)*.008; phi = Math.max(.15, Math.min(Math.PI-.15, phi - (e.clientY-py)*.008)); px=e.clientX;py=e.clientY; place(); });
+    canvas.addEventListener("wheel", e=>{ e.preventDefault(); rad = Math.max(2, Math.min(40, rad + Math.sign(e.deltaY)*.6)); place(); }, {passive:false});
+  }
+
+  function resize(){
+    const w = canvas.clientWidth || canvas.parentElement.clientWidth || 640;
+    const h = canvas.clientHeight || 420;
+    rr.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix();
+  }
+  addEventListener("resize", resize); resize();
+
+  const t0 = performance.now();
+  function frame(){
+    const t = (performance.now()-t0)/1000;
+    for(const [m,sp] of spinners){ m.rotation.y = t*sp; m.rotation.x = t*sp*.4; }
+    for(const [m,y0] of floaters){ m.position.y = y0 + Math.sin(t*1.6)*.35; }
+    for(const [m,s0] of pulsers){ const k = s0*(1+Math.sin(t*3)*.12); m.scale.setScalar(k); }
+    if(S.autorotate && !drag){ theta += .004; place(); }
+    rr.render(scene, cam);
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+document.querySelectorAll("canvas[data-poi3d]").forEach(c=>{
+  try { boot(c, JSON.parse(c.getAttribute("data-poi3d"))); }
+  catch(e){ console.error("scene3d", e); }
+});
+</script></div></body></html>

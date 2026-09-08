@@ -1,5 +1,41 @@
 # 변경 이력
 
+## v1.15.0 — 2026-09-09  (대규모 업데이트 — 웹 최강 + 3D 웹)
+
+**`scene3d` — POI 로 3D 웹** (import 없이, `poi/runtime/scene3d.py`)
+```poi
+장면 = scene3d.scene({ bg: "#0b0e14", camera: [4, 3, 7] })
+scene3d.box(장면,    { color: "#5b9dff", spin: true })
+scene3d.sphere(장면, { pos: [2.6, 0, 0], color: "#37d39b", float: true })
+scene3d.torus(장면,  { pos: [-2.6, 0, 0], color: "#ffb454", spin: true })
+scene3d.dodeca(장면, { pos: [0, 2.2, -1], color: "#c792ea", pulse: true })
+scene3d.light(장면, "sun")
+scene3d.orbit(장면)          # 드래그 회전 · 휠 줌 (외부 컨트롤 의존 없음)
+scene3d.autorotate(장면)
+scene3d.grid(장면)
+html scene3d.render(장면, { height: 480 })   # webapp{} 안에서
+# 또는:  file.write("3d.html", scene3d.page(장면))   # 완전한 문서
+```
+- 선언형 씬 그래프 → **자체 완결 HTML** (Three.js r160 은 cdnjs, 셋업 JS 인라인). **서버 불필요** — 정적 호스트에 그대로.
+- 도형: `box sphere plane cylinder cone torus dodeca` · `model(url)`(glTF 자리) · `light("sun"|"ambient"|"point")`
+- 노드 옵션: `pos scale rotate color size` + 애니메이션 `spin`(`spinSpeed`) · `float` · `pulse`
+- 미니 오빗 컨트롤 내장. 한국어 별칭: `삼차원` · `입체`.
+
+**htmx-lite — 새로고침 없는 부분 갱신**
+```html
+<button data-poi-get="/frag" data-poi-target="#slot">불러오기</button>
+<div id=slot data-poi-load="/stats" data-poi-every="3000"></div>
+<form data-poi-post="/save" data-poi-target="#msg" data-poi-swap="inner">…</form>
+```
+- 라우트가 HTML 조각을 돌려주면 클라이언트가 지정한 자리에 끼운다. `render()` 결과에
+  `data-poi-*` 가 있으면 ~1KB 런타임을 자동 주입. `data-poi-swap` = `inner`(기본)·`outer`·`append`·`prepend`.
+
+**템플릿 `{% component %}` · 파일 업로드 · 정적 굽기**
+- `{% component "card.html" title="시원" n=95 %}` — 인자를 넘겨 부분 템플릿 렌더 (`{% include %}` 와 달리 스코프 지정).
+- **multipart 업로드** — `post` 핸들러에서 `body.files` → `[{ name, filename, content_type, data, text, size }]`, 일반 필드는 `body.<이름>`.
+- **`poi build --site 앱.poi -o dist`** — 파라미터 없는 GET 라우트를 정적 HTML 로 구워서 `dist/` 에.
+  `static "..."` 폴더도 복사. 아무 호스트에나 올릴 수 있는 사이트가 나온다.
+
 ## v1.14.0 — 2026-09-09  (대규모 업데이트 — 프로덕션 & 개발자 경험)
 
 **WSGI — 진짜 프로덕션 서버에 얹는다**

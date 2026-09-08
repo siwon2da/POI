@@ -478,6 +478,7 @@ ai = SimpleNamespace(
 from .uikit import uikit as _uikit
 from .concurrency import task as _task
 from .net import http as _http, net as _net
+from .scene3d import scene3d as _scene3d
 
 MODULES = {
     "ai": ai,
@@ -485,6 +486,7 @@ MODULES = {
     "task": _task,
     "http": _http,
     "net": _net,
+    "scene3d": _scene3d,
     "crypto": crypto,
     "password": password,
     "jwt": jwt,
@@ -506,4 +508,5 @@ KO_MODULES = {
     "주소": url, "압축": compress, "기록": log, "캐시": cache,
     "성능측정": bench, "시스템": system, "유아이": _uikit, "지유아이": _uikit,
     "작업": _task, "동시성": _task, "요청": _http, "망": _net, "네트워크": _net,
+    "삼차원": _scene3d, "입체": _scene3d,
 }

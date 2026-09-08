@@ -1,0 +1,25 @@
+# 3D 웹 — scene3d 모듈 (v1.15).   실행:  poi run examples/scene3d_demo.poi
+# → examples/webma/dist/3d.html  (Three.js 는 cdnjs 에서, 서버 불필요)
+
+use py:os as _os
+_os.makedirs("examples/webma/dist", exist_ok: true)
+
+장면 = scene3d.scene({ bg: "#0b0e14", camera: [4, 3, 7] })
+
+scene3d.box(장면,      { color: "#5b9dff", spin: true })
+scene3d.sphere(장면,   { pos: [2.6, 0, 0], color: "#37d39b", float: true })
+scene3d.torus(장면,    { pos: [-2.6, 0, 0], color: "#ffb454", spin: true, spinSpeed: 1.6 })
+scene3d.dodeca(장면,   { pos: [0, 2.2, -1], color: "#c792ea", pulse: true })
+scene3d.cone(장면,     { pos: [0, -1.6, 2], color: "#ff6b6b" })
+
+scene3d.light(장면, "sun")
+scene3d.light(장면, "point", { pos: [-4, 3, 4], intensity: 0.8 })
+scene3d.grid(장면)
+scene3d.orbit(장면)          # 마우스 드래그로 회전, 휠로 줌
+scene3d.autorotate(장면)
+
+문서 = scene3d.page(장면, { title: "POI 3D", height: 600 })
+file.write("examples/webma/dist/3d.html", 문서)
+
+show "만들었어요:  examples/webma/dist/3d.html   ({문서.length} bytes)"
+show "브라우저로 열어 드래그·휠로 돌려보세요.  배포:  hagora.kr/poi/3d/"

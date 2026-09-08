@@ -20,7 +20,13 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.14 — 프로덕션 & 개발자 경험  ✅ (현재)
+## v1.15 — 웹 최강 + 3D 웹  ✅ (현재)
+
+- [x] **`scene3d`** — 선언형 3D 씬 → 자체 완결 HTML(Three.js@cdnjs, 서버 불필요). box/sphere/torus/cone/dodeca/light/orbit/autorotate/grid + spin/float/pulse
+- [x] **htmx-lite** — `data-poi-get/post/target/load/every` 로 새로고침 없는 부분 갱신 (렌더 결과에 있으면 런타임 자동 주입)
+- [x] **`{% component "x.html" k=v %}`** 템플릿 · **multipart 업로드** (`body.files`) · **`poi build --site`** 정적 굽기
+
+## v1.14 — 프로덕션 & 개발자 경험  ✅
 
 - [x] **WSGI 어댑터** — `poi wsgi app.poi` → gunicorn/waitress/uvicorn. `serve_request()` 공용 디스패치(HTTP·WSGI 공유)
 - [x] **프로덕션 하드닝** — `/healthz` 자동 · `POI_ENV=production` 오류 마스킹 · `poi run --host/--port/--prod`

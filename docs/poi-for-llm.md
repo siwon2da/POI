@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.14**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
+> 버전 기준: **POI v1.15**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
 
 ---
 
@@ -405,6 +405,41 @@ every 250 ms { … }   # 단위: ms · s/sec/second(s) · m/min/minute(s) · h/h
 
 `background`/`every`/`task` 안의 함수도 `fn` 과 같아서 **바깥 변수는 읽기만** — 공유 상태는 Box(`상태.x = …`).
 한국어 별칭: `작업`(task) · `요청`(http) · `망`/`네트워크`(net).
+
+### 3D 웹 — `scene3d` (v1.15, import 없이)
+
+선언형 씬 → 자체 완결 HTML (Three.js 는 cdnjs). **서버 불필요**, 정적 호스트에 그대로.
+
+```poi
+장면 = scene3d.scene({ bg: "#0b0e14", camera: [4, 3, 7] })
+scene3d.box(장면,    { color: "#5b9dff", spin: true })
+scene3d.sphere(장면, { pos: [2.6, 0, 0], color: "#37d39b", float: true })
+scene3d.torus(장면,  { pos: [-2.6, 0, 0], color: "#ffb454", spin: true })
+scene3d.light(장면, "sun");  scene3d.orbit(장면);  scene3d.grid(장면)
+
+html scene3d.render(장면, { height: 480 })        # webapp{} / render() 안에서
+file.write("3d.html", scene3d.page(장면))         # 완전한 문서로
+```
+
+도형 `box sphere plane cylinder cone torus dodeca` · `light("sun"|"ambient"|"point")`.
+옵션 `pos scale rotate color size` + 애니 `spin`(`spinSpeed`) `float` `pulse`. 별칭 `삼차원`·`입체`.
+
+### htmx-lite — 새로고침 없는 부분 갱신 (v1.15)
+
+```html
+<button data-poi-get="/frag" data-poi-target="#slot">불러오기</button>
+<div id=slot data-poi-load="/stats" data-poi-every="3000"></div>
+<form data-poi-post="/save" data-poi-target="#msg">…</form>
+```
+
+라우트가 HTML 조각을 돌려주면 지정 자리에 끼운다. `data-poi-swap` = `inner`(기본)·`outer`·`append`·`prepend`.
+`render()` 결과에 `data-poi-*` 가 있으면 런타임 자동 주입.
+
+### 템플릿 `{% component %}` · 업로드 · 정적 굽기 (v1.15)
+
+- `{% component "card.html" title="시원" n=95 %}` — 인자를 넘겨 부분 템플릿 렌더.
+- multipart 업로드 — `body.files` → `[{ name, filename, content_type, data, text, size }]`.
+- `poi build --site 앱.poi -o dist` — 파라미터 없는 GET 라우트를 정적 HTML 로. `static` 폴더도 복사.
 
 ---
 

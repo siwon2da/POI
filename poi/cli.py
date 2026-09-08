@@ -519,8 +519,72 @@ def cmd_lint(args: list[str]) -> int:
 
 
 def cmd_build(args: list[str]) -> int:
+    if "--site" in args:
+        return _build_site([a for a in args if a != "--site"])
     from .build import build
     return build(args)
+
+
+def _build_site(args: list[str]) -> int:
+    """poi build --site 앱.poi [-o dist]  —  GET 라우트를 정적 HTML 로 굽는다."""
+    import shutil
+    rest = [a for a in args if not a.startswith("-")]
+    if not rest:
+        print("poi build --site <앱.poi> [-o 폴더]", file=sys.stderr)
+        return 1
+    app = os.path.abspath(rest[0])
+    out = "dist"
+    if "-o" in args:
+        i = args.index("-o")
+        if i + 1 < len(args):
+            out = args[i + 1]
+    from .interpreter import compile_source
+    from .runtime import make_globals
+    from .runtime import webserver as ws
+    ws.reset()
+    src = open(app, encoding="utf-8").read()
+    py, lm, cn = compile_source(src, os.path.basename(app))
+    g = make_globals()
+    g["__name__"] = "__main__"
+    g["__poi_dir__"] = os.path.dirname(app)
+    os.environ["POI_NO_SERVE"] = "1"
+    exec(compile(py, cn, "exec"), g)  # noqa: S102
+    compiled, static_dirs, _actions, _title = ws._routes_now()
+    os.makedirs(out, exist_ok=True)
+    n = 0
+    for m, rx, fn in compiled:
+        pat = rx.pattern
+        if m != "GET" or "?P<" in pat or ".*" in pat:
+            continue
+        path = pat[1:].rstrip("/?$").replace("\\", "") or "/"
+        try:
+            result = fn(_ns_box(), _ns_box(), _ns_box(),
+                        _ns_box(), "GET")
+        except Exception as e:  # noqa: BLE001
+            print(f"  건너뜀 {path}: {e}", file=sys.stderr)
+            continue
+        st, data, ct, _ex = ws._coerce(result)
+        if st != 200 or b"html" not in ct.encode():
+            if "json" not in ct:
+                continue
+        rel = "index.html" if path in ("/", "") else path.strip("/") + "/index.html"
+        dst = os.path.join(out, rel)
+        os.makedirs(os.path.dirname(dst) or out, exist_ok=True)
+        with open(dst, "wb") as f:
+            f.write(data)
+        n += 1
+        print(f"  {path:24} → {rel}")
+    for d in static_dirs:
+        if os.path.isdir(d):
+            shutil.copytree(d, os.path.join(out, os.path.basename(d)),
+                            dirs_exist_ok=True)
+    print(f"\n정적 사이트 {n}쪽 → {out}/   (아무 데나 올리면 됩니다)")
+    return 0
+
+
+def _ns_box():
+    from .runtime.boxes import Box
+    return Box()
 
 
 def _app_path(name: str) -> str:
