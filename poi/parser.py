@@ -12,7 +12,18 @@ _ADD_OPS = {"+", "-"}
 _MUL_OPS = {"*", "/", "%"}
 _GUI_WORDS = {"window", "text", "title", "button", "row", "column",
               "grid", "card", "input", "password", "state", "on"}
-_EXPR_START_KEYWORDS = {"true", "false", "null", "not", "ask"}
+_EXPR_START_KEYWORDS = {"true", "false", "null", "not", "ask", "match"}
+
+# 다른 언어 습관 → POI 로 안내 (문장 첫머리에서만)
+_FOREIGN_HINT = {
+    "elif": "else if", "elsif": "else if", "elseif": "else if",
+    "def": "fn", "func": "fn", "function": "fn", "fun": "fn",
+    "foreach": "for", "switch": "match", "case": "when",
+    "var": "(선언 키워드 없이 바로  이름 = 값)", "let": "(선언 키워드 없이 바로  이름 = 값)",
+    "echo": "show", "puts": "show", "console": "show",
+    "elif:": "else if", "then": "{ 또는 들여쓰기", "do": "{ 또는 들여쓰기",
+    "lambda": "화살표 함수  x => ...",
+}
 
 
 class Parser:
@@ -140,12 +151,26 @@ class Parser:
             self.advance()
             return Node("PyBlock", line=t.line, raw=t.value)
 
+        # 다른 언어 습관을 문장 첫머리에서 잡아 친절하게 안내
+        if t.type == "IDENT" and t.value in _FOREIGN_HINT \
+                and not (self.peek(1).type == "OP" and self.peek(1).value in ("=", "(", ".", ":", "[")):
+            raise POIError(
+                f"'{t.value}' 는 POI 문법이 아닙니다.", "P014", t.line, t.col,
+                hint=f"혹시 '{_FOREIGN_HINT[t.value]}' 를 쓰려고 하셨나요?")
+
         if t.type == "KEYWORD":
             if t.value == "show":
                 self.advance()
                 return Node("Show", line=t.line, value=self.expression())
             if t.value == "const":
                 return self._const_decl()
+            if t.value == "export":
+                return self._export_stmt()
+            if t.value in ("break", "continue"):
+                self.advance()
+                return Node("Break" if t.value == "break" else "Continue", line=t.line)
+            if t.value == "while":
+                return self._while_stmt()
             if t.value == "fn":
                 return self._fn_decl()
             if t.value == "if":
@@ -233,6 +258,35 @@ class Parser:
         self.expect("OP", "=")
         return Node("Assign", line=t.line, target=Node("Name", id=name),
                     value=self.expression(), is_const=True, declared_type=dtype)
+
+    def _export_stmt(self):
+        t = self.advance()  # export
+        inner = self.statement()
+        names = []
+        if inner.kind == "FnDecl":
+            names = [inner.name]
+        elif inner.kind == "Assign" and getattr(inner.target, "kind", "") == "Name":
+            names = [inner.target.id]
+        else:
+            raise POIError("export 는 fn / const / 이름 = 값 앞에만 붙일 수 있어요.",
+                           "P017", t.line)
+        return Node("Export", line=t.line, decl=inner, names=names)
+
+    def _while_stmt(self):
+        t = self.advance()
+        cond = self.expression()
+        body, style = self.block(opener_col=t.col)
+        self._end(style)
+        return Node("While", line=t.line, cond=cond, body=body)
+
+    def _range(self):
+        node = self._addsub()
+        if self.check("OP", "..") or self.check("OP", "..<"):
+            op = self.advance().value
+            hi = self._addsub()
+            return Node("Range", line=node.line, lo=node, hi=hi,
+                        inclusive=(op == ".."))
+        return node
 
     def _fn_decl(self):
         t = self.advance()
@@ -339,6 +393,40 @@ class Parser:
         return Node("Match", line=t.line, subject=subject, clauses=clauses,
                     default=default)
 
+    def _match_expr(self):
+        t = self.advance()  # match
+        subject = self.expression()
+        brace = bool(self.match("OP", "{"))
+        if not brace:
+            self.match("OP", ":")
+        self.skip_nl()
+        clauses = []
+        default = None
+        while True:
+            self.skip_nl()
+            if brace and self.match("OP", "}"):
+                break
+            if not brace and self.match("KEYWORD", "end"):
+                break
+            if self.at_end():
+                if brace:
+                    self.expect("OP", "}")
+                break
+            if self.match("KEYWORD", "else"):
+                self.expect("OP", "=>")
+                default = self.expression()
+                self.skip_nl()
+                continue
+            self.expect("KEYWORD", "when")
+            pats = [self._pattern()]
+            while self.match("OP", ","):
+                pats.append(self._pattern())
+            self.expect("OP", "=>")
+            clauses.append((pats, self.expression()))
+            self.skip_nl()
+        return Node("MatchExpr", line=t.line, subject=subject, clauses=clauses,
+                    default=default)
+
     def _pattern(self):
         if self.check_any("OP", {">", "<", ">=", "<=", "==", "!="}):
             op = self.advance().value
@@ -387,11 +475,18 @@ class Parser:
         self.skip_nl()
         self.expect("KEYWORD", "catch")
         name = None
+        err_type = None
         if self.check("IDENT"):
-            name = self.advance().value
+            first = self.advance().value
+            if self.match("KEYWORD", "as"):          # catch ValueError as e
+                err_type = first
+                name = self.expect("IDENT", what="오류 변수").value
+            else:                                     # catch e
+                name = first
         handler, s2 = self.block(opener_col=t.col)
         self._end("end" if "end" in (s1, s2) else s2)
-        return Node("TryCatch", line=t.line, body=body, name=name, handler=handler)
+        return Node("TryCatch", line=t.line, body=body, name=name,
+                    handler=handler, err_type=err_type)
 
     # -- WEB (v1.6) ---------------------------------------------
     _HTTP_METHODS = {"get", "post", "put", "delete", "patch"}
@@ -726,7 +821,7 @@ class Parser:
         return self._comparison()
 
     def _comparison(self):
-        left = self._addsub()
+        left = self._range()
         if self.match("KEYWORD", "between"):
             low = self._addsub()
             self.expect("KEYWORD", "and")
@@ -739,7 +834,7 @@ class Parser:
         ops, comps = [], []
         while self.check_any("OP", _COMPARE_OPS):
             ops.append(self.advance().value)
-            comps.append(self._addsub())
+            comps.append(self._range())
         if ops:
             return Node("Compare", line=left.line, left=left, ops=ops, comparators=comps)
         return left
@@ -846,6 +941,8 @@ class Parser:
             if t.value == "test":  # 'test' 는 이스터에그 값으로도 쓰인다
                 self.advance()
                 return Node("Name", line=t.line, id="test")
+            if t.value == "match":  # 식으로서의 match — 값을 돌려준다
+                return self._match_expr()
         if t.type == "OP" and t.value == "(":
             self.advance()
             self.skip_nl()

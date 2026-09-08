@@ -9,9 +9,10 @@ from . import stdlib2 as _std2
 from . import stdmods as _std
 from . import webserver as _web
 from .boxes import Box, boxify
-from .builtins import (boolean, number, poi_ask, poi_assert, poi_coalesce,
-                       poi_error_value, poi_fmt, poi_getattr, poi_getattr_safe,
-                       poi_import_module, poi_import_pyfile, poi_make_error,
+from .builtins import (_ERROR_MAKERS, boolean, number, poi_ask, poi_assert,
+                       poi_coalesce, poi_error_is, poi_error_value, poi_fmt,
+                       poi_getattr, poi_getattr_safe, poi_import_module,
+                       poi_import_pyfile, poi_make_error, poi_range,
                        poi_register_test, poi_run_tests, poi_show, poi_setattr,
                        poi_std, text)
 
@@ -37,6 +38,9 @@ _RUNTIME = {
     "poi_assert": poi_assert,
     "poi_register_test": poi_register_test,
     "poi_run_tests": poi_run_tests,
+    # v1.8 — 언어 안정화
+    "poi_range": poi_range,
+    "poi_error_is": poi_error_is,
     # 디버깅 도구
     "inspect": _dbg.inspect_value,
     "pause": _dbg.poi_pause,
@@ -99,6 +103,7 @@ _KOREAN_BUILTINS = {
 
 def make_globals() -> dict:
     g = dict(_RUNTIME)
+    g.update(_ERROR_MAKERS)   # Error / ValueError / FileError ... (raise 용)
     # v1.7 표준 라이브러리 — import 없이 바로 (html 은 web 헬퍼와 겹쳐 제외)
     for _name, _mod in _std2.MODULES.items():
         if _name != "html":

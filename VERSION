@@ -1,5 +1,5 @@
-1.7.0
-POI 1.7.0 — 표준 라이브러리 대확장 · 백엔드/보안 · POI IDLE. crypto·password·jwt·path·url·
-html·compress·log·cache·bench·dotenv·system·uuid 모듈, database(...) SQLite, 서명 쿠키·
-세션·레이트리밋·gzip 을 내장 웹서버에. poi idle 로 POI 로 만든 편집기, poi build --app idle
-로 .exe. 올리기:  poi update
+1.8.0
+POI 1.8.0 — 언어 안정화. break/continue, while, 진짜 const(재대입 오류), 범위 1..10 / 1..<10,
+match 식(값 반환), 타입 있는 catch (catch ValueError as e), raise Error/ValueError(...),
+반환 타입 검사 강화, export, poi fmt, poi lint, `poi check .` 프로젝트 단위, 그리고
+'elif'→'else if' 같은 친절한 오류 안내. 올리기:  poi update

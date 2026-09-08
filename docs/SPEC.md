@@ -1,4 +1,4 @@
-# POI v1.7 문법 명세
+# POI v1.8 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -28,8 +28,10 @@ POI 소스 → Lexer → Parser → POI AST → POI 컴파일러 → (CPython �
 - **크기 리터럴**: `500x300` → 문자열 `"500x300"` (GUI `size:` 용)
 - **문자열**: `"..."`, 여러 줄은 `"""..."""`. `\n \t \" \\` 이스케이프. `{{` `}}` 는 리터럴 중괄호.
 - **식별자**: 유니코드 letter/underscore 로 시작 → 한글 변수명 OK (`이름 = "시원"`).
-- **예약어**: `if else for in fn return const show ask use python try catch true false null is between and or not repeat as end raise assert match when`
+- **예약어**: `if else for in fn return const show ask use python try catch true false null
+  is between and or not repeat while as end raise assert match when break continue export`
   (`test` 는 문맥 키워드 — `test "이름" { }` 일 때만; GUI 단어도 문맥으로 인식)
+- **연산자**: 위 5절 + 범위 `..` `..<`
 - **한국어 키워드 별칭** — 영문과 완전 호환, 한 파일에서 섞어도 됨:
   show=`보여주기·출력·보이기·찍기·말하기` · ask=`물어보기·묻기` · if=`만약·만일·가령` ·
   else=`아니면·아니라면·그밖에·그외` · repeat=`반복·되풀이` · for=`순회·각각·모든` · in=`안에` ·
@@ -60,11 +62,13 @@ user = { name: "시원", age: 16 } # 객체 (Box - 점 접근 되는 dict)
 
 ```poi
 x = 10
-const PI = 3.14159      # 관례상 상수 (아직 재대입 막지 않음)
+const PI = 3.14159      # 진짜 상수 — 다시 대입하면 컴파일 오류 (P019)
 
 name: Text = "시원"     # 타입 표기 — 안 쓰면 무시, 쓰면 검사 가능
 나이: 정수 = 16          # 한국어 타입명도 됨
 ```
+
+`const` 로 선언한 이름에 다시 `=` 하면 `POI Error P019`. 값을 바꿔야 하면 `const` 를 빼세요.
 
 **타입은 옵션이다.** 안 쓰면 그냥 동적 언어. 쓰면 `poi check --types` 로 검사한다:
 
@@ -129,9 +133,10 @@ sort_by sort_desc group_by partition take drop take_while drop_while unique
 flatten chunk zip_with sum_of avg min_of max_of count_of reverse_of
 range_list repeat_list`
 
-## 5.5 블록 — 3가지 방식 (섞어도 됨)
+## 5.5 블록 — 여러 방식 (섞어도 됨)
 
 POI 의 블록은 **다섯 가지**로 쓸 수 있고, 한 파일에서 **섞어도 된다**. 무엇도 강제하지 않는다.
+**권장은 `{ }` 또는 들여쓰기.** `end` · 콜론 한 줄은 v2.0 에서 비권장 예정 (`poi fmt` 도 이 둘은 건드리지 않는다).
 
 ```poi
 if x > 0 { show "양수" }          # 1) 중괄호
@@ -190,6 +195,19 @@ match x {
 
 `{ }` · `:` 한 줄 · `end` 다 된다. 한국어로는 `분기` / `경우` / `그밖에`.
 
+### match 식 — 값을 돌려준다 (v1.8)
+
+```poi
+grade = match score {
+    when >= 90 => "A"
+    when >= 80 => "B"
+    when >= 70 => "C"
+    else => "F"
+}
+```
+
+절마다 `=> 식` 하나. 통계문 `match` (절이 `{ }` 블록)와 구분된다 — `=>` 를 쓰면 식.
+
 ## 7. 반복문
 
 ```poi
@@ -202,7 +220,14 @@ repeat 10 as i {      # 인덱스 0..9
 for user in users {   # 배열 순회
     show user
 }
+for i in 1..10 { show i }     # 범위 1..10 (양끝 포함)
+for i in 1..<10 { show i }    # 1..<10 (10 미포함)
+while n > 0 { n = n - 1 }     # 조건 반복
 ```
+
+- `1..10` / `1..<10` 는 식으로도 쓸 수 있다 (`nums = 1..5` → `[1,2,3,4,5]`).
+  끝이 시작보다 작으면 빈 리스트 (`5..1` → `[]`). 역순은 `reverse_of(1..10)`.
+- `break` / `continue` — 가장 안쪽 반복문에서 탈출 / 다음 회로. 반복문 밖이면 컴파일 오류 (P018).
 
 ## 8. 함수
 
@@ -236,16 +261,31 @@ try {
 }
 ```
 
-`catch` 로 잡힌 값은 사람이 읽기 좋은 문자열로 변환된다.
+`catch error` 로 잡힌 값은 사람이 읽기 좋은 문자열이면서 `.message` · `.type` 도 갖는다.
 
-직접 던지기:
+직접 던지기 — 문자열 또는 오류 타입:
 
 ```poi
-fn 나이확인(n)
-if n < 0: raise "나이는 음수일 수 없습니다"
-return n
-end
+raise "나이는 음수일 수 없습니다"
+raise ValueError("잘못된 값")
+raise FileError("파일 없음")     # Error ValueError TypeError NameError KeyError
+                                 # IndexError RuntimeError FileError AuthError
+                                 # NotFoundError PermissionError TimeoutError
 ```
+
+### 타입 있는 catch (v1.8)
+
+```poi
+try {
+    raise ValueError("잘못된 값")
+} catch ValueError as e {
+    show e.message      # "잘못된 값"
+    show e.type         # "ValueError"
+}
+```
+
+`catch <타입> as e` 는 그 타입(및 `Error`/`Exception`)만 잡고, 다르면 **그대로 다시 던진다**
+(바깥 `try` / 상위로). 안 잡힌 `raise ValueError("x")` → `POI Error P300  [ValueError] x`.
 
 ## 10.5 테스트 (`test` / `assert` / `poi test`)
 
@@ -269,6 +309,17 @@ show u.함수(1, 2)
 ```
 
 파이썬 파일은 `use pyfile "./x.py"`, 파이썬 라이브러리는 `use py:이름`.
+
+### export (v1.8)
+
+```poi
+# 유틸.poi
+export fn add(a, b) => a + b
+export const V = "1.8"
+fn _내부() => 42            # export 안 함 → 다른 파일에서 안 보임
+```
+
+파일에 `export` 가 하나라도 있으면 **명시한 것만** 공개된다. 없으면 예전처럼 전부 공개.
 
 ## 11. 파이썬 상호운용
 
@@ -437,11 +488,13 @@ poi debug x.poi            # 위 전부
 | `poi test 파일` | 파일 안의 `test` 블록 실행·채점 |
 | `poi build 파일 [-o 이름]` | 단일 실행파일로 (PyInstaller 필요) |
 | `poi build --app idle` | POI IDLE 을 `poi-idle.exe` 로 빌드 |
-| `poi idle` | POI IDLE — POI 로 작성한 코드 편집기 (문법 강조·F5 실행) |
+| `poi idle [파일]` | POI IDLE — POI 로 작성한 코드 편집기 (문법 강조·F5 실행) |
+| `poi fmt [파일\|.] [--check]` | 소스 정리 (탭·공백·블록 깊이). end/콜론 스타일은 공백만 |
+| `poi lint [파일\|.] [--strict]` | 안 쓴 변수(POI-W101)·const 재선언(W102)·죽은 코드(W103) |
 | `poi serve [폴더] [--port]` | 플레이그라운드 서버 (정적 서빙 + 안전 실행 `/run`) |
 | `poi exercises [번호\|--topic\|--show]` | 연습문제 300제 실행·채점 |
 | `poi new <이름>` | 프로젝트 폴더 생성 |
-| `poi check <파일>` | 문법만 검사 |
+| `poi check <파일\|.> [--types]` | 문법(+선택적 타입) 검사. `.` 면 폴더 전체 |
 | `poi repl` | 대화형 셸 (부팅 배너) |
 | `poi update` | 새 버전 확인 / 올리기 |
 | `poi version` | 버전 |

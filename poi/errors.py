@@ -61,6 +61,14 @@ def translate_exception(exc: BaseException, source: str, linemap: dict,
     name = type(exc).__name__
     msg = str(exc)
 
+    # raise Error("...") / raise ValueError("...") 로 던진 것
+    if hasattr(exc, "poi_message"):
+        et = getattr(exc, "poi_type", "Error")
+        head = f"[{et}] " if et not in ("Error", "") else ""
+        return POIError(head + str(getattr(exc, "poi_message", msg)), "P300",
+                        poi_line,
+                        hint=f"try {{ ... }} catch {et} as e {{ ... }} 로 잡을 수 있어요.")
+
     if isinstance(exc, ZeroDivisionError):
         return POIError("0 으로는 나눌 수 없습니다.", "P101", poi_line,
                         hint="나누는 값이 0 이 아닌지 먼저 확인하세요.")

@@ -171,18 +171,58 @@ def poi_coalesce(get_left, get_right):
     return v if v is not None else get_right()
 
 
+class PoiErrorValue(str):
+    """catch 로 잡힌 오류 — 문자열처럼도(메시지) 쓰이고 .type / .message 도 있다."""
+    def __new__(cls, message, etype="Error"):
+        s = super().__new__(cls, message)
+        s.message = message
+        s.type = etype
+        return s
+
+
+class _PoiRaise(Exception):
+    def __init__(self, message, etype="Error"):
+        super().__init__(message)
+        self.poi_message = message
+        self.poi_type = etype
+
+
 def poi_error_value(err):
-    """catch 로 잡힌 값을 사람이 읽기 좋게."""
+    """catch 로 잡힌 값을 사람이 읽기 좋게 (+ .type / .message)."""
+    if isinstance(err, _PoiRaise):
+        return PoiErrorValue(err.poi_message, err.poi_type)
     if isinstance(err, POIError):
-        return err.message
-    return f"{type(err).__name__}: {err}"
+        return PoiErrorValue(err.message, "POIError")
+    return PoiErrorValue(f"{type(err).__name__}: {err}", type(err).__name__)
+
+
+def poi_error_is(err, typename) -> bool:
+    if isinstance(err, _PoiRaise):
+        return err.poi_type == typename or typename in ("Error", "Exception")
+    return type(err).__name__ == typename or typename in ("Error", "Exception")
+
+
+def poi_error(message, etype="Error"):
+    """raise Error("...") / raise ValueError("...") 용 오류 값 생성기."""
+    return _PoiRaise(str(message), str(etype))
+
+
+# raise Error(...) · raise ValueError(...) 등에서 바로 쓰는 이름들
+_ERROR_MAKERS = {
+    name: (lambda _n: (lambda msg="": poi_error(msg, _n)))(name)
+    for name in ("Error", "ValueError", "TypeError", "NameError", "KeyError",
+                 "IndexError", "RuntimeError", "FileError", "ValidationError",
+                 "AuthError", "NotFoundError", "PermissionError", "TimeoutError")
+}
 
 
 def poi_make_error(value):
     """raise <값>  →  예외로."""
     if isinstance(value, BaseException):
         return value
-    return POIError(str(value), "P300")
+    if isinstance(value, PoiErrorValue):
+        return _PoiRaise(value.message, value.type)
+    return _PoiRaise(str(value), "Error")
 
 
 def poi_assert(cond, src=""):
@@ -245,8 +285,19 @@ def poi_import_module(path):
     g2["__poi_source__"] = src
     g2["__poi_linemap__"] = linemap
     exec(compile(py, cname, "exec"), g2)  # noqa: S102
+    exports = g2.get("__poi_exports__")
+    if exports:  # export 를 하나라도 쓴 파일 → 명시된 것만 공개
+        return Box({k: g2[k] for k in exports if k in g2})
     return Box({k: v for k, v in g2.items()
                 if k not in base_keys and not k.startswith("__")})
+
+
+def poi_range(a, b, inclusive=True):
+    """1..10 (양끝 포함) / 1..<10 (끝 미포함)  →  리스트.
+    b < a 이면 빈 리스트 (역방향은 reverse_of(1..10) 로)."""
+    a, b = int(a), int(b)
+    stop = (b + 1) if inclusive else b
+    return list(range(a, max(a, stop)))
 
 
 def poi_import_pyfile(path):

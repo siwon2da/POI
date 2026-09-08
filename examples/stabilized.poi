@@ -1,0 +1,48 @@
+# POI v1.8 — 언어 안정화 맛보기
+
+# break / continue / while
+소수들 = []
+for n in 2..30 {
+    소수 = true
+    for d in 2..(n - 1) {
+        if n % d is 0 {
+            소수 = false
+            break
+        }
+    }
+    if not 소수 { continue }
+    소수들.add(n)
+}
+show "30 이하 소수: {소수들}"
+
+# 진짜 const
+const 최대 = 100
+show "최대는 {최대}"
+# 최대 = 200   ← 주석 풀면 POI Error P019
+
+# 범위를 값으로
+show "1..5 = " + text(1..5)
+
+# match 식
+fn 등급(점수) => match 점수 {
+    when >= 90 => "A"
+    when >= 80 => "B"
+    when >= 70 => "C"
+    when >= 60 => "D"
+    else => "F"
+}
+for s in [95, 82, 71, 55] {
+    show "{s}점 → {등급(s)}"
+}
+
+# 오류 타입 + 타입 있는 catch
+fn 나눗셈(a, b) {
+    if b is 0 { raise ValueError("0 으로는 못 나눠요") }
+    return a / b
+}
+
+try {
+    show 나눗셈(10, 0)
+} catch ValueError as e {
+    show "[{e.type}] {e.message}"
+}

@@ -20,7 +20,20 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.7 — 표준 라이브러리 · 백엔드/보안 · POI IDLE  ✅ (현재)
+## v1.8 — 언어 안정화  ✅ (현재)
+
+- [x] **break / continue / while** (반복문 밖 break → 컴파일 오류)
+- [x] **진짜 const** — 재대입 시 P019
+- [x] **범위** `1..10` (포함) · `1..<10` (미포함) — for 와 값 둘 다
+- [x] **match 식** — `x = match v { when >= 90 => "A" ... else => "F" }`
+- [x] **타입 있는 catch** `catch ValueError as e` + `raise Error/ValueError/FileError(...)` (`.type` `.message`)
+- [x] **export** — `export fn` / `export const`, 쓰면 명시한 것만 공개
+- [x] **반환 타입 검사** — 중첩 블록 안 return 까지 (P405)
+- [x] **poi fmt** (탭·공백·블록 깊이, end 스타일은 안전하게 공백만) · **poi lint** (W101 안 쓴 변수 …)
+- [x] **`poi check/fmt/lint .`** — 폴더 단위
+- [x] **오류 안내** — `elif`→`else if`, `def`→`fn`, `switch`→`match` …
+
+## v1.7 — 표준 라이브러리 · 백엔드/보안 · POI IDLE  ✅
 
 - [x] **백엔드/보안 모듈** (외부 의존성 0) — `crypto` · `password`(PBKDF2) · `jwt`(HS256) · `path` · `url` · `html` · `compress` · `log` · `cache` · `bench` · `dotenv` · `system` · `uuid`
 - [x] **`database(...)`** — import 없이 SQLite 0설정, 결과 행은 점 접근 (`run`/`query`/`one`/`value`/`insert`/`tables`)
@@ -90,49 +103,27 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [x] Windows 설치 마법사 (`poi.iss` + `install.ps1`) · 로고 · 회귀 테스트 14개
 - [x] 한생(Galmuri)/토스 감성 소개 페이지 (hagora.kr/poi)
 
-## v1.7 — 언어 다듬기
+## v1.9 — 패키지 · 동시성 · 네트워크
 
-- [ ] `const` 재대입 금지 실제 적용, 스코프 규칙 문서화
-- [ ] 리스트 컴프리헨션 대체 문법: `[x * 2 for x in xs where x > 0]`
-- [ ] 구조 분해: `a, b = pair`, `{ name, age } = user`
-- [ ] `every 1 second { }`, `background { }`, `async fn` / `await` 고수준 동시성
-- [ ] 문자열 보간 형식 지정: `"{price:money}"`, `"{ratio:%}"`
-- [ ] 타입 추론 강화 (List<T> 원소 타입, Member/Index 추적), `did you mean` 오타 제안
+- [ ] `poi add <이름>` / `poi add py:numpy` · `poi remove` · `poi install` — 프로젝트 전용 venv
+- [ ] `poi.toml` `[dependencies]`, `poi.lock`, POI 패키지 레지스트리 초안
+- [ ] `every 1 second { }` · `background { }` · `async fn` / `await` 고수준 동시성
+- [ ] `net`(소켓/websocket) · 고수준 `http` 클라이언트
+- [ ] 구조 분해: `{ name, age } = user`, `[a, b] = pair`
+- [ ] `poi fmt` CST 기반 전면 재작성 (콜론/`end` → 중괄호 통일), `poi lint` 규칙 확장
 
-## v1.8 — 표준 라이브러리 확장
+## v1.10 — 웹 · GUI 심화
 
-- [ ] `database("x.db")` SQLite DSL
-- [ ] `ai` 모듈: `ai.chat(model:, prompt:)` (openai / gemini / ollama)
-- [ ] `net`(소켓/websocket) · `crypto` · `path` · `http.server` 고수준
-- [ ] 데이터프레임 유사 API (`table`), 플로팅 헬퍼
-
-## v1.9 — 웹 심화
-
-- [ ] 클라이언트 반응형 (state 변경 → 부분 갱신, 새로고침 없이)
-- [ ] 세션/쿠키·인증 헬퍼, 미들웨어, 웹소켓
+- [ ] 클라이언트 반응형 (state 변경 → 부분 갱신, 새로고침 없이), 세션/인증 헬퍼, 미들웨어
 - [ ] `poi build --web` (정적 번들)
+- [ ] 반응형 GUI 렌더, `grid`, 전역 `style`, 웹뷰 / Qt 백엔드
 
-## v1.10 — GUI 2.0
+## v2.0 — 문법 정리 (하위호환 깨질 수 있음)
 
-- [ ] 반응형 렌더 (`state` 변경 → 부분 갱신), `grid`, 전역 `style`
-- [ ] 웹뷰 / Qt 백엔드 선택, 테마 시스템
-
-## v2.1 — 패키지 매니저 · 빌드 심화
-
-- [ ] `poi add <이름>` / `poi add py:numpy` — 프로젝트 전용 venv
-- [ ] `poi.lock`, POI 패키지 레지스트리
-- [ ] `poi build --native`(Nuitka) · `--web`(정적 번들) · 코드 서명 훅
-
-## v2.2 — 도구 생태계
-
-- [ ] **POI Language Server (LSP)** — 자동완성/정의이동/진단/리네임
-- [ ] VS Code 확장, `poi fmt` 정식 구현, `poi doctor`
-
-## v2.3 — 안정화
-
-- [ ] 문법 안정화 + 하위호환 정책
-- [ ] **play.poi.dev** — 브라우저 실행 (Pyodide)
-- [ ] 튜토리얼 · 레퍼런스 · 예제 갤러리 · 성능(AST 캐시)
+- [ ] 블록 문법 정리 — `{ }` + 들여쓰기만 정식, `end`/콜론 한 줄은 비권장 → 경고 → 제거
+- [ ] 문법 고정 + 하위호환 정책, 버전 마이그레이션 도구
+- [ ] **POI Language Server (LSP)** · VS Code 확장 · `poi doctor`
+- [ ] **play.poi.dev** — 브라우저 실행 (Pyodide) · 예제 갤러리 · 성능(AST 캐시)
 
 ---
 

@@ -223,15 +223,40 @@ class Checker:
                           f"{_base(bt)} 를 돌려줍니다.", n.line)
         else:
             for s in n.body:
-                if s.kind == "Return" and s.value is not None and rt:
-                    bt = self.infer(s.value)
+                self.stmt(s)
+            if rt:
+                for r in _returns_in(n.body):
+                    if r.value is None:
+                        continue
+                    bt = self.infer(r.value)
                     if not compat(bt, rt):
                         self._err("P405",
                                   f"'{n.name}' 는 {_base(rt)} 를 돌려준다고 했는데 "
-                                  f"{_base(bt)} 를 돌려줍니다.", s.line)
-                else:
-                    self.stmt(s)
+                                  f"{_base(bt)} 를 돌려줍니다.", r.line)
         self.scopes.pop()
+
+
+def _returns_in(body):
+    """중첩된 if/for/while/try 블록 안의 Return 까지 (안쪽 fn 은 제외)."""
+    for s in body or []:
+        k = getattr(s, "kind", None)
+        if k == "Return":
+            yield s
+        elif k == "FnDecl":
+            continue
+        elif k == "If":
+            for _c, b in getattr(s, "branches", []):
+                yield from _returns_in(b)
+            yield from _returns_in(getattr(s, "orelse", None))
+        elif k in ("Repeat", "ForIn", "While"):
+            yield from _returns_in(getattr(s, "body", None))
+        elif k == "TryCatch":
+            yield from _returns_in(getattr(s, "body", None))
+            yield from _returns_in(getattr(s, "handler", None))
+        elif k == "Match":
+            for _p, b in getattr(s, "clauses", []):
+                yield from _returns_in(b)
+            yield from _returns_in(getattr(s, "default", None))
 
 
 def check(program) -> list[Finding]:

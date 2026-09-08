@@ -1,0 +1,33 @@
+# v1.8 — break/continue/while, range, match 식, typed catch, const
+합 = 0
+repeat 100 as i {
+    if i is 10 { break }
+    if i % 2 is 0 { continue }
+    합 = 합 + i
+}
+show 합
+
+n = 3
+while n > 0 {
+    show n
+    n = n - 1
+}
+
+show 1..5
+show 1..<4
+
+fn grade(s) => match s {
+    when >= 90 => "A"
+    when >= 70 => "C"
+    else => "F"
+}
+show grade(95)
+show grade(50)
+
+got = ""
+try {
+    raise ValueError("bad")
+} catch ValueError as e {
+    got = e.type + ":" + e.message
+}
+show got

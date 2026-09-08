@@ -23,10 +23,12 @@ POI v{ver}  -  Power Of Imagination
   poi debug <파일.poi>                 = poi run --debug
   poi test [파일.poi]                  파일 안의 test 블록 실행
   poi build <파일.poi> [-o 이름]        단일 실행파일(.exe) 로 빌드
-  poi idle                            POI IDLE — POI 로 만든 코드 편집기
+  poi idle [파일.poi]                  POI IDLE — POI 로 만든 코드 편집기
+  poi fmt [파일 | .] [--check]         소스 정리 (탭·공백·들여쓰기)
+  poi lint [파일 | .] [--strict]       안 쓴 변수 등 가벼운 점검
   poi serve [폴더] [--port 8900]       플레이그라운드 서버 (정적 서빙 + 안전 실행 /run)
   poi new <이름>                       새 프로젝트 폴더 만들기
-  poi check <파일.poi> [--types]        문법·타입만 검사 (실행 안 함)
+  poi check <파일.poi | .> [--types]    문법·타입만 검사 (실행 안 함)
   poi repl                            대화형 셸
   poi update                          새 버전 확인 / 올리기
   poi version                        버전 출력
@@ -258,29 +260,93 @@ def cmd_check(args: list[str]) -> int:
     want_types = "--types" in args
     rest = [a for a in args if not a.startswith("-")]
     if not rest:
-        print("검사할 파일을 알려주세요: poi check [--types] <파일.poi>", file=sys.stderr)
+        print("검사할 파일을 알려주세요: poi check [--types] <파일.poi | .>",
+              file=sys.stderr)
         return 1
-    path = rest[0]
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            src = f.read()
-    except OSError as e:
-        print(f"파일을 열 수 없습니다: {e}", file=sys.stderr)
+    targets = []
+    for t in rest:
+        targets += _poi_files(t)
+    if not targets:
+        print("검사할 .poi 파일이 없어요.", file=sys.stderr)
         return 1
-    try:
-        compile_source(src, os.path.basename(path))
-    except POIError as e:
-        print(e.render(src), file=sys.stderr)
-        return 1
-    if want_types:
-        return _typecheck_file(path, block=True)
-    print(f"문법 OK: {path}  (타입도 보려면 --types)")
-    return 0
+    rc = 0
+    for path in targets:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                src = f.read()
+        except OSError as e:
+            print(f"파일을 열 수 없습니다: {e}", file=sys.stderr)
+            rc = 1
+            continue
+        try:
+            compile_source(src, os.path.basename(path))
+        except POIError as e:
+            print(e.render(src), file=sys.stderr)
+            rc = 1
+            continue
+        if want_types:
+            rc |= _typecheck_file(path, block=True)
+        else:
+            print(f"문법 OK: {path}")
+    if not want_types and rc == 0:
+        print("(타입도 보려면 --types)")
+    return rc
+
+
+def _poi_files(target: str) -> list[str]:
+    """'.' 또는 폴더 → 그 안의 .poi 전부. 파일이면 그 하나."""
+    if os.path.isfile(target):
+        return [target]
+    root = "." if target == "." else target
+    found = []
+    for base, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in
+                   ("__pycache__", ".git", "node_modules", "dist", "build")]
+        for name in sorted(files):
+            if name.endswith(".poi"):
+                found.append(os.path.join(base, name))
+    return found
 
 
 def cmd_fmt(args: list[str]) -> int:
-    print("poi fmt 는 아직 준비 중이에요 (로드맵 v0.9). 지금은 `poi check` 를 쓰세요.")
+    from .fmt import fmt_file
+    check_only = "--check" in args
+    rest = [a for a in args if not a.startswith("-")] or ["."]
+    targets = []
+    for t in rest:
+        targets += _poi_files(t)
+    if not targets:
+        print("정리할 .poi 파일이 없어요.", file=sys.stderr)
+        return 1
+    changed = 0
+    for p in targets:
+        did, msg = fmt_file(p, write=not check_only)
+        if did:
+            changed += 1
+            print(msg)
+        elif "건너뜀" in msg:
+            print(msg)
+    if check_only:
+        print(f"\n정리 필요: {changed}개" if changed else "\n전부 정리돼 있어요.")
+        return 1 if changed else 0
+    print(f"\n{changed}개 정리함." if changed else "\n바꿀 게 없었어요.")
     return 0
+
+
+def cmd_lint(args: list[str]) -> int:
+    from .lint import lint_file
+    strict = "--strict" in args
+    rest = [a for a in args if not a.startswith("-")] or ["."]
+    targets = []
+    for t in rest:
+        targets += _poi_files(t)
+    if not targets:
+        print("검사할 .poi 파일이 없어요.", file=sys.stderr)
+        return 1
+    rc = 0
+    for p in targets:
+        rc |= lint_file(p, strict=strict)
+    return rc
 
 
 def cmd_build(args: list[str]) -> int:
@@ -416,6 +482,7 @@ def main(argv: list[str] | None = None) -> int:
         "update": cmd_update, "upgrade": cmd_update, "debug": cmd_debug,
         "serve": cmd_serve, "playground": cmd_serve, "exercises": cmd_exercises,
         "ex": cmd_exercises, "test": cmd_test, "idle": cmd_idle,
+        "lint": cmd_lint,
     }
     if cmd in table:
         return table[cmd](rest)

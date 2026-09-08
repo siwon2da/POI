@@ -24,6 +24,7 @@ RESERVED = {
     "is", "between", "and", "or", "not",
     "repeat", "as", "end", "raise", "test", "assert",
     "match", "when",
+    "break", "continue", "export", "while",
 }
 
 # 한국어 키워드 별칭 — 영문 키워드와 완전 호환, 한 파일에서 섞어 써도 됨.
@@ -54,8 +55,12 @@ KOREAN_ALIASES = {
     "사이": "between", "범위": "between",
     "마다": "as", "로": "as", "으로": "as",
     "파이썬": "python",
+    "멈추기": "break", "중단": "break", "빠져나가기": "break",
+    "계속": "continue", "다음으로": "continue",
+    "공개": "export", "내보냄": "export",
+    "동안": "while", "하는동안": "while",
 }
 
 # 여러 글자 연산자 (긴 것부터 매칭)
-MULTI_OPS = ["?.", "??", "==", "!=", "<=", ">=", "=>", "->", "|>", "&&", "||"]
+MULTI_OPS = ["..<", "..", "?.", "??", "==", "!=", "<=", ">=", "=>", "->", "|>", "&&", "||"]
 SINGLE_OPS = set("+-*/%<>=(){}[],.:;!")

@@ -4,10 +4,10 @@
 nums = [5, -3, 8, 1, -7, 12, 4, -1, 9]
 
 result = nums
-    |> filter(x => x > 0)
-    |> map(x => x * x)
-    |> sort_desc
-    |> take(3)
+|> filter(x => x > 0)
+|> map(x => x * x)
+|> sort_desc
+|> take(3)
 
 show "상위 3개 제곱: {result}"
 show "양수 합: " + text(nums |> filter(x => x > 0) |> sum_of)

@@ -1,5 +1,80 @@
 # 변경 이력
 
+## v1.8.0 — 2026-09-08  (대규모 업데이트 — 언어 안정화)
+
+기능을 더 넣기보다 **문법 정리 · 개발 편의성 · 오류 메시지**에 집중.
+
+**제어 흐름**
+```poi
+repeat 100 as i {
+    if i is 20 { break }
+    if i % 2 is 0 { continue }
+}
+while n > 0 { n = n - 1 }
+```
+- `break` / `continue` (반복문 밖이면 컴파일 오류 P018)
+- `while 조건 { }` 정식 추가
+
+**진짜 `const`**
+```poi
+const PI = 3.14159
+PI = 4        # POI Error P019 — 상수는 다시 대입할 수 없어요
+```
+
+**범위 `1..10` / `1..<10`**
+```poi
+for i in 1..10 { show i }      # 1..10 포함
+show 1..<4                     # [1, 2, 3]
+```
+
+**`match` 식 (값을 돌려준다)**
+```poi
+grade = match score {
+    when >= 90 => "A"
+    when >= 80 => "B"
+    else => "F"
+}
+```
+
+**타입 있는 catch · 오류 타입**
+```poi
+try {
+    raise ValueError("잘못된 값")
+} catch ValueError as e {
+    show e.message      # "잘못된 값"
+    show e.type         # "ValueError"
+}
+```
+- `raise Error(...)` · `raise ValueError(...)` · `FileError` · `AuthError` · `NotFoundError` …
+- `catch <타입> as e` — 타입이 다르면 그대로 다시 던짐 (다른 catch/상위로)
+- 안 잡힌 `raise ValueError("x")` → `POI Error P300  [ValueError] x`
+
+**모듈 `export`**
+```poi
+# math.poi
+export fn add(a, b) => a + b
+export const V = "1.8"
+fn hidden() => 42          # export 안 함 → 밖에서 안 보임
+```
+`export` 를 하나라도 쓰면 명시한 것만 공개, 안 쓰면 예전처럼 전부 공개.
+
+**타입 검사 강화** — 중첩된 `if`/`for`/`while`/`try` 안의 `return` 까지 반환 타입 검사 (P405).
+
+**도구**
+- `poi fmt [파일 | .] [--check]` — 탭→4칸, 줄 끝 공백, 블록 깊이 재들여쓰기, 빈 줄 정리.
+  `end`/콜론 스타일이면 공백만 정리(안전). 정리 후 파싱 안 되면 원본 유지.
+- `poi lint [파일 | .] [--strict]` — 안 쓴 변수(POI-W101), const 재선언(W102), return 뒤 죽은 코드(W103)
+- `poi check .` / `poi fmt .` / `poi lint .` — 폴더 전체의 `.poi` 를 한 번에
+
+**오류 메시지** — 다른 언어 습관을 문장 첫머리에서 잡아 안내:
+`elif`→`else if`, `def`/`func`→`fn`, `foreach`→`for`, `switch`→`match`, `var`/`let`→(키워드 없이), `echo`/`puts`→`show` …
+
+**한국어 키워드 추가** — `멈추기`(break) · `계속`(continue) · `동안`(while) · `공개`(export)
+
+**회귀**: 30 케이스 + 300 연습문제 통과. 예제/케이스 일부 `poi fmt` 적용.
+
+---
+
 ## v1.7.0 — 2026-09-08  (대규모 업데이트 — 표준 라이브러리 · 백엔드/보안 · POI IDLE)
 
 파이썬이 하는 건 다 하고, 더 한다. 새 모듈은 `import` 없이 바로, 또는 `use 이름`.

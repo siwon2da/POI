@@ -31,6 +31,9 @@ class Transpiler:
         self.ind = 0
         self._hcount = 0
         self._gui_states: set[str] = set()
+        self._const: set[str] = set()
+        self._has_export = False
+        self._loop_depth = 0
 
     def _src_at(self, line: int) -> str:
         if 0 < line <= len(self.src_lines):
@@ -46,8 +49,13 @@ class Transpiler:
     _has_web = False
 
     def generate(self, program):
+        body_start = len(self.lines)
         for stmt in program.body:
             self.stmt(stmt)
+        if self._has_export:
+            self.lines.insert(body_start, "__poi_exports__ = set()")
+            self.linemap = {(k + 1 if k > body_start else k): v
+                            for k, v in self.linemap.items()}
         if self._has_web:
             self.emit("__poi_has_web__ = True")
         if not self.lines:
@@ -86,10 +94,33 @@ class Transpiler:
         elif k == "Repeat":
             var = n.var or "_i"
             self.emit(f"for {var} in range(int({self.ex(n.count)})):", n.line)
+            self._loop_depth += 1
             self.block(n.body)
+            self._loop_depth -= 1
         elif k == "ForIn":
             self.emit(f"for {n.var} in {self.ex(n.iterable)}:", n.line)
+            self._loop_depth += 1
             self.block(n.body)
+            self._loop_depth -= 1
+        elif k == "While":
+            self.emit(f"while {self.ex(n.cond)}:", n.line)
+            self._loop_depth += 1
+            self.block(n.body)
+            self._loop_depth -= 1
+        elif k == "Break":
+            if self._loop_depth <= 0:
+                raise POIError("break 는 반복문(repeat/for/while) 안에서만 쓸 수 있어요.",
+                               "P018", n.line)
+            self.emit("break", n.line)
+        elif k == "Continue":
+            if self._loop_depth <= 0:
+                raise POIError("continue 는 반복문 안에서만 쓸 수 있어요.", "P018", n.line)
+            self.emit("continue", n.line)
+        elif k == "Export":
+            self._has_export = True
+            self.stmt(n.decl)
+            for nm in n.names:
+                self.emit(f"__poi_exports__.add({nm!r})", n.line)
         elif k == "TryCatch":
             self._try(n)
         elif k == "Use":
@@ -119,6 +150,12 @@ class Transpiler:
     def _assign(self, n):
         t = n.target
         if t.kind == "Name":
+            if getattr(n, "is_const", False):
+                self._const.add(t.id)
+            elif t.id in self._const:
+                raise POIError(
+                    f"'{t.id}' 은(는) 상수(const)라서 다시 대입할 수 없어요.", "P019",
+                    n.line, hint="값을 바꿔야 한다면 const 를 빼고 선언하세요.")
             self.emit(f"{t.id} = {self.ex(n.value)}", n.line)
         elif t.kind == "Member":
             self.emit(f'poi_setattr({self.ex(t.obj)}, "{t.name}", {self.ex(n.value)})',
@@ -151,12 +188,15 @@ class Transpiler:
     def _try(self, n):
         self.emit("try:", n.line)
         self.block(n.body)
-        var = n.name or "_err"
-        self.emit(f"except Exception as {var}:", n.line)
+        et = getattr(n, "err_type", None)
+        raw = f"_e{self._next_h()}"
+        self.emit(f"except Exception as {raw}:", n.line)
+        self.ind += 1
+        if et:
+            self.emit(f"if not poi_error_is({raw}, {et!r}): raise", n.line)
         if n.name:
-            self.ind += 1
-            self.emit(f"{var} = poi_error_value({var})", n.line)
-            self.ind -= 1
+            self.emit(f"{n.name} = poi_error_value({raw})", n.line)
+        self.ind -= 1
         self.block(n.handler)
 
     def _use(self, n):
@@ -452,7 +492,28 @@ class Transpiler:
             return "Box({" + body + "})"
         if k == "Ask":
             return f"poi_ask({self.ex(n.prompt)})"
+        if k == "Range":
+            return (f"poi_range({self.ex(n.lo)}, {self.ex(n.hi)}, "
+                    f"{bool(n.inclusive)})")
+        if k == "MatchExpr":
+            return self._match_expr_ex(n)
         raise POIError(f"아직 지원하지 않는 표현식입니다: {k}", "P022", n.line)
+
+    def _match_expr_ex(self, n) -> str:
+        m = f"__ms{self._next_h()}"
+
+        def cond(p):
+            if p.kind == "PatCompare":
+                return f"({m} {p.op} {self.ex(p.value)})"
+            if p.kind == "PatRange":
+                return f"({self.ex(p.low)} <= {m} <= {self.ex(p.high)})"
+            return f"({m} == {self.ex(p.value)})"
+
+        expr = self.ex(n.default) if n.default is not None else "None"
+        for pats, val in reversed(n.clauses):
+            c = " or ".join(cond(p) for p in pats)
+            expr = f"({self.ex(val)} if ({c}) else {expr})"
+        return f"(lambda {m}: {expr})({self.ex(n.subject)})"
 
     # -- 문자열 리터럴 + 보간 -------------------------------------
     def str_lit(self, v: str) -> str:
