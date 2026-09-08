@@ -91,6 +91,7 @@ poi run examples/basics.poi
 ## 문서
 
 - [문법 명세 (docs/SPEC.md)](docs/SPEC.md)
+- [전체 문법 정리 — LLM 프롬프트용 (docs/POI_전체문법.md)](docs/POI_전체문법.md) · `hagora.kr/poi/POI_전체문법.md` — ChatGPT 등에 붙여넣으면 POI 코드를 정확히 씀
 - [연습문제 300제 · 안전 모드 · 플레이그라운드 · match · 한국어 키워드 — 전부 SPEC 참고](docs/SPEC.md)
 - [디버깅 (docs/DEBUGGING.md)](docs/DEBUGGING.md)
 - [오류 코드표 (docs/ERRORS.md)](docs/ERRORS.md)

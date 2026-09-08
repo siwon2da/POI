@@ -1,6 +1,6 @@
 # ┌─────────────────────────────────────────────────────────────────┐
 # │  POI IDLE  —  POI 로 작성한 코드 편집기                          │
-# │  실행:  poi idle          빌드:  poi build --app idle           │
+# │  실행:  poi idle [파일.poi]      빌드:  poi build --app idle     │
 # │  이 파일 자체가 POI 프로그램입니다 (tkinter 위에서).            │
 # └─────────────────────────────────────────────────────────────────┘
 
@@ -8,10 +8,11 @@ use py:tkinter as tk
 use py:tkinter.font as tkfont
 use py:tkinter.filedialog as fd
 use py:tkinter.messagebox as mb
+use py:tkinter.simpledialog as sd
 
-# ── 실행 엔진 · 문법 강조 (파이썬 상호운용으로 세밀하게) ──────────────
+# ── 실행 엔진 · 문법 강조 · 편집 편의기능 (파이썬 상호운용) ───────────
 python {
-    import io, re, os, queue, threading, contextlib, ctypes, traceback
+    import io, re, os, sys, json, queue, threading, contextlib, ctypes, traceback, subprocess
 
     _KW = ("show|ask|use|python|try|catch|if|else|elif|for|in|while|repeat|"
            "fn|return|end|match|when|is|between|and|or|not|as|const|let|"
@@ -31,6 +32,7 @@ python {
             for m in rx.finditer(body):
                 txt.tag_add(tag, "1.0+%dc" % m.start(), "1.0+%dc" % m.end())
 
+    # ── 실행 (별도 스레드 + 타임아웃) ──────────────────────────────
     _Q = queue.Queue()
     _worker = {"tid": None}
 
@@ -49,10 +51,7 @@ python {
             pass
         return out
 
-    def _busy():
-        return _worker.get("tid") is not None
-
-    def _run_poi(src):
+    def _run_poi(src, base_dir):
         from poi.interpreter import compile_source
         from poi.runtime import make_globals
 
@@ -66,7 +65,7 @@ python {
             _worker["tid"] = threading.get_ident()
             g = make_globals()
             g["__name__"] = "__main__"
-            g["__poi_dir__"] = os.getcwd()
+            g["__poi_dir__"] = base_dir or os.getcwd()
             code = None
             try:
                 py, _lm, cn = compile_source(src, "<idle>")
@@ -74,7 +73,10 @@ python {
             except Exception as e:
                 _Q.put(getattr(e, "render", lambda _s: str(e))(src) + "\n")
             if code is not None:
+                cwd0 = os.getcwd()
                 try:
+                    if base_dir and os.path.isdir(base_dir):
+                        os.chdir(base_dir)
                     with contextlib.redirect_stdout(_Pipe()), \
                          contextlib.redirect_stderr(_Pipe()):
                         exec(code, g)
@@ -88,10 +90,197 @@ python {
                         _Q.put("\n" + translate_exception(e, src, {}, "<idle>").render(src) + "\n")
                     except Exception:
                         _Q.put("\n" + traceback.format_exc() + "\n")
+                finally:
+                    os.chdir(cwd0)
             _worker["tid"] = None
             _Q.put("<<<idle-done>>>")
 
         threading.Thread(target=job, daemon=True).start()
+
+    # ── 터미널에서 실행 (진짜 콘솔 창) ────────────────────────────
+    def _poi_launcher():
+        if getattr(sys, "frozen", False):
+            cand = os.path.join(os.path.dirname(sys.executable), "poi.exe")
+            if os.path.isfile(cand):
+                return [cand]
+        return [sys.executable, "-m", "poi"]
+
+    def _run_terminal(path, base_dir):
+        argv = _poi_launcher() + ["run", path]
+        try:
+            if os.name == "nt":
+                subprocess.Popen(["cmd", "/c", "start", "POI",
+                                  "cmd", "/k"] + argv, cwd=base_dir or None)
+            else:
+                subprocess.Popen(argv, cwd=base_dir or None)
+            return True
+        except Exception as e:
+            _Q.put("터미널 실행 실패: %s\n" % e)
+            return False
+
+    # ── 최근 파일 ────────────────────────────────────────────────
+    _RECENT = os.path.join(os.path.expanduser("~"), ".poi", "idle_recent.json")
+
+    def _recent_load():
+        try:
+            with open(_RECENT, encoding="utf-8") as f:
+                return [p for p in json.load(f) if os.path.isfile(p)]
+        except Exception:
+            return []
+
+    def _recent_add(path):
+        if not path:
+            return
+        items = [path] + [p for p in _recent_load() if p != path]
+        items = items[:8]
+        try:
+            os.makedirs(os.path.dirname(_RECENT), exist_ok=True)
+            with open(_RECENT, "w", encoding="utf-8") as f:
+                json.dump(items, f, ensure_ascii=False)
+        except Exception:
+            pass
+
+    def _open_target():
+        p = os.environ.get("POI_IDLE_OPEN", "")
+        return p if p and os.path.isfile(p) else ""
+
+    # ── 에디터 편의기능 (자동 들여쓰기 · 괄호 · 주석 · 확대) ────────
+    _PAIRS = {"(": ")", "[": "]", "{": "}", '"': '"'}
+
+    def _wire_editor(txt, font, run_cb):
+        def on_return(e):
+            line = txt.get("insert linestart", "insert")
+            indent = re.match(r"[ \t]*", line).group(0)
+            stripped = line.strip()
+            if stripped.endswith(("{", ":")) or re.match(
+                    r"(fn|if|else|elif|for|while|repeat|try|catch|match|when|"
+                    r"server|webapp|page|state|action|app|window)\b", stripped):
+                indent += "    "
+            txt.insert("insert", "\n" + indent)
+            txt.see("insert")
+            return "break"
+
+        def on_pair(e):
+            ch = e.char
+            close = _PAIRS[ch]
+            try:
+                sel = txt.get("sel.first", "sel.last")
+                txt.delete("sel.first", "sel.last")
+                txt.insert("insert", ch + sel + close)
+            except tk.TclError:
+                nxt = txt.get("insert", "insert+1c")
+                if ch == '"' and nxt == '"':
+                    txt.mark_set("insert", "insert+1c")
+                    return "break"
+                txt.insert("insert", ch + close)
+                txt.mark_set("insert", "insert-1c")
+            return "break"
+
+        def indent_sel(e):
+            try:
+                a = int(txt.index("sel.first").split(".")[0])
+                b = int(txt.index("sel.last").split(".")[0])
+            except tk.TclError:
+                txt.insert("insert", "    ")
+                return "break"
+            for ln in range(a, b + 1):
+                txt.insert("%d.0" % ln, "    ")
+            return "break"
+
+        def dedent_sel(e):
+            try:
+                a = int(txt.index("sel.first").split(".")[0])
+                b = int(txt.index("sel.last").split(".")[0])
+            except tk.TclError:
+                a = b = int(txt.index("insert").split(".")[0])
+            for ln in range(a, b + 1):
+                head = txt.get("%d.0" % ln, "%d.4" % ln)
+                cut = len(head) - len(head.lstrip(" "))
+                if cut:
+                    txt.delete("%d.0" % ln, "%d.%d" % (ln, min(cut, 4)))
+            return "break"
+
+        def toggle_comment(e):
+            try:
+                a = int(txt.index("sel.first").split(".")[0])
+                b = int(txt.index("sel.last").split(".")[0])
+            except tk.TclError:
+                a = b = int(txt.index("insert").split(".")[0])
+            lines = [txt.get("%d.0" % ln, "%d.end" % ln) for ln in range(a, b + 1)]
+            on = all((not s.strip()) or s.lstrip().startswith("# ") for s in lines)
+            for i, ln in enumerate(range(a, b + 1)):
+                s = lines[i]
+                if not s.strip():
+                    continue
+                if on:
+                    idx = s.index("# ")
+                    txt.delete("%d.%d" % (ln, idx), "%d.%d" % (ln, idx + 2))
+                else:
+                    txt.insert("%d.0" % ln, "# ")
+            return "break"
+
+        def zoom(delta):
+            def _f(e=None):
+                sz = max(8, min(40, int(font.cget("size")) + delta))
+                font.configure(size=sz)
+                return "break"
+            return _f
+
+        def dup_line(e):
+            s = txt.get("insert linestart", "insert lineend")
+            txt.insert("insert lineend", "\n" + s)
+            return "break"
+
+        def find(e=None):
+            q = sd.askstring("찾기", "찾을 내용:", parent=txt.winfo_toplevel())
+            if not q:
+                return "break"
+            txt.tag_remove("find", "1.0", "end")
+            start = "insert"
+            pos = txt.search(q, start, stopindex="end", nocase=True)
+            if not pos:
+                pos = txt.search(q, "1.0", stopindex="end", nocase=True)
+            if pos:
+                end = "%s+%dc" % (pos, len(q))
+                txt.tag_add("find", pos, end)
+                txt.tag_configure("find", background="#3d5a80", foreground="#fff")
+                txt.mark_set("insert", end)
+                txt.see(pos)
+            return "break"
+
+        for ch in _PAIRS:
+            txt.bind(ch, on_pair)
+        txt.bind("<Return>", on_return)
+        txt.bind("<Tab>", indent_sel)
+        txt.bind("<Shift-Tab>", dedent_sel)
+        txt.bind("<ISO_Left_Tab>", dedent_sel)
+        txt.bind("<Control-slash>", toggle_comment)
+        txt.bind("<Control-d>", dup_line)
+        txt.bind("<Control-f>", find)
+        txt.bind("<Control-equal>", zoom(1))
+        txt.bind("<Control-plus>", zoom(1))
+        txt.bind("<Control-minus>", zoom(-1))
+        txt.bind("<Control-0>", lambda e: (font.configure(size=12), "break")[1])
+
+    # ── 줄번호 여백 ──────────────────────────────────────────────
+    def _make_gutter(parent, txt, font):
+        g = tk.Text(parent, width=5, padx=8, takefocus=0, border=0,
+                    bg="#0b0d10", fg="#4a525e", font=font, state="disabled",
+                    cursor="arrow", spacing1=2, spacing3=2)
+
+        def refresh(e=None):
+            n = int(txt.index("end-1c").split(".")[0])
+            g.config(state="normal")
+            g.delete("1.0", "end")
+            g.insert("1.0", "\n".join("%4d" % i for i in range(1, n + 1)))
+            g.config(state="disabled")
+            g.yview_moveto(txt.yview()[0])
+
+        txt.bind("<KeyRelease>", refresh, add="+")
+        txt.bind("<MouseWheel>", lambda e: txt.after(1, refresh), add="+")
+        txt.bind("<Configure>", refresh, add="+")
+        parent.after(60, refresh)
+        return g, refresh
 
     SAMPLE = (
         '# POI 에 오신 걸 환영해요. F5 를 누르면 실행됩니다.\n\n'
@@ -112,11 +301,16 @@ S = { file: null, dirty: false, running: false }
 W = {}
 버전 = system.poi_version()
 
+fn 현재폴더()
+    if S.file != null
+        return path.dir(S.file)
+    return system.cwd()
+
 # ── 동작 ────────────────────────────────────────────────────────────
 fn 제목갱신()
     이름 = "이름 없음"
     if S.file != null
-        이름 = S.file
+        이름 = path.base(S.file)
     표시 = ""
     if S.dirty
         표시 = " ●"
@@ -130,6 +324,7 @@ fn 본문설정(글)
     W.editor.insert("1.0", 글)
     _highlight(W.editor)
     W.editor.edit_modified(false)
+    W.gutter_refresh(null)
 
 fn 새파일()
     if S.dirty and not mb.askokcancel("새 파일", "저장하지 않은 변경이 있어요. 계속할까요?")
@@ -140,18 +335,31 @@ fn 새파일()
     제목갱신()
     로그("새 파일을 만들었어요.")
 
-fn 열기()
-    경로 = fd.askopenfilename(filetypes: [["POI 파일", "*.poi"], ["모든 파일", "*.*"]])
-    if not 경로
-        return
+fn 파일열기(경로)
     try
         본문설정(file.read(경로))
         S.file = 경로
         S.dirty = false
+        _recent_add(경로)
         제목갱신()
         로그("열었어요:  {경로}")
     catch e
         mb.showerror("열기 실패", "{e}")
+
+fn 열기()
+    경로 = fd.askopenfilename(filetypes: [["POI 파일", "*.poi"], ["모든 파일", "*.*"]])
+    if 경로
+        파일열기(경로)
+
+fn 최근()
+    목록 = _recent_load()
+    if not 목록
+        로그("최근 연 파일이 없어요.")
+        return
+    m = tk.Menu(W.root, tearoff: false)
+    for p in 목록
+        m.add_command(label: p, command: () => 파일열기(p))
+    m.tk_popup(W.root.winfo_pointerx(), W.root.winfo_pointery())
 
 fn 저장하기(다른이름)
     경로 = S.file
@@ -162,6 +370,7 @@ fn 저장하기(다른이름)
     file.write(경로, 본문())
     S.file = 경로
     S.dirty = false
+    _recent_add(경로)
     제목갱신()
     로그("저장했어요:  {경로}")
 
@@ -207,13 +416,21 @@ fn 실행()
     로그("▶  실행 중 …")
     S.running = true
     W.run_btn.config(text: "■  중단", bg: "#e03131")
-    _run_poi(본문())
+    _run_poi(본문(), 현재폴더())
     W.root.after(40, 펌프)
     W.root.after(8000, 시간초과)
 
 fn 시간초과()
     if S.running
         _kill_worker()
+
+fn 터미널실행()
+    if S.file == null or S.dirty
+        저장()
+    if S.file == null
+        return
+    if _run_terminal(S.file, 현재폴더())
+        로그("터미널에서 실행했어요:  {S.file}")
 
 fn 편집됨(e)
     if W.editor.edit_modified()
@@ -224,7 +441,7 @@ fn 편집됨(e)
 
 fn 커서이동(e)
     자리 = W.editor.index("insert").split(".")
-    W.status.config(text: "  {자리[0]}줄  {자리[1]}칸        POI {버전}   ·   Ctrl+S 저장  ·  F5 실행")
+    W.status.config(text: "  {자리[0]}줄  {자리[1]}칸     POI {버전}   ·   F5 실행 · Ctrl+S 저장 · Ctrl+/ 주석 · Ctrl+F 찾기 · Ctrl+± 확대")
 
 fn 예제넣기()
     본문설정(SAMPLE)
@@ -233,7 +450,7 @@ fn 예제넣기()
 
 # ── 창 만들기 ───────────────────────────────────────────────────────
 W.root = tk.Tk()
-W.root.geometry("1000x680")
+W.root.geometry("1040x700")
 W.root.minsize(720, 480)
 W.root.configure(bg: "#0f1115")
 
@@ -249,33 +466,44 @@ fn 버튼(부모, 라벨, 동작, 강조)
     b = tk.Button(부모, text: 라벨, command: 동작, bg: 색, fg: 글자,
                   activebackground: 색, activeforeground: 글자, relief: "flat",
                   font: ui, padx: 12, pady: 6, borderwidth: 0, cursor: "hand2")
-    b.pack(side: "left", padx: 5, pady: 7)
+    b.pack(side: "left", padx: 4, pady: 7)
     return b
 
 W.bar = tk.Frame(W.root, bg: "#161a20")
 W.bar.pack(side: "top", fill: "x")
-버튼(W.bar, "＋  새로", 새파일, false)
-버튼(W.bar, "📂  열기", 열기, false)
-버튼(W.bar, "💾  저장", 저장, false)
+버튼(W.bar, "＋ 새로", 새파일, false)
+버튼(W.bar, "📂 열기", 열기, false)
+버튼(W.bar, "🕘 최근", 최근, false)
+버튼(W.bar, "💾 저장", 저장, false)
 W.run_btn = 버튼(W.bar, "▶  실행  (F5)", 실행, true)
-버튼(W.bar, "✦  예제", 예제넣기, false)
-버튼(W.bar, "🧹  콘솔 비우기", 콘솔지우기, false)
+버튼(W.bar, "⧉ 터미널", 터미널실행, false)
+버튼(W.bar, "✦ 예제", 예제넣기, false)
+버튼(W.bar, "🧹 콘솔", 콘솔지우기, false)
 
 W.mid = tk.Frame(W.root, bg: "#0f1115")
 W.mid.pack(side: "top", fill: "both", expand: true)
+
 W.editor = tk.Text(W.mid, wrap: "none", undo: true, font: 글꼴,
                    bg: "#0f1115", fg: "#e6e9ef", insertbackground: "#3182f6",
                    selectbackground: "#2a3b57", relief: "flat",
-                   padx: 16, pady: 12, spacing1: 2, spacing3: 2, maxundo: 400)
+                   padx: 14, pady: 12, spacing1: 2, spacing3: 2, maxundo: 500)
+
+W.gpair = _make_gutter(W.mid, W.editor, 글꼴)
+W.gutter = W.gpair[0]
+W.gutter_refresh = W.gpair[1]
+W.gutter.pack(side: "left", fill: "y")
 W.editor.pack(side: "left", fill: "both", expand: true)
 W.scroll = tk.Scrollbar(W.mid, command: W.editor.yview)
 W.scroll.pack(side: "right", fill: "y")
 W.editor.configure(yscrollcommand: W.scroll.set)
+
 W.editor.tag_configure("kw", foreground: "#5aa2ff")
 W.editor.tag_configure("str", foreground: "#63d19e")
 W.editor.tag_configure("com", foreground: "#6b7480")
 W.editor.tag_configure("num", foreground: "#e0a458")
 W.editor.tag_configure("fn", foreground: "#c792ea")
+
+_wire_editor(W.editor, 글꼴, 실행)
 
 W.console = tk.Frame(W.root, bg: "#0b0d10")
 W.console.pack(side: "top", fill: "both")
@@ -292,15 +520,20 @@ W.status = tk.Label(W.root, text: "  준비됨        POI {버전}", bg: "#161a2
 W.status.pack(side: "bottom", fill: "x")
 
 W.editor.bind("<<Modified>>", 편집됨)
-W.editor.bind("<KeyRelease>", 커서이동)
+W.editor.bind("<KeyRelease>", 커서이동, add: "+")
 W.editor.bind("<ButtonRelease-1>", 커서이동)
 W.root.bind("<F5>", (e) => 실행())
 W.root.bind("<Control-s>", (e) => 저장())
 W.root.bind("<Control-Shift-S>", (e) => 다른이름저장())
 W.root.bind("<Control-n>", (e) => 새파일())
 W.root.bind("<Control-o>", (e) => 열기())
+W.root.bind("<Control-r>", (e) => 터미널실행())
 
-예제넣기()
+열대상 = _open_target()
+if 열대상
+    파일열기(열대상)
+else
+    예제넣기()
 커서이동(null)
 W.editor.focus_set()
 W.root.mainloop()

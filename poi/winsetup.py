@@ -63,16 +63,49 @@ def _path_remove(target: str):
         pass
 
 
-def _assoc(exe: str):
+def _assoc(exe: str, idle_exe: str = ""):
+    """.poi 파일 연결.
+
+    더블클릭        → POI IDLE 로 열기 (idle_exe 있으면, 없으면 터미널 실행)
+    우클릭 'POI로 실행'  → 터미널에서 poi run
+    우클릭 '편집'        → POI IDLE
+    """
     import winreg
+    idle_exe = idle_exe or exe
+    has_idle = idle_exe != exe
+    cmd = os.path.join(os.environ.get("WINDIR", r"C:\Windows"),
+                       "system32", "cmd.exe")
+
+    def setcmd(verb, value, label=None):
+        with winreg.CreateKey(
+                winreg.HKEY_CURRENT_USER,
+                rf"Software\Classes\POI.Script\shell\{verb}") as k:
+            if label:
+                winreg.SetValueEx(k, "", 0, winreg.REG_SZ, label)
+        with winreg.CreateKey(
+                winreg.HKEY_CURRENT_USER,
+                rf"Software\Classes\POI.Script\shell\{verb}\command") as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, value)
+
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\.poi") as k:
         winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "POI.Script")
+        winreg.SetValueEx(k, "Content Type", 0, winreg.REG_SZ, "text/x-poi")
+        winreg.SetValueEx(k, "PerceivedType", 0, winreg.REG_SZ, "text")
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER,
                           r"Software\Classes\POI.Script") as k:
         winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "POI 스크립트")
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER,
-                          r"Software\Classes\POI.Script\shell\open\command") as k:
-        winreg.SetValueEx(k, "", 0, winreg.REG_SZ, f'"{exe}" run "%1"')
+                          r"Software\Classes\POI.Script\DefaultIcon") as k:
+        winreg.SetValueEx(k, "", 0, winreg.REG_SZ, f"{idle_exe},0")
+
+    run_cmd = f'"{cmd}" /k ""{exe}" run "%1""'
+    if has_idle:
+        setcmd("open", f'"{idle_exe}" "%1"')
+        setcmd("run", run_cmd, "POI로 실행 (터미널)")
+        setcmd("edit", f'"{idle_exe}" "%1"', "POI IDLE 로 편집")
+    else:
+        setcmd("open", run_cmd)
+        setcmd("edit", f'"{exe}" run "%1"', "POI로 실행")
 
 
 def _startmenu(exe: str, folder: str):
@@ -86,6 +119,40 @@ def _startmenu(exe: str, folder: str):
           f'$s.WorkingDirectory="{folder}";$s.IconLocation="{exe},0";$s.Save()')
     subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
                    capture_output=True, creationflags=0x08000000)
+
+
+def _startmenu_idle(idle_exe: str, folder: str):
+    sm = os.path.join(os.environ.get("APPDATA", ""),
+                      r"Microsoft\Windows\Start Menu\Programs\POI")
+    os.makedirs(sm, exist_ok=True)
+    lnk = os.path.join(sm, "POI IDLE.lnk").replace("\\", "\\\\")
+    ps = (f'$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut("{lnk}");'
+          f'$s.TargetPath="{idle_exe}";'
+          f'$s.WorkingDirectory="{folder}";$s.IconLocation="{idle_exe},0";$s.Save()')
+    subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                   capture_output=True, creationflags=0x08000000)
+
+
+def _reg_delete_tree(root, path):
+    """하위 키까지 재귀 삭제 (winreg.DeleteKeyEx 는 빈 키만 지운다)."""
+    import winreg
+    try:
+        k = winreg.OpenKey(root, path, 0, winreg.KEY_ALL_ACCESS)
+    except OSError:
+        return
+    try:
+        while True:
+            try:
+                sub = winreg.EnumKey(k, 0)
+            except OSError:
+                break
+            _reg_delete_tree(root, path + "\\" + sub)
+    finally:
+        winreg.CloseKey(k)
+    try:
+        winreg.DeleteKeyEx(root, path)
+    except OSError:
+        pass
 
 
 def _uninstall_reg(exe: str, dest: str, version: str):
@@ -134,19 +201,32 @@ def install(argv: list[str]) -> int:
         shutil.copy2(src, exe_dst)
     print(f"설치: {exe_dst}")
 
+    # poi-idle.exe 가 poi.exe 옆에 있으면 같이 설치 (설치본에 동봉된 경우)
+    idle_src = os.path.join(os.path.dirname(src), "poi-idle.exe")
+    idle_dst = os.path.join(dest, "poi-idle.exe")
+    if os.path.isfile(idle_src) and os.path.abspath(idle_src) != os.path.abspath(idle_dst):
+        shutil.copy2(idle_src, idle_dst)
+        print(f"설치: {idle_dst}")
+    if not os.path.isfile(idle_dst):
+        idle_dst = ""
+
     if do_path:
         _path_add(dest)
         print("PATH 등록 (새 터미널부터 'poi' 사용 가능)")
     if do_assoc:
         try:
-            _assoc(exe_dst)
-            print(".poi 파일 연결")
+            _assoc(exe_dst, idle_dst)
+            print(".poi 연결 — 더블클릭=IDLE, 우클릭 'POI로 실행'=터미널"
+                  if idle_dst else ".poi 파일 연결 (더블클릭 → 실행)")
         except Exception as e:  # noqa: BLE001
             print(f"(.poi 연결 건너뜀: {e})")
     if do_sm:
         try:
             _startmenu(exe_dst, dest)
             print("시작 메뉴에 'POI REPL'")
+            if idle_dst:
+                _startmenu_idle(idle_dst, dest)
+                print("시작 메뉴에 'POI IDLE'")
         except Exception:
             pass
     try:
@@ -168,10 +248,7 @@ def uninstall(_argv: list[str]) -> int:
         import winreg
         for path in (r"Software\Classes\.poi", r"Software\Classes\POI.Script",
                      r"Software\Microsoft\Windows\CurrentVersion\Uninstall\POI"):
-            try:
-                winreg.DeleteKeyEx(winreg.HKEY_CURRENT_USER, path)
-            except OSError:
-                pass
+            _reg_delete_tree(winreg.HKEY_CURRENT_USER, path)
     except Exception:
         pass
     sm = os.path.join(os.environ.get("APPDATA", ""),

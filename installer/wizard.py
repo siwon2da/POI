@@ -67,15 +67,36 @@ def remove_from_path(target: str):
         pass
 
 
-def assoc_poi(exe: str):
+def assoc_poi(exe: str, idle_exe: str = ""):
     import winreg
+    idle_exe = idle_exe or exe
+    has_idle = idle_exe != exe
+    cmd = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "system32", "cmd.exe")
+
+    def setcmd(verb, value, label=None):
+        base = rf"Software\Classes\POI.Script\shell\{verb}"
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base) as k:
+            if label:
+                winreg.SetValueEx(k, "", 0, winreg.REG_SZ, label)
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + r"\command") as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, value)
+
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\.poi") as k:
         winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "POI.Script")
+        winreg.SetValueEx(k, "PerceivedType", 0, winreg.REG_SZ, "text")
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\POI.Script") as k:
         winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "POI 스크립트")
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER,
-                          r"Software\Classes\POI.Script\shell\open\command") as k:
-        winreg.SetValueEx(k, "", 0, winreg.REG_SZ, f'"{exe}" run "%1"')
+                          r"Software\Classes\POI.Script\DefaultIcon") as k:
+        winreg.SetValueEx(k, "", 0, winreg.REG_SZ, f"{idle_exe},0")
+
+    run_cmd = f'"{cmd}" /k ""{exe}" run "%1""'
+    if has_idle:
+        setcmd("open", f'"{idle_exe}" "%1"')
+        setcmd("run", run_cmd, "POI로 실행 (터미널)")
+        setcmd("edit", f'"{idle_exe}" "%1"', "POI IDLE 로 편집")
+    else:
+        setcmd("open", run_cmd)
 
 
 def start_menu_shortcut(exe: str, folder: str):
@@ -140,8 +161,9 @@ def do_install(dest: str, opts: dict, log):
         add_to_path(dest)
         log("사용자 PATH 에 추가 (새 터미널부터 'poi' 사용 가능)")
     if opts["assoc"]:
-        assoc_poi(exe_dst)
-        log(".poi 파일을 POI 로 열도록 연결")
+        assoc_poi(exe_dst, idle_dst if os.path.exists(idle_dst) else "")
+        log(".poi 연결 — 더블클릭=IDLE, 우클릭 'POI로 실행'=터미널"
+            if os.path.exists(idle_dst) else ".poi 파일을 POI 로 열도록 연결")
     if opts["startmenu"]:
         start_menu_shortcut(exe_dst, dest)
         log("시작 메뉴에 'POI REPL' 추가")
@@ -311,12 +333,28 @@ def uninstall():
     remove_from_path(dest)
     try:
         import winreg
-        for path in (r"Software\Classes\.poi", r"Software\Classes\POI.Script",
-                     r"Software\Microsoft\Windows\CurrentVersion\Uninstall\POI"):
+
+        def _del_tree(root, path):
             try:
-                winreg.DeleteKeyEx(winreg.HKEY_CURRENT_USER, path)
+                k = winreg.OpenKey(root, path, 0, winreg.KEY_ALL_ACCESS)
+            except OSError:
+                return
+            try:
+                while True:
+                    try:
+                        _del_tree(root, path + "\\" + winreg.EnumKey(k, 0))
+                    except OSError:
+                        break
+            finally:
+                winreg.CloseKey(k)
+            try:
+                winreg.DeleteKeyEx(root, path)
             except OSError:
                 pass
+
+        for path in (r"Software\Classes\.poi", r"Software\Classes\POI.Script",
+                     r"Software\Microsoft\Windows\CurrentVersion\Uninstall\POI"):
+            _del_tree(winreg.HKEY_CURRENT_USER, path)
     except Exception:
         pass
     sm = os.path.join(os.environ.get("APPDATA", ""),

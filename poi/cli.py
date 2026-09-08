@@ -293,11 +293,14 @@ def _app_path(name: str) -> str:
 
 
 def cmd_idle(args: list[str]) -> int:
-    """poi idle — POI 로 작성한 코드 편집기 (POI IDLE)."""
+    """poi idle [파일.poi] — POI 로 작성한 코드 편집기 (POI IDLE)."""
     path = _app_path("idle")
     if not os.path.isfile(path):
         print("POI IDLE 을 찾을 수 없습니다.", file=sys.stderr)
         return 1
+    target = next((a for a in args if not a.startswith("-")), None)
+    if target:
+        os.environ["POI_IDLE_OPEN"] = os.path.abspath(target)
     os.environ["POI_NO_SERVE"] = "1"
     return run_file(path)
 
