@@ -1,0 +1,32 @@
+# v1.13 — 블록 화살표 함수 + 폴리글롯 + 파이프라인 (트랜스파일러 회귀)
+def twice(x):
+    return x * 2
+
+nums = [1, 2, 3, 4, 5]
+
+# 블록 본문 화살표 함수 → map
+doubled = map(nums, (n) => {
+    y = twice(n)
+    return y
+})
+print("doubled", doubled)
+
+# 중첩 블록 람다
+runner = (f) => {
+    return f(10) + f(20)
+}
+print("runner", runner((n) => { return n + 1 }))
+
+# 파이프라인 + elif + lambda 혼용
+grade = (s) => {
+    if s >= 90:
+        return "A"
+    elif s >= 80:
+        return "B"
+    else:
+        return "F"
+}
+print([95, 82, 40] |> map(grade))
+
+total = nums |> filter(n => n % 2 == 1) |> sum_of
+print("odd sum", total)

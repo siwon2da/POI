@@ -1042,7 +1042,7 @@ fn 스킨(b, 강조)
 W.root = tk.Tk()
 W.root.title("POI IDLE")
 W.root.geometry("1080x720")
-W.root.minsize(760, 500)
+W.root.minsize(820, 560)
 W.root.configure(bg: T.bg)
 W.buttons = []
 
@@ -1134,10 +1134,11 @@ W.mode_lbl.pack(side: "right", padx: 12)
 W.body = tk.Frame(W.root, bg: T.bg)
 W.body.pack(side: "top", fill: "both", expand: true)
 
-W.mid = tk.Frame(W.body, bg: T.bg)
+W.mid = tk.Frame(W.body, bg: T.bg, width: 400)
 W.mid.pack(side: "left", fill: "both", expand: true)
+W.mid.pack_propagate(false)
 
-W.editor = tk.Text(W.mid, wrap: "none", undo: true, font: 글꼴,
+W.editor = tk.Text(W.mid, wrap: "none", undo: true, font: 글꼴, width: 1, height: 1,
                    bg: T.bg, fg: T.ink, insertbackground: T.blue,
                    selectbackground: T.sel, relief: "flat",
                    padx: 14, pady: 12, spacing1: 2, spacing3: 2, maxundo: 500)
@@ -1179,10 +1180,11 @@ W.haon_sub = tk.Label(W.haon_frame, text: _haon_badge(), bg: T.bg2, fg: T.ink3,
                       font: ui, anchor: "w", wraplength: 360, justify: "left")
 W.haon_sub.pack(side: "top", fill: "x", padx: 12)
 
+# 위젯을 만들고 — 입력칸·버튼줄을 '아래'에 먼저 고정한 뒤 대화 로그가 남은 공간을 채운다.
+# (로그를 먼저 expand 로 깔면 창이 좁을 때 입력칸이 잘려서 안 보인다.)
 W.haon_log = tk.Text(W.haon_frame, wrap: "word", font: ui, bg: T.bg, fg: T.ink,
                      relief: "flat", padx: 12, pady: 12, state: "disabled",
                      spacing1: 2, spacing3: 6, cursor: "arrow")
-W.haon_log.pack(side: "top", fill: "both", expand: true, padx: 8, pady: 8)
 W.haon_log.tag_configure("me", foreground: T.blue, lmargin1: 40, lmargin2: 40,
                          justify: "right", rmargin: 6)
 W.haon_log.tag_configure("bot", foreground: T.ink, lmargin1: 6, lmargin2: 6,
@@ -1191,7 +1193,6 @@ W.haon_log.tag_configure("sys", foreground: T.ink3, lmargin1: 6, lmargin2: 6)
 W.haon_log.tag_configure("think", foreground: T.ink3, lmargin1: 6)
 
 W.haon_actions = tk.Frame(W.haon_frame, bg: T.bg2)
-W.haon_actions.pack(side: "top", fill: "x", padx: 8, pady: 2)
 W.haon_attach_btn = tk.Button(W.haon_actions, text: "✓ 코드 첨부: 켬",
                               command: 하온첨부토글, bg: T.bg2, fg: T.blue,
                               relief: "flat", font: ui, borderwidth: 0, cursor: "hand2")
@@ -1206,16 +1207,22 @@ W.haon_llm = tk.Button(W.haon_actions, text: "⬇ 로컬 LLM", command: 하온�
 W.haon_llm.pack(side: "left")
 
 W.haon_inwrap = tk.Frame(W.haon_frame, bg: T.bg)
-W.haon_inwrap.pack(side: "top", fill: "x", padx: 8, pady: 8)
 W.haon_in = tk.Text(W.haon_inwrap, font: ui, relief: "flat", bg: T.bg, fg: T.ink,
-                    insertbackground: T.blue, height: 3, wrap: "word",
-                    padx: 8, pady: 6)
-W.haon_in.pack(side: "left", fill: "both", expand: true)
-W.haon_in.bind("<Return>", 하온보내기키)
+                    insertbackground: T.blue, height: 3, width: 1, wrap: "word",
+                    padx: 8, pady: 6, highlightthickness: 1,
+                    highlightbackground: T.line, highlightcolor: T.blue)
 W.haon_send = tk.Button(W.haon_inwrap, text: "보내기", command: 하온묻기,
                         bg: T.blue, fg: "#ffffff", relief: "flat", font: ui,
-                        borderwidth: 0, cursor: "hand2", padx: 12)
-W.haon_send.pack(side: "right", fill: "y", padx: 4)
+                        borderwidth: 0, cursor: "hand2", padx: 14)
+W.haon_send.pack(side: "right", fill: "y", padx: 4, pady: 2)
+W.haon_in.pack(side: "left", fill: "both", expand: true)
+W.haon_in.bind("<Return>", 하온보내기키)
+W.haon_in.bind("<Shift-Return>", (e) => null)
+
+# 순서 중요 — 아래에서부터 고정: 입력칸 → 버튼줄 → (남는 공간) 대화 로그
+W.haon_inwrap.pack(side: "bottom", fill: "x", padx: 8, pady: 8)
+W.haon_actions.pack(side: "bottom", fill: "x", padx: 8, pady: 2)
+W.haon_log.pack(side: "top", fill: "both", expand: true, padx: 8, pady: 8)
 하온시스템("무엇이든 물어보세요. Enter 로 보내고, Shift+Enter 로 줄바꿈. 오류는 '오류 자동수정' 이 실제 컴파일러로 고칩니다.")
 
 W.console = tk.Frame(W.root, bg: T.console)
@@ -1255,4 +1262,27 @@ else
 W.editor.focus_set()
 W.root.after(120, 스플래시)
 W.root.after(250, 하온펌프)
+
+# 자체 점검 — POI_IDLE_SELFTEST=1 이면 창을 실제로 띄워 하온 채팅 입력칸 크기를 재고 종료
+fn 자체점검()
+    하온토글()
+    W.root.update()
+    W.root.update_idletasks()
+    show "  frame  {W.haon_frame.winfo_width()}x{W.haon_frame.winfo_height()} map={W.haon_frame.winfo_ismapped()}"
+    show "  log    {W.haon_log.winfo_width()}x{W.haon_log.winfo_height()} map={W.haon_log.winfo_ismapped()}"
+    show "  inwrap {W.haon_inwrap.winfo_width()}x{W.haon_inwrap.winfo_height()} map={W.haon_inwrap.winfo_ismapped()}"
+    show "  input  {W.haon_in.winfo_width()}x{W.haon_in.winfo_height()} map={W.haon_in.winfo_ismapped()}"
+    show "  send   {W.haon_send.winfo_width()}x{W.haon_send.winfo_height()} map={W.haon_send.winfo_ismapped()}"
+    입력높이 = W.haon_in.winfo_height()
+    입력너비 = W.haon_in.winfo_width()
+    ok = W.haon_in.winfo_ismapped() and W.haon_send.winfo_ismapped() and 입력높이 >= 40 and 입력너비 >= 150
+    상태 = "PASS"
+    if not ok
+        상태 = "FAIL"
+    show "SELFTEST {상태}"
+    W.root.destroy()
+
+if system.env("POI_IDLE_SELFTEST") == "1"
+    W.root.after(700, 자체점검)
+
 W.root.mainloop()

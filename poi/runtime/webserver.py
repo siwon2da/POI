@@ -111,6 +111,73 @@ def read_cookie(headers, name, signed=True):
 session = SimpleNamespace(cookie=set_cookie, read=read_cookie,
                           sign=_sign, open=_unsign)
 
+
+# ── auth — 서명 쿠키 기반 로그인/세션 (import 없이 전역) ──────────────
+
+_AUTH_COOKIE = "poi_auth"
+
+
+def _auth_issue(claims, days=7):
+    """claims(dict)를 서명해 Set-Cookie 헤더 값으로. 응답 headers 에 넣어 쓴다."""
+    payload = _json.dumps(dict(claims), ensure_ascii=False, default=str)
+    return set_cookie(_AUTH_COOKIE, payload, days=days, signed=True)
+
+
+def _auth_current(headers):
+    """요청 headers 에서 로그인 claims(Box) 또는 None."""
+    raw = read_cookie(headers, _AUTH_COOKIE, signed=True)
+    if not raw:
+        return None
+    try:
+        return boxify(_json.loads(raw))
+    except Exception:
+        return None
+
+
+def _auth_require(headers, to="/login"):
+    """로그인 안 됐으면 redirect 응답을 돌려준다 (핸들러에서 `x = auth.require(h); if x: return x`)."""
+    if _auth_current(headers) is None:
+        return redirect(to)
+    return None
+
+
+def _auth_logout():
+    return set_cookie(_AUTH_COOKIE, "", days=0, signed=False)
+
+
+def _auth_guard(to="/login", only=None, unless=None):
+    """미들웨어용: on_request(auth.guard("/login", only=["/admin"])).
+
+    only  가 주어지면 그 접두사로 시작하는 경로만 로그인 필수.
+    안 주면 /login·/logout·/static·`to` 를 뺀 모든 경로가 로그인 필수.
+    unless 접두사는 항상 통과.
+    """
+    only = list(only) if only else None
+    skip = set(unless or []) | {to, "/login", "/logout"}
+
+    def _mw(req):
+        p = req.get("path", "") if hasattr(req, "get") else ""
+        if p in skip or p.startswith("/static") \
+                or any(p.startswith(u) for u in (unless or [])):
+            return None
+        if only is not None:
+            if not any(p == o or p.startswith(o.rstrip("/") + "/") or p == o.rstrip("/")
+                       for o in only):
+                return None
+        return _auth_require(req["headers"], to)
+    return _mw
+
+
+auth = SimpleNamespace(
+    issue=_auth_issue, login=_auth_issue,
+    current=_auth_current, user=_auth_current,
+    require=_auth_require, logout=_auth_logout, guard=_auth_guard,
+    hash=lambda pw: __import__("poi.runtime.stdlib2", fromlist=["password"])
+    .password.hash(pw),
+    check=lambda pw, h: __import__("poi.runtime.stdlib2", fromlist=["password"])
+    .password.verify(pw, h),
+)
+
 _SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
@@ -121,9 +188,26 @@ _SECURITY_HEADERS = {
 }
 
 
+_MIDDLEWARE = {"before": [], "after": []}
+
+
 def reset():
     _APPS.clear()
     _STATE.clear()
+    _MIDDLEWARE["before"].clear()
+    _MIDDLEWARE["after"].clear()
+
+
+def on_request(fn):
+    """모든 요청 전에 fn(req) 실행. 응답을 돌려주면 거기서 끝(가드/인증)."""
+    _MIDDLEWARE["before"].append(fn)
+    return fn
+
+
+def on_response(fn):
+    """핸들러 뒤에 fn(req, result) 실행. 돌려준 값이 있으면 그걸로 교체."""
+    _MIDDLEWARE["after"].append(fn)
+    return fn
 
 
 def register(app: dict):
@@ -166,6 +250,190 @@ def redirect(location, status=303):
 
 def html_raw(s):
     return {"__poi_html__": str(s)}
+
+
+# respond 에 붙는 편의 메서드:  respond.json(...) / respond.text(...) / ...
+respond.json = lambda obj, status=200, headers=None: respond(
+    obj, status, headers, "application/json; charset=utf-8")
+respond.text = lambda s="", status=200, headers=None: respond(
+    str(s), status, headers, "text/plain; charset=utf-8")
+respond.html = lambda s="", status=200, headers=None: respond(
+    str(s), status, headers, "text/html; charset=utf-8")
+respond.status = lambda code, body="": respond(body or _STATUS_TEXT.get(code, ""), code)
+respond.redirect = redirect
+respond.error = lambda code=400, message="": respond(
+    {"error": message or _STATUS_TEXT.get(code, "error"), "status": code}, code,
+    None, "application/json; charset=utf-8")
+
+
+def _respond_file(path, download_as=None):
+    import mimetypes
+    try:
+        with open(str(path), "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return respond("파일을 찾을 수 없습니다.", 404)
+    ct = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+    hdrs = {}
+    if download_as:
+        hdrs["Content-Disposition"] = f'attachment; filename="{download_as}"'
+    return {"__poi_response__": True, "status": 200, "body": data,
+            "headers": hdrs, "content_type": ct}
+
+
+respond.file = _respond_file
+
+_STATUS_TEXT = {
+    200: "OK", 201: "Created", 204: "", 301: "Moved Permanently",
+    302: "Found", 303: "See Other", 304: "Not Modified", 400: "Bad Request",
+    401: "Unauthorized", 403: "Forbidden", 404: "Not Found",
+    405: "Method Not Allowed", 409: "Conflict", 422: "Unprocessable Entity",
+    429: "Too Many Requests", 500: "Internal Server Error",
+}
+
+
+# ── 템플릿 렌더 — 아주 작은 엔진 ({{ }} · {% for %} · {% if %} · {% include %}) ──
+
+_TPL_CACHE: dict = {}
+
+
+def _app_dir():
+    """실행 중인 .poi 파일의 디렉토리를 호출 스택에서 찾는다 (cwd 폴백)."""
+    import sys as _s
+    f = _s._getframe(1)
+    while f is not None:
+        d = f.f_globals.get("__poi_dir__")
+        if d:
+            return d
+        f = f.f_back
+    return os.getcwd()
+
+
+def _find_template(name):
+    import os as _os
+    roots = []
+    ad = _app_dir()
+    if ad:
+        roots.append(ad)
+    if _os.getcwd() not in roots:
+        roots.append(_os.getcwd())
+    for here in roots:
+        for base in (_os.path.join(here, "views"),
+                     _os.path.join(here, "templates"), here):
+            p = _os.path.join(base, name)
+            if _os.path.isfile(p):
+                return p
+    return None
+
+
+def _tpl_eval(expr, ctx):
+    expr = expr.strip()
+    try:
+        return eval(expr, {"__builtins__": {}}, ctx)  # noqa: S307  (신뢰된 템플릿)
+    except Exception:
+        # a.b.c 점 접근 폴백
+        cur = ctx
+        for part in expr.replace("!", "").split("."):
+            part = part.strip()
+            if isinstance(cur, dict):
+                cur = cur.get(part, "")
+            else:
+                cur = getattr(cur, part, "")
+        return cur
+
+
+def _render_str(text, ctx):
+    import re as _re2
+    out = []
+    # {% ... %} 블록을 먼저 처리 (for / if / include / end)
+    tokens = _re2.split(r"(\{%.*?%\}|\{\{.*?\}\})", text, flags=_re2.S)
+    i = 0
+
+    def render_seq(toks, ctx):
+        res = []
+        k = 0
+        while k < len(toks):
+            t = toks[k]
+            if t.startswith("{{") and t.endswith("}}"):
+                val = _tpl_eval(t[2:-2], ctx)
+                raw = t[2:-2].strip().endswith("| raw") or t[2:-2].strip().startswith("raw ")
+                res.append(str(val) if raw else _esc(str(val)))
+                k += 1
+            elif t.startswith("{%") and t.endswith("%}"):
+                stmt = t[2:-2].strip()
+                if stmt.startswith("for "):
+                    m = _re2.match(r"for\s+(\w+)\s+in\s+(.+)", stmt)
+                    depth = 1
+                    inner = []
+                    k += 1
+                    while k < len(toks) and depth:
+                        tt = toks[k]
+                        s2 = tt[2:-2].strip() if tt.startswith("{%") else ""
+                        if s2.startswith(("for ", "if ")):
+                            depth += 1
+                        elif s2 in ("endfor", "endif"):
+                            depth -= 1
+                            if depth == 0:
+                                break
+                        inner.append(tt)
+                        k += 1
+                    seq = _tpl_eval(m.group(2), ctx) if m else []
+                    for item in (seq or []):
+                        c2 = dict(ctx)
+                        c2[m.group(1)] = item
+                        res.append(render_seq(inner, c2))
+                    k += 1  # endfor
+                elif stmt.startswith("if "):
+                    depth = 1
+                    inner = []
+                    k += 1
+                    while k < len(toks) and depth:
+                        tt = toks[k]
+                        s2 = tt[2:-2].strip() if tt.startswith("{%") else ""
+                        if s2.startswith(("for ", "if ")):
+                            depth += 1
+                        elif s2 in ("endfor", "endif"):
+                            depth -= 1
+                            if depth == 0:
+                                break
+                        inner.append(tt)
+                        k += 1
+                    if _tpl_eval(stmt[3:], ctx):
+                        res.append(render_seq(inner, ctx))
+                    k += 1  # endif
+                elif stmt.startswith("include "):
+                    inc = stmt[8:].strip().strip('"').strip("'")
+                    p = _find_template(inc)
+                    if p:
+                        with open(p, encoding="utf-8") as fh:
+                            res.append(_render_str(fh.read(), ctx))
+                    k += 1
+                else:
+                    k += 1
+            else:
+                res.append(t)
+                k += 1
+        return "".join(res)
+
+    return render_seq(tokens, ctx)
+
+
+def render(name, data=None):
+    """views/<name> (또는 templates/, cwd) 템플릿을 data 로 채워 HTML 응답."""
+    p = _find_template(str(name))
+    if not p:
+        return respond(f"템플릿을 찾을 수 없습니다: {name}", 500)
+    key = (p, os.path.getmtime(p))
+    text = _TPL_CACHE.get(key)
+    if text is None:
+        with open(p, encoding="utf-8") as fh:
+            text = fh.read()
+        _TPL_CACHE.clear()
+        _TPL_CACHE[key] = text
+    ctx = dict(data or {})
+    html = _render_str(text, ctx)
+    return {"__poi_response__": True, "status": 200, "body": html,
+            "headers": {}, "content_type": "text/html; charset=utf-8"}
 
 
 def _coerce(value):
@@ -361,14 +629,17 @@ def _make_handler(routes, static_dirs, title, csrf_paths=None):
             ctype = self.headers.get("Content-Type", "")
             body = Box()
             if raw:
+                text = raw.decode("utf-8", "replace")
                 try:
                     if "json" in ctype:
-                        body = boxify(_json.loads(raw.decode("utf-8")))
+                        body = boxify(_json.loads(text))
+                    elif "multipart/form-data" in ctype:
+                        body = Box({"raw": text})
                     else:
                         body = boxify({k: v[0] for k, v in
-                                       _up.parse_qs(raw.decode("utf-8")).items()})
+                                       _up.parse_qs(text, keep_blank_values=True).items()})
                 except Exception:
-                    body = Box({"raw": raw.decode("utf-8", "replace")})
+                    body = Box({"raw": text})
 
             # CSRF — webapp 폼(POST + 등록된 액션 경로)에만. server{} 의 API POST 는 제외.
             if method == "POST" and path.rstrip("/") in action_paths:
@@ -377,18 +648,41 @@ def _make_handler(routes, static_dirs, title, csrf_paths=None):
                                       "CSRF 토큰이 없거나 틀립니다.".encode("utf-8"),
                                       "text/plain; charset=utf-8", {})
 
+            hdr_box = boxify({k: v for k, v in self.headers.items()})
+            req = Box({"path": path, "method": method, "query": query,
+                       "body": body, "headers": hdr_box, "params": Box(),
+                       "ip": self.client_address[0]})
+
+            # 미들웨어 — before: 응답을 돌려주면 거기서 끝
+            for mw in _MIDDLEWARE["before"]:
+                try:
+                    r = mw(req)
+                except Exception as e:  # noqa: BLE001
+                    return self._send(500, f"미들웨어 오류: {e}".encode("utf-8"),
+                                      "text/plain; charset=utf-8", {})
+                if r is not None and not (r is True):
+                    st, data, ct, extra = _coerce(r)
+                    return self._send(st, data, ct, extra)
+
             for m, rx, fn in compiled:
                 if m != method:
                     continue
                 mt = rx.match(path)
                 if not mt:
                     continue
+                req["params"] = boxify(mt.groupdict())
                 try:
-                    result = fn(boxify(mt.groupdict()), query, body,
-                               boxify({k: v for k, v in self.headers.items()}), method)
+                    result = fn(req["params"], query, body, hdr_box, method)
                 except Exception as e:  # noqa: BLE001
                     return self._send(500, f"핸들러 오류: {e}".encode("utf-8"),
                                       "text/plain; charset=utf-8", {})
+                for mw in _MIDDLEWARE["after"]:
+                    try:
+                        r2 = mw(req, result)
+                    except Exception:  # noqa: BLE001
+                        r2 = None
+                    if r2 is not None:
+                        result = r2
                 st, data, ct, extra = _coerce(result)
                 return self._send(st, data, ct, extra)
 

@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.12**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
+> 버전 기준: **POI v1.13**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
 
 ---
 
@@ -498,6 +498,34 @@ server {
 }
 ```
 
+### 15.4 웹 전문화 (v1.13)
+
+```poi
+server {
+    get "/"        { render("home.html", { title: "POI", 목록: 글목록 }) }
+    post "/login"  {
+        u = 사용자(body.id)
+        if u == null or not auth.check(body.pw, u.hash) { return respond.error(401, "실패") }
+        respond(true, 200, { "Set-Cookie": auth.issue({ id: u.id }) })
+    }
+    get "/me"      {
+        나 = auth.current(headers)
+        if 나 == null { return redirect("/login") }
+        respond.json(나)
+    }
+}
+on_request(auth.guard("/login"))     # 전역 로그인 가드
+```
+
+- **`render(name, data)`** — `views/`·`templates/`·cwd 에서 템플릿. `{{ 식 }}` (자동 이스케이프,
+  `{{ x | raw }}` 는 안 함) · `{% for x in xs %}…{% endfor %}` · `{% if 조건 %}…{% endif %}` ·
+  `{% include "부분.html" %}`.
+- **`respond.json/text/html/status(code)/error(code,msg)/file(경로)/redirect(to)`**
+- **`auth`** — `issue(claims[,days])`→Set-Cookie 값 · `current(headers)`→Box/null ·
+  `require(headers[,to])`→redirect/null · `guard(to)`→미들웨어 · `hash/check`(PBKDF2) · `logout()`
+- **미들웨어** `on_request(fn)` (응답 돌려주면 끝) · `on_response(fn)` (교체 가능)
+- 안전 모드에서 `render·auth·on_request·on_response` 차단.
+
 ---
 
 ## 16. GUI (선언형, tkinter 기반)
@@ -520,6 +548,32 @@ app "제목" {
 노드: `window text title button row column card input password state on` + 안에서 `for`/`if`/일반 문장.
 `app.close()` 로 창을 닫는다. (데스크톱 + tkinter 필요.)
 
+### 명령형 GUI — `uikit` (v1.11~v1.13)
+
+```poi
+win = uikit.window("제목", 900, 600)
+st  = uikit.state({ 이름: "시원" })
+e   = uikit.entry(win, "", 20, null)
+uikit.bind(e, st, "이름")                     # 양방향 바인딩 (v1.13)
+
+폼 = uikit.form(win, [                          # 검증 있는 폼 (v1.13)
+    { name: "id", label: "아이디", required: true },
+    { name: "pw", label: "비밀번호", type: "password", required: true },
+    { name: "역할", label: "역할", type: "select", options: ["학생","교사"] }
+], (값) => 가입(값))
+
+uikit.chart(win, "bar", [["월",3],["화",7]], 420, 220, "주간")   # 막대/선 차트
+uikit.toast(win, "저장했어요", "ok")
+카드 = uikit.card(win, "설정")
+uikit.run(win)
+```
+
+위젯: `window row column grid cell tabs label button entry slider canvas listbox text
+statusbar menu checkbox radio select progress image scroll tree dialog tooltip card split chart`
+헬퍼: `theme(light/dark) state/watch bind(위젯,상태,필드) form(부모,필드[,제출])
+value(위젯[,v]) set_text toast(창,글,종류) alert confirm ask_open/ask_save/ask_color
+every on bind_key run close`.  안전 모드 차단.
+
 ---
 
 ## 17. 명령어
@@ -529,7 +583,10 @@ app "제목" {
 | `poi run [파일]` | 실행 (server/webapp 이면 서버가 뜸). 기본 진입점 `src/main.poi` → `main.poi` → `app.poi` |
 | `poi run 파일 --emit-python` | 낮춰진 파이썬 중간 표현 출력 |
 | `poi run 파일 --safe [--time N]` | 샌드박스 실행 |
+| `poi run 파일 --no-cache` | 컴파일 캐시 무시하고 새로 변환 |
 | `poi run 파일 --trace / --vars / --explain` | 추적 / 변수 변화 / 오류 시 사후 분석 |
+| `poi cache` · `poi cache clear` | 컴파일 캐시 상태 · 비우기 (`~/.poi/cache/`) |
+| `poi add / remove / install [--frozen]` | 프로젝트 .venv + poi.toml + poi.lock |
 | `poi check 파일 [--types]` | 문법(+선택적 타입) 검사, 실행 안 함 |
 | `poi test 파일` | test 블록 실행·채점 |
 | `poi debug 파일` | trace + vars + explain 한 번에 |

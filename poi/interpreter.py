@@ -11,14 +11,26 @@ from .transpiler import Transpiler
 
 def compile_source(src: str, filename: str = "main.poi", *, trace: bool = False,
                    safe: bool = False):
-    """POI 소스를 (파이썬소스, linemap, compiled_name) 으로."""
+    """POI 소스를 (파이썬소스, linemap, compiled_name) 으로.
+
+    안전 모드가 아니면 컴파일 캐시(`~/.poi/cache/`)를 먼저 본다 — 안 바뀐 파일은
+    렉싱·파싱·트랜스파일을 통째로 건너뛴다.
+    """
     compiled_name = f"<poi {filename}>"
+    if not safe:
+        from . import cache as _cache
+        hit = _cache.load(src, trace)
+        if hit is not None:
+            return hit
     tokens = Lexer(src, filename).tokenize()
     ast = Parser(tokens, src, filename).parse()
     if safe:
         from .safemode import assert_safe
         assert_safe(ast)
     py_src, linemap = Transpiler(compiled_name, source=src, trace=trace).generate(ast)
+    if not safe:
+        from . import cache as _cache
+        _cache.save(src, trace, py_src, linemap, compiled_name)
     return py_src, linemap, compiled_name
 
 
@@ -67,7 +79,15 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
         limit_ctx = limits(time_limit, output_limit)
 
     try:
-        code = compile(py_src, compiled_name, "exec")
+        code = None
+        if not safe and not trace_on:
+            from . import cache as _cache
+            code = _cache.load_code(src, False)
+        if code is None:
+            code = compile(py_src, compiled_name, "exec")
+            if not safe and not trace_on:
+                from . import cache as _cache
+                _cache.save_code(src, False, code)
         with limit_ctx as _to:
             try:
                 exec(code, g)

@@ -1,0 +1,46 @@
+# 웹 전문화 데모 — render() 템플릿 · auth · 미들웨어  (v1.13)
+#   실행:  poi run examples/web_pro.poi   →  http://127.0.0.1:8080
+
+회원 = [
+    { name: "시원", age: 17, hash: auth.hash("1234") },
+    { name: "민수", age: 25, hash: auth.hash("abcd") }
+]
+
+fn 찾기(이름)
+    for u in 회원
+        if u.name == 이름
+            return u
+    return null
+
+# 로그인 안 하면 /secret 은 막는다 (미들웨어 가드 — only 로 대상 지정)
+on_request(auth.guard("/login", only: ["/secret"]))
+
+server {
+    get "/" {
+        render("home.html", { title: "POI 회원", 회원수: len(회원), 회원: 회원 })
+    }
+
+    get "/login" {
+        respond.html("<form method=post><input name=name><input name=pw type=password><button>로그인</button></form>")
+    }
+
+    post "/login" {
+        u = 찾기(body.name)
+        if u == null or not auth.check(body.pw, u.hash) {
+            return respond.error(401, "이름 또는 비밀번호가 틀렸어요")
+        }
+        respond("환영합니다", 303, {
+            "Location": "/secret",
+            "Set-Cookie": auth.issue({ name: u.name, age: u.age })
+        })
+    }
+
+    get "/secret" {
+        나 = auth.current(headers)
+        respond.json({ 안녕: 나.name, 나이: 나.age, 메시지: "가드를 통과했습니다" })
+    }
+
+    get "/logout" {
+        respond("안녕히", 303, { "Location": "/", "Set-Cookie": auth.logout() })
+    }
+}

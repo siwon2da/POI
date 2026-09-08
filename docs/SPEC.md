@@ -1,4 +1,4 @@
-# POI v1.12 문법 명세
+# POI v1.13 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -341,6 +341,37 @@ poi install               # poi.toml 의 의존성 전부
 ```
 
 `.venv` 가 있으면 `poi run` 이 자동으로 그 site-packages 를 import 경로 앞에 넣는다.
+
+### 컴파일 캐시 (v1.13)
+
+안 바뀐 `.poi` 는 렉싱·파싱·트랜스파일·`compile()` 을 건너뛴다 — `~/.poi/cache/`
+(또는 `POI_CACHE_DIR`). `poi cache` 로 상태, `poi cache clear` 로 비움, `poi run --no-cache`
+또는 `POI_NO_CACHE=1` 로 끔. 안전 모드는 캐시를 쓰지 않는다.
+
+### 웹 전문화 (v1.13)
+
+- **`render(name, data)`** — `views/` · `templates/` · cwd 에서 템플릿을 찾아 HTML 응답.
+  `{{ 식 }}` (자동 이스케이프; `{{ x | raw }}` 는 그대로), `{% for x in xs %}…{% endfor %}`,
+  `{% if 조건 %}…{% endif %}`, `{% include "부분.html" %}`.
+- **`respond`** 에 메서드: `respond.json(obj,status)` · `.text` · `.html` · `.status(code)` ·
+  `.error(code,msg)` · `.file(path,download_as)` · `.redirect(to)`.
+- **`auth`** (서명 쿠키): `auth.issue(claims,days)` → Set-Cookie 값, `auth.current(headers)` →
+  claims(Box)/null, `auth.require(headers,to)` → redirect/null, `auth.guard(to)` → 미들웨어 함수,
+  `auth.hash(pw)` / `auth.check(pw,h)` (PBKDF2), `auth.logout()`.
+- **미들웨어**: `on_request(fn)` — 요청 전, `fn(req)` 가 응답을 돌려주면 거기서 끝(가드).
+  `on_response(fn)` — 핸들러 뒤, `fn(req, result)` 가 돌려준 값으로 교체. `req` =
+  `Box{ path, method, query, body, headers, params, ip }`.
+- 안전 모드에서 `render`·`auth`·`on_request`·`on_response` 차단.
+
+### GUI 전문화 — `uikit` (v1.13)
+
+- `uikit.bind(widget, state, "field")` — 양방향 데이터 바인딩.
+- `uikit.form(parent, fields, on_submit?, submit_text?)` — `fields = [{name,label?,type?,options?,required?,value?}]`
+  (`type` ∈ text·password·number·check·select). 돌려주는 Box: `.get(name)` `.set(name,v)`
+  `.values()` `.errors()` `.valid()` `.submit()`.
+- `uikit.chart(parent, "bar"|"line", data, w?, h?, title?)` — `data = [값…]` 또는 `[[라벨,값]…]`.
+- `uikit.toast(win, msg, kind?, ms?)` (kind ∈ info·ok·warn·error) · `uikit.card(parent, title?)` →
+  안쪽 프레임 · `uikit.split(parent, "h"|"v")` → PanedWindow (`.add(자식)`).
 
 ### 폴리글롯 — 파이썬 문법 흡수 (v1.12)
 

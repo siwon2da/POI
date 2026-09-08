@@ -1,0 +1,8 @@
+<!doctype html><meta charset=utf-8><title>{{ title }}</title>
+<h1>{{ title }}</h1>
+<p>회원 {{ 회원수 }}명</p>
+<ul>
+{% for u in 회원 %}
+  <li>{{ u.name }} — {{ u.age }}살{% if u.age >= 20 %} · 성인{% endif %}</li>
+{% endfor %}
+</ul>

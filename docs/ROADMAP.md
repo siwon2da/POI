@@ -20,7 +20,15 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.12 — 확장성: 동시성 · 네트워크 · 폴리글롯 · IDLE 대개편  ✅ (현재)
+## v1.13 — 전문화: 성능 · 웹 · GUI  ✅ (현재)
+
+- [x] **컴파일 캐시** — 안 바뀐 `.poi` 는 렉싱·파싱·트랜스파일·compile 을 건너뜀 (`~/.poi/cache/`, 큰 파일 39배). `poi cache` / `--no-cache`
+- [x] **웹 — `render()` 템플릿 엔진** (`{{ }}` · `{% for %}` · `{% if %}` · `{% include %}`, 자동 이스케이프)
+- [x] **웹 — `respond.json/text/status/error/file`**, `auth`(서명 쿠키 로그인·`guard` 미들웨어), `on_request`/`on_response`
+- [x] **GUI — `uikit.bind`**(양방향 데이터 바인딩), `form`(검증), `chart`(막대·선), `toast`, `card`, `split`
+- [x] IDLE 하온 채팅 입력칸 레이아웃 수정 (편집기가 폭 독점하던 문제) + `POI_IDLE_SELFTEST`
+
+## v1.12 — 확장성: 동시성 · 네트워크 · 폴리글롯 · IDLE 대개편  ✅
 
 - [x] **`task`** — `run/wait/gather/all/race/map/sleep`, `channel`(스레드 큐), `every`/`after` 타이머, `lock`, `cpu_count`. import 없이
 - [x] **문장 문법** — `background { }` · `every 1 second { }` (ms·sec·min·hour·초·분·시간)

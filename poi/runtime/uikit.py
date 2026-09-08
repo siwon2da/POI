@@ -466,6 +466,256 @@ def watch(st, fn):
     return st
 
 
+# ── 전문화 (v1.13): 데이터 바인딩 · 폼 · 토스트 · 차트 · 카드 · 분할 ──
+
+def bind(widget, st, field):
+    """위젯 ↔ 상태 양방향 바인딩.  st[field] 가 바뀌면 위젯도, 위젯이 바뀌면 st 도."""
+    var = getattr(widget, "_poi_var", None)
+    if var is None and widget.__class__.__name__ == "Entry":
+        tk, *_ = _tk()
+        var = tk.StringVar(value=widget.get())
+        widget.config(textvariable=var)
+        widget._poi_var = var
+    guard = {"on": False}
+
+    def to_state(*_a):
+        if guard["on"]:
+            return
+        guard["on"] = True
+        try:
+            st[field] = var.get() if var is not None else widget.get()
+        finally:
+            guard["on"] = False
+
+    def to_widget(_s=None):
+        if guard["on"]:
+            return
+        guard["on"] = True
+        try:
+            v = st.get(field)
+            if var is not None:
+                var.set(v)
+            elif hasattr(widget, "delete"):
+                widget.delete(0, "end")
+                widget.insert(0, "" if v is None else str(v))
+        finally:
+            guard["on"] = False
+
+    if var is not None:
+        try:
+            var.trace_add("write", to_state)
+        except Exception:
+            var.trace("w", to_state)
+    else:
+        widget.bind("<KeyRelease>", to_state, add="+")
+    if field in st:
+        to_widget()
+    else:
+        to_state()
+    if hasattr(st, "_watchers"):
+        getattr(st, "_watchers").append(to_widget)
+    return widget
+
+
+def card(parent, title_text=""):
+    """제목 있는 테두리 프레임.  안쪽 프레임을 돌려준다 (여기에 위젯을 넣는다)."""
+    tk, *_ = _tk()
+    outer = tk.Frame(parent, bg=_PAL["panel"], highlightthickness=1,
+                     highlightbackground=_PAL["line"])
+    _pack(outer, fill="both", expand=False, pad=8)
+    if title_text:
+        tk.Label(outer, text=title_text, bg=_PAL["panel"], fg=_PAL["ink2"],
+                 font=(UIFONT[0], 9, "bold"), anchor="w").pack(
+            fill="x", padx=12, pady=(10, 2))
+    inner = tk.Frame(outer, bg=_PAL["panel"])
+    inner.pack(fill="both", expand=True, padx=12, pady=(2, 12))
+    return inner
+
+
+def split(parent, orient="h"):
+    """드래그로 크기 조절되는 분할 패널.  .add(자식) 으로 칸을 채운다."""
+    _t, _f, _c, _m, ttk = _tk()
+    p = ttk.PanedWindow(parent,
+                        orient="horizontal" if str(orient).startswith("h") else "vertical")
+    _pack(p, fill="both", expand=True)
+    return p
+
+
+def toast(win, msg, kind="info", ms=2600):
+    """화면 아래쪽에 잠깐 뜨는 알림."""
+    tk, *_ = _tk()
+    colors = {"info": _PAL["accent"], "ok": "#12b886", "warn": "#f59f00",
+              "error": "#e03131"}
+    bg = colors.get(str(kind), _PAL["accent"])
+    lab = tk.Label(win, text="  " + str(msg) + "  ", bg=bg, fg="#ffffff",
+                   font=(UIFONT[0], 10, "bold"), padx=14, pady=9)
+    lab.place(relx=0.5, rely=1.0, anchor="s", y=-24)
+    lab.lift()
+
+    def die():
+        try:
+            lab.destroy()
+        except Exception:
+            pass
+    win.after(int(ms), die)
+    return lab
+
+
+def chart(parent, kind="bar", data=None, w=440, h=240, title_text=""):
+    """막대/선 차트 (Canvas).  data = [값,...]  또는  [[라벨, 값], ...]."""
+    tk, *_ = _tk()
+    rows = list(data or [])
+    pairs = []
+    for i, d in enumerate(rows):
+        if isinstance(d, (list, tuple)) and len(d) >= 2:
+            pairs.append((str(d[0]), float(d[1])))
+        else:
+            pairs.append((str(i + 1), float(d)))
+    cv = tk.Canvas(parent, width=w, height=h, bg=_PAL["bg"],
+                   highlightthickness=1, highlightbackground=_PAL["line"])
+    _pack(cv, fill="x", expand=False)
+    if not pairs:
+        return cv
+    pad_l, pad_b, pad_t, pad_r = 44, 26, 24 if title_text else 12, 14
+    plot_w = w - pad_l - pad_r
+    plot_h = h - pad_b - pad_t
+    vmax = max(v for _, v in pairs) or 1.0
+    vmin = min(0.0, min(v for _, v in pairs))
+    span = (vmax - vmin) or 1.0
+    if title_text:
+        cv.create_text(pad_l, 12, text=title_text, anchor="w",
+                       fill=_PAL["ink2"], font=(UIFONT[0], 9, "bold"))
+    # 축
+    cv.create_line(pad_l, pad_t, pad_l, h - pad_b, fill=_PAL["line"])
+    cv.create_line(pad_l, h - pad_b, w - pad_r, h - pad_b, fill=_PAL["line"])
+    for frac in (0.0, 0.5, 1.0):
+        yv = vmin + span * frac
+        y = h - pad_b - frac * plot_h
+        cv.create_text(pad_l - 6, y, text=("%g" % round(yv, 2)), anchor="e",
+                       fill=_PAL["ink2"], font=(UIFONT[0], 8))
+        cv.create_line(pad_l, y, w - pad_r, y, fill=_PAL["line"], dash=(2, 3))
+    n = len(pairs)
+    acc = _PAL["accent"]
+    if str(kind) == "line":
+        pts = []
+        for i, (lab, v) in enumerate(pairs):
+            x = pad_l + (plot_w * (i / (n - 1)) if n > 1 else plot_w / 2)
+            y = h - pad_b - ((v - vmin) / span) * plot_h
+            pts.append((x, y))
+        for a, b in zip(pts, pts[1:]):
+            cv.create_line(*a, *b, fill=acc, width=2)
+        for (x, y) in pts:
+            cv.create_oval(x - 3, y - 3, x + 3, y + 3, fill=acc, outline="")
+        for i, (lab, _v) in enumerate(pairs):
+            cv.create_text(pts[i][0], h - pad_b + 12, text=lab,
+                           fill=_PAL["ink2"], font=(UIFONT[0], 8))
+    else:
+        gap = plot_w / n
+        bw = gap * 0.6
+        for i, (lab, v) in enumerate(pairs):
+            x0 = pad_l + i * gap + (gap - bw) / 2
+            y0 = h - pad_b - ((v - vmin) / span) * plot_h
+            cv.create_rectangle(x0, y0, x0 + bw, h - pad_b, fill=acc, outline="")
+            cv.create_text(x0 + bw / 2, h - pad_b + 12, text=lab,
+                           fill=_PAL["ink2"], font=(UIFONT[0], 8))
+    return cv
+
+
+def form(parent, fields, on_submit=None, submit_text="확인"):
+    """필드 정의로 라벨+입력 폼을 만든다.
+    fields = [{name, label?, type?("text"|"password"|"number"|"check"|"select"),
+               options?, required?, value?}]
+    돌려주는 Box: .values() .get(name) .set(name,v) .errors() .valid()"""
+    tk, _fd, _cc, _mb, ttk = _tk()
+    wrap = tk.Frame(parent, bg=_PAL["bg"])
+    _pack(wrap, fill="x", expand=False)
+    widgets = {}
+    specs = {}
+    for f in fields:
+        name = f["name"]
+        specs[name] = f
+        r = tk.Frame(wrap, bg=_PAL["bg"])
+        r.pack(fill="x", pady=4)
+        tk.Label(r, text=f.get("label", name), bg=_PAL["bg"], fg=_PAL["ink2"],
+                 width=12, anchor="w", font=UIFONT).pack(side="left")
+        ftype = f.get("type", "text")
+        if ftype == "check":
+            var = tk.BooleanVar(value=bool(f.get("value", False)))
+            cb = tk.Checkbutton(r, variable=var, bg=_PAL["bg"],
+                                activebackground=_PAL["bg"], selectcolor=_PAL["field"])
+            cb.pack(side="left")
+            cb._poi_var = var
+            widgets[name] = cb
+        elif ftype == "select":
+            var = tk.StringVar(value=f.get("value", (f.get("options") or [""])[0]))
+            om = ttk.Combobox(r, textvariable=var, values=list(f.get("options") or []),
+                              state="readonly", font=UIFONT)
+            om.pack(side="left", fill="x", expand=True)
+            om._poi_var = var
+            widgets[name] = om
+        else:
+            e = tk.Entry(r, font=UIFONT, bg=_PAL["field"], fg=_PAL["ink"],
+                         relief="flat", show="•" if ftype == "password" else "")
+            e.insert(0, str(f.get("value", "")))
+            e.pack(side="left", fill="x", expand=True, ipady=4)
+            widgets[name] = e
+
+    def _get(name):
+        w = widgets[name]
+        var = getattr(w, "_poi_var", None)
+        raw = var.get() if var is not None else w.get()
+        if specs[name].get("type") == "number":
+            try:
+                return float(raw) if raw not in ("", None) else None
+            except ValueError:
+                return None
+        return raw
+
+    def _set(name, v):
+        w = widgets[name]
+        var = getattr(w, "_poi_var", None)
+        if var is not None:
+            var.set(v)
+        else:
+            w.delete(0, "end")
+            w.insert(0, "" if v is None else str(v))
+
+    def _errors():
+        errs = {}
+        for name, sp in specs.items():
+            v = _get(name)
+            if sp.get("required") and (v in ("", None, False)):
+                errs[name] = (sp.get("label", name) + " 은(는) 필수입니다.")
+            if sp.get("type") == "number" and v is None \
+                    and (widgets[name].get() if hasattr(widgets[name], "get") else "") != "":
+                errs[name] = (sp.get("label", name) + " 은(는) 숫자여야 합니다.")
+        return Box(errs)
+
+    def _values():
+        return Box({n: _get(n) for n in specs})
+
+    api = Box({
+        "get": _get, "set": _set, "values": _values, "errors": _errors,
+        "valid": lambda: len(_errors()) == 0, "widgets": widgets,
+    })
+
+    def _do_submit():
+        errs = _errors()
+        if errs:
+            _mb.showwarning("확인", "\n".join(errs.values()))
+            return
+        if on_submit:
+            on_submit(_values())
+
+    if on_submit:
+        btn = tk.Button(wrap, text=submit_text, command=_do_submit,
+                        bg=_PAL["accent"], fg=_PAL["accent_ink"], relief="flat",
+                        font=(UIFONT[0], 10, "bold"), padx=16, pady=7, cursor="hand2")
+        btn.pack(anchor="e", pady=(8, 2))
+        api["submit"] = _do_submit
+    return api
+
+
 uikit = SimpleNamespace(
     theme=theme, window=window, title=title, row=row, column=column,
     label=label, button=button, entry=entry, slider=slider, canvas=canvas,
@@ -476,4 +726,6 @@ uikit = SimpleNamespace(
     ask_open=ask_open, ask_save=ask_save, ask_color=ask_color,
     alert=alert, confirm=confirm, every=every, on=on, bind_key=bind_key,
     run=run, close=close, state=state, watch=watch, palette=_PAL,
+    # v1.13 — 전문화
+    bind=bind, form=form, toast=toast, chart=chart, card=card, split=split,
 )

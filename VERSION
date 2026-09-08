@@ -1,6 +1,6 @@
-1.12.0
-POI 1.12.0 — 확장성: 동시성 + 네트워크. task — import 없이 task.run/wait/all/race/map,
-task.channel(스레드 큐), task.every/after(타이머), task.lock. 문장 문법 background { } 와
-every 1 second { }. http — get/post/put/delete/download, 응답 Box{status,ok,text,json,headers}.
-net — 원시 TCP(tcp/listen/resolve). 안전 모드에서 http·net·task·background·every 차단.
-poi.lock — poi add/install 이 정확한 버전 기록, poi install --frozen 으로 재현. 올리기:  poi update
+1.13.0
+POI 1.13.0 — 전문화: 성능 + 웹 + GUI. 컴파일 캐시(~/.poi/cache) — 안 바뀐 .poi 는 렉싱·파싱·
+트랜스파일·compile 을 건너뛴다(큰 파일 30배+). poi cache / --no-cache. 웹: render() 템플릿
+엔진({{}}·{% for %}·{% if %}·include), respond.json/text/status/file, auth(서명 쿠키 로그인),
+on_request/on_response 미들웨어. GUI: uikit.bind(양방향)·form(검증)·chart(막대/선)·toast·card·split.
+IDLE 하온 채팅 입력칸 레이아웃 수정. 올리기:  poi update

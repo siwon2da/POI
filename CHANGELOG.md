@@ -1,5 +1,73 @@
 # 변경 이력
 
+## v1.13.0 — 2026-09-08  (대규모 업데이트 — 전문화: 성능 · 웹 · GUI)
+
+**성능 — 컴파일 캐시**
+- 안 바뀐 `.poi` 는 **렉싱·파싱·트랜스파일·compile 을 통째로 건너뛴다**. 캐시는
+  `~/.poi/cache/` (또는 `POI_CACHE_DIR`), 키 = SHA-256(버전+소스). `.json`(중간 표현) +
+  `.code`(marshal 된 코드 객체) 둘 다 저장.
+- 큰 파일(42KB idle.poi)에서 `compile_source` 38ms → 1ms (**39배**). 테스트 루프·IDLE F5·웹 리로드가 즉시.
+- `poi cache` (상태) / `poi cache clear` / `poi run --no-cache` / `POI_NO_CACHE=1`.
+- 안전 모드(`--safe`)는 매번 `assert_safe` 를 해야 하므로 캐시를 쓰지 않는다.
+
+**웹 전문화**
+```poi
+server {
+    get "/" {
+        render("home.html", { title: "POI", users: 회원목록 })   # 템플릿 엔진
+    }
+    post "/api/login" {
+        u = 사용자찾기(body.id)
+        if u == null or not auth.check(body.pw, u.hash) {
+            return respond.error(401, "로그인 실패")
+        }
+        respond(true, 200, { "Set-Cookie": auth.issue({ id: u.id, name: u.name }) })
+    }
+    get "/me" {
+        나 = auth.current(headers)
+        if 나 == null { return redirect("/login") }
+        respond.json(나)
+    }
+}
+on_request(auth.guard("/login"))    # 전역 로그인 가드 (미들웨어)
+```
+- **`render(name, data)`** — `views/` · `templates/` · cwd 에서 템플릿을 찾아 채운다.
+  `{{ 식 }}` (자동 이스케이프, `{{ x | raw }}` 는 안 함), `{% for x in xs %}…{% endfor %}`,
+  `{% if 조건 %}…{% endif %}`, `{% include "부분.html" %}`. 파일 mtime 캐시.
+- **`respond.json / text / html / status(code) / error(code, msg) / file(path) / redirect`**
+- **`auth`** — 서명 쿠키 로그인: `auth.issue(claims)` → Set-Cookie 값, `auth.current(headers)` →
+  claims(Box)/null, `auth.require(headers, to)` → redirect/null, `auth.guard(to)` → 미들웨어,
+  `auth.hash/check` (PBKDF2 위임), `auth.logout()`.
+- **미들웨어** — `on_request(fn)` (요청 전, 응답 돌려주면 거기서 끝), `on_response(fn)` (핸들러 뒤, 교체 가능).
+  핸들러에 `req` Box(`path·method·query·body·headers·params·ip`) 전달.
+
+**GUI 전문화 — `uikit`**
+```poi
+st = uikit.state({ 이름: "시원", 나이: 17 })
+e  = uikit.entry(폼, "", 20, null)
+uikit.bind(e, st, "이름")                         # 양방향 — 하나 바뀌면 둘 다
+
+폼 = uikit.form(win, [
+    { name: "id",  label: "아이디", required: true },
+    { name: "pw",  label: "비밀번호", type: "password", required: true },
+    { name: "나이", label: "나이",   type: "number" },
+    { name: "역할", label: "역할",   type: "select", options: ["학생", "교사"] }
+], (값) => 가입(값))                                # 검증 실패면 자동 경고
+
+uikit.chart(win, "bar",  [["월", 3], ["화", 7], ["수", 5]], 420, 220, "주간")
+uikit.chart(win, "line", [1, 4, 2, 8, 5])
+uikit.toast(win, "저장했어요", "ok")
+카드 = uikit.card(win, "설정")                     # 제목 있는 테두리 프레임
+좌우 = uikit.split(win, "h")                       # 드래그로 크기 조절
+```
+- `bind(widget, state, field)` · `form(parent, fields, on_submit)` → `.values()/.get()/.set()/.errors()/.valid()`
+- `chart(parent, "bar"|"line", data, w, h, title)` — Canvas 에 축·격자·라벨까지
+- `toast(win, msg, kind)` · `card(parent, title)` · `split(parent, "h"|"v")`
+
+**IDLE — 하온 채팅 입력칸 레이아웃 수정**
+- 편집기 영역이 폭을 다 먹어 하온 패널이 32px 로 눌리고 입력칸이 안 보이던 문제 수정
+  (`W.mid` `pack_propagate(false)` + 편집기 `width:1`, 입력줄을 아래에 고정). `POI_IDLE_SELFTEST=1` 자체 점검 추가.
+
 ## v1.12.0 — 2026-09-08  (대규모 업데이트 — 확장성: 동시성 · 네트워크)
 
 **동시성 — `task` (import 없이 바로)**

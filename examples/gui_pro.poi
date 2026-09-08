@@ -1,0 +1,28 @@
+# GUI 전문화 데모 — bind · form · chart · toast  (v1.13)
+#   실행:  poi run examples/gui_pro.poi
+
+win = uikit.window("uikit 전문화", 640, 620)
+st = uikit.state({ 이름: "시원" })
+
+머리 = uikit.row(win)
+uikit.label(머리, "이름 (양방향 바인딩):")
+칸 = uikit.entry(머리, "", 16, null)
+uikit.bind(칸, st, "이름")
+미리 = uikit.label(uikit.row(win), "안녕, 시원")
+uikit.watch(st, (s) => uikit.set_text(미리, "안녕, {s.이름}"))
+
+카드 = uikit.card(win, "가입 폼")
+폼 = uikit.form(카드, [
+    { name: "id",   label: "아이디", required: true },
+    { name: "pw",   label: "비밀번호", type: "password", required: true },
+    { name: "나이", label: "나이",   type: "number" },
+    { name: "동의", label: "약관 동의", type: "check" },
+    { name: "역할", label: "역할",   type: "select", options: ["학생", "교사", "학부모"] }
+], (값) => uikit.toast(win, "가입: {값.id} ({값.역할})", "ok"))
+
+uikit.chart(win, "bar", [["월", 12], ["화", 19], ["수", 7], ["목", 22], ["금", 15]],
+            600, 200, "요일별 방문")
+uikit.chart(win, "line", [3, 7, 4, 9, 6, 11, 8], 600, 160, "추세")
+
+uikit.statusbar(win, "  bind · form · chart · toast · card")
+uikit.run(win)

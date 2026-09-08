@@ -81,6 +81,11 @@ _RUNTIME = {
     "html": _web.html_raw,
     "cookie": _web.set_cookie,
     "session": _web.session,
+    # v1.13 — 웹 전문화
+    "render": _web.render,
+    "on_request": _web.on_request,
+    "on_response": _web.on_response,
+    "auth": _web.auth,
     # 데이터베이스 (v1.7) — import 없이 바로
     "database": _std2.open_database,
 }

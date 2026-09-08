@@ -309,10 +309,25 @@ class Transpiler:
                 continue
             h = f"_route{self._next_h()}"
             self.emit(f"def {h}{self._HANDLER_SIG}:", n.line)
-            self.block(body)
+            self._route_block(body)
             self.emit(f"{rd}[({method!r}, {path!r})] = {h}", n.line)
         statics = ", ".join(repr(s) for s in n.statics)
         self.emit(f"poi_web_register({{'routes': {rd}, 'static': [{statics}]}})", n.line)
+
+    def _route_block(self, body):
+        """server 라우트 본문 — 마지막이 그냥 식이면 return 으로 (암시적 반환)."""
+        self.ind += 1
+        if not body:
+            self.emit("pass")
+        else:
+            for s in body[:-1]:
+                self.stmt(s)
+            last = body[-1]
+            if last.kind == "ExprStmt":
+                self.emit(f"return {self.ex(last.value)}", last.line)
+            else:
+                self.stmt(last)
+        self.ind -= 1
 
     def _webapp(self, n):
         self._has_web = True

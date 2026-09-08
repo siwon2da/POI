@@ -27,6 +27,7 @@ POI v{ver}  -  Power Of Imagination
   poi photo [사진]                     POI 로 만든 사진 편집기 (Pillow 필요)
   poi add / remove / install          프로젝트 파이썬 의존성 (.venv + poi.toml + poi.lock)
        install --frozen               poi.lock 그대로 설치 (재현용)
+  poi cache [clear]                   컴파일 캐시 상태 / 비우기 (~/.poi/cache)
   poi fmt [파일 | .] [--check]         소스 정리 (탭·공백·들여쓰기)
   poi lint [파일 | .] [--strict]       안 쓴 변수 등 가벼운 점검
   poi serve [폴더] [--port 8900]       플레이그라운드 서버 (정적 서빙 + 안전 실행 /run)
@@ -97,7 +98,7 @@ def _maybe_update_notice():
 
 
 _RUN_FLAGS = {"--emit-python", "--trace", "--vars", "--explain", "--debug",
-              "--safe", "--types"}
+              "--safe", "--types", "--no-cache"}
 
 
 def _run(args: list[str], *, force_debug: bool = False) -> int:
@@ -136,6 +137,8 @@ def _run(args: list[str], *, force_debug: bool = False) -> int:
     explain = "--explain" in flags or "--debug" in flags or force_debug
     safe = "--safe" in flags
     want_types = "--types" in flags
+    if "--no-cache" in flags:
+        os.environ["POI_NO_CACHE"] = "1"
 
     path = rest[0] if rest else _find_default_entry()
     if not path:
@@ -510,6 +513,7 @@ def main(argv: list[str] | None = None) -> int:
         "remove": lambda a: __import__("poi.pkg", fromlist=["cmd_remove"]).cmd_remove(a),
         "rm": lambda a: __import__("poi.pkg", fromlist=["cmd_remove"]).cmd_remove(a),
         "install": lambda a: __import__("poi.pkg", fromlist=["cmd_install"]).cmd_install(a),
+        "cache": lambda a: __import__("poi.cache", fromlist=["cmd_cache"]).cmd_cache(a),
     }
     if cmd in table:
         return table[cmd](rest)
