@@ -43,10 +43,26 @@ def poi_fmt(v):
     return str(v)
 
 
+_ASK_HOOK = {"fn": None}
+
+
+def poi_set_ask(fn):
+    """입력을 받을 방법을 갈아끼운다 (POI IDLE 은 대화상자로). fn(prompt) -> str."""
+    _ASK_HOOK["fn"] = fn
+
+
 def poi_ask(prompt=""):
+    hook = _ASK_HOOK["fn"]
+    if hook is not None:
+        try:
+            v = hook(_disp(prompt))
+            return "" if v is None else str(v)
+        except Exception:  # noqa: BLE001
+            return ""
     try:
         return input(_disp(prompt))
-    except EOFError:
+    except (EOFError, RuntimeError, OSError, AttributeError):
+        # 콘솔 없는 환경(윈도우 GUI 실행 등) — "lost sys.stdin" 방지
         return ""
 
 

@@ -34,7 +34,32 @@ python {
 
     # ── 실행 (별도 스레드 + 타임아웃) ──────────────────────────────
     _Q = queue.Queue()
+    _ASK_Q = queue.Queue()
     _worker = {"tid": None}
+
+    # ask "..." → 대화상자 (워커 스레드가 요청, 메인 스레드가 처리)
+    def _idle_ask(prompt):
+        box, ev = {}, threading.Event()
+        _ASK_Q.put((prompt, box, ev))
+        ev.wait()
+        return box.get("v", "")
+
+    def _pump_ask(root):
+        try:
+            while True:
+                prompt, box, ev = _ASK_Q.get_nowait()
+                try:
+                    box["v"] = sd.askstring("입력", prompt or "값:", parent=root) or ""
+                finally:
+                    ev.set()
+        except queue.Empty:
+            pass
+
+    try:
+        from poi.runtime.builtins import poi_set_ask
+        poi_set_ask(_idle_ask)
+    except Exception:
+        pass
 
     def _kill_worker():
         tid = _worker.get("tid")
@@ -395,6 +420,7 @@ fn 출력추가(조각)
     W.out.config(state: "disabled")
 
 fn 펌프()
+    _pump_ask(W.root)
     for 조각 in _drain()
         if 조각 == "<<<idle-done>>>"
             실행끝()
