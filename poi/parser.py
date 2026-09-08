@@ -23,15 +23,14 @@ _TIME_UNITS = {
     "h": 3600.0, "hr": 3600.0, "hour": 3600.0, "hours": 3600.0, "시간": 3600.0,
 }
 
-# 다른 언어 습관 → POI 로 안내 (문장 첫머리에서만)
+# 다른 언어 습관 → POI 로 안내 (문장 첫머리에서만).
+# def/func/function/fun/elif/lambda/pass/True/False/None 은 이제 그냥 동작하므로 여기 없음.
 _FOREIGN_HINT = {
-    "elif": "else if", "elsif": "else if", "elseif": "else if",
-    "def": "fn", "func": "fn", "function": "fn", "fun": "fn",
+    "elsif": "else if", "elseif": "else if",
     "foreach": "for", "switch": "match", "case": "when",
     "var": "(선언 키워드 없이 바로  이름 = 값)", "let": "(선언 키워드 없이 바로  이름 = 값)",
     "echo": "show", "puts": "show", "console": "show",
-    "elif:": "else if", "then": "{ 또는 들여쓰기", "do": "{ 또는 들여쓰기",
-    "lambda": "화살표 함수  x => ...",
+    "then": "{ 또는 들여쓰기", "do": "{ 또는 들여쓰기",
 }
 
 
@@ -178,6 +177,9 @@ class Parser:
             if t.value in ("break", "continue"):
                 self.advance()
                 return Node("Break" if t.value == "break" else "Continue", line=t.line)
+            if t.value == "pass":
+                self.advance()
+                return Node("Pass", line=t.line)
             if t.value == "while":
                 return self._while_stmt()
             if t.value == "fn":
@@ -395,20 +397,21 @@ class Parser:
     def _if_stmt(self):
         t = self.advance()
         cond = self.expression()
-        first, style = self.block(("else",), opener_col=t.col)
+        first, style = self.block(("else", "elif"), opener_col=t.col)
         branches = [(cond, first)]
         orelse = None
         self.skip_nl()
-        while self.check("KEYWORD", "else"):
+        while self.check("KEYWORD", "else") or self.check("KEYWORD", "elif"):
+            is_elif = self.check("KEYWORD", "elif")
             self.advance()
             self.skip_nl()
-            if self.match("KEYWORD", "if"):
+            if is_elif or self.match("KEYWORD", "if"):
                 c2 = self.expression()
-                b2, _ = self.block(("else",), opener_col=t.col)
+                b2, _ = self.block(("else", "elif"), opener_col=t.col)
                 branches.append((c2, b2))
                 self.skip_nl()
             else:
-                orelse, _ = self.block((), opener_col=t.col)
+                orelse, _ = self.block(("elif",), opener_col=t.col)
                 break
         self._end(style)
         return Node("If", line=t.line, branches=branches, orelse=orelse)
@@ -1031,6 +1034,16 @@ class Parser:
                 return Node("Name", line=t.line, id="test")
             if t.value == "match":  # 식으로서의 match — 값을 돌려준다
                 return self._match_expr()
+            if t.value == "lambda":  # 파이썬식 lambda a, b: 식  →  화살표 함수
+                self.advance()
+                params = []
+                while self.check("IDENT"):
+                    params.append(self.advance().value)
+                    if not self.match("OP", ","):
+                        break
+                self.expect("OP", ":", what="lambda 의 ':'")
+                return Node("Lambda", line=t.line, params=params,
+                            body=self.expression())
         if t.type == "OP" and t.value == "(":
             self.advance()
             self.skip_nl()

@@ -15,8 +15,9 @@ python {
     import io, re, os, sys, json, queue, threading, contextlib, ctypes, traceback, subprocess
 
     _KW = ("show|ask|use|python|try|catch|if|else|elif|for|in|while|repeat|"
-           "fn|return|end|match|when|is|between|and|or|not|as|const|let|"
-           "server|webapp|page|state|action|app|window|raise|assert|test|true|false|null")
+           "fn|def|func|function|fun|lambda|pass|return|end|match|when|is|between|and|or|not|as|const|let|"
+           "server|webapp|page|state|action|app|window|raise|assert|test|true|false|null|"
+           "True|False|None|background|every|task|http|net")
     _KW_RE  = re.compile(r"(?<![\w.])(" + _KW + r")(?![\w])")
     _STR_RE = re.compile(r'"(?:[^"\\]|\\.)*"')
     _COM_RE = re.compile(r"#[^\n]*")
@@ -374,8 +375,8 @@ python {
             indent = re.match(r"[ \t]*", line).group(0)
             stripped = line.strip()
             if stripped.endswith(("{", ":")) or re.match(
-                    r"(fn|if|else|elif|for|while|repeat|try|catch|match|when|"
-                    r"server|webapp|page|state|action|app|window)\b", stripped):
+                    r"(fn|def|if|else|elif|for|while|repeat|try|catch|match|when|"
+                    r"server|webapp|page|state|action|app|window|background|every)\b", stripped):
                 indent += "    "
             txt.insert("insert", "\n" + indent)
             txt.see("insert")
@@ -731,19 +732,51 @@ fn 편집됨(e)
         모드표시()
 
 fn 커서이동(e)
-    자리 = W.editor.index("insert").split(".")
-    W.status.config(text: "  {자리[0]}줄  {자리[1]}칸     POI {버전}   ·   F5 실행 · Ctrl+S 저장 · Ctrl+/ 주석 · Ctrl+F 찾기 · Ctrl+± 확대")
+    try
+        W.editor.tag_remove("curline", "1.0", "end")
+        W.editor.tag_add("curline", "insert linestart", "insert lineend+1c")
+    catch e2
+        pass
+    상태갱신()
 
 fn 예제넣기()
     본문설정(SAMPLE)
     S.dirty = false
     제목갱신()
 
-# ── 하온 (로컬 에이전트) ────────────────────────────────────────────
+# ── 하온 — 채팅창 ──────────────────────────────────────────────────
 S.haon_open = false
-fn 하온기록(줄)
+S.haon_thinking = false
+S.haon_attach = true
+S.haon_history = []
+
+fn 하온말풍선(태그, 글)
     W.haon_log.config(state: "normal")
-    W.haon_log.insert("end", 줄 + "\n\n")
+    W.haon_log.insert("end", 글 + "\n\n", 태그)
+    W.haon_log.see("end")
+    W.haon_log.config(state: "disabled")
+
+fn 하온시스템(글)
+    하온말풍선("sys", 글)
+
+fn 하온생각시작()
+    W.haon_log.config(state: "normal")
+    W.haon_log.mark_set("think_at", "end-1c")
+    W.haon_log.mark_gravity("think_at", "left")
+    W.haon_log.insert("end", "하온이 생각 중…\n\n", "think")
+    W.haon_log.see("end")
+    W.haon_log.config(state: "disabled")
+    S.haon_thinking = true
+
+fn 하온답(글)
+    W.haon_log.config(state: "normal")
+    if S.haon_thinking
+        try
+            W.haon_log.delete("think_at", "end")
+        catch e
+            pass
+        S.haon_thinking = false
+    W.haon_log.insert("end", "하온  " + 글 + "\n\n", "bot")
     W.haon_log.see("end")
     W.haon_log.config(state: "disabled")
 
@@ -754,41 +787,169 @@ fn 하온토글()
     else
         W.haon_frame.pack(side: "right", fill: "y")
         S.haon_open = true
+        W.haon_in.focus_set()
+
+fn 하온맥락()
+    최근 = S.haon_history
+    시작 = 0
+    if len(최근) > 6
+        시작 = len(최근) - 6
+    줄들 = []
+    for i in 시작..<len(최근)
+        줄들 = 줄들 + [최근[i][0] + ": " + 최근[i][1]]
+    if not 줄들
+        return ""
+    return "지금까지 나눈 대화:\n" + "\n".join(줄들) + "\n\n이어서 이번 질문에 답해줘:\n"
+
+fn 하온첨부토글()
+    if S.haon_attach
+        S.haon_attach = false
+        W.haon_attach_btn.config(text: "＋ 코드 첨부: 끔", fg: T.ink3)
+    else
+        S.haon_attach = true
+        W.haon_attach_btn.config(text: "✓ 코드 첨부: 켬", fg: T.blue)
 
 fn 하온묻기()
-    q = W.haon_in.get()
+    원본 = W.haon_in.get("1.0", "end-1c")
+    q = 원본.strip()
     if not q
         return
-    W.haon_in.delete(0, "end")
-    하온기록("나 ▸ " + q)
-    하온기록("하온이 생각 중…")
-    _haon_ask(q, 본문())
+    W.haon_in.delete("1.0", "end")
+    하온말풍선("me", "나  " + q)
+    S.haon_history = S.haon_history + [["나", q]]
+    첨부 = ""
+    if S.haon_attach
+        첨부 = 본문()
+    하온생각시작()
+    _haon_ask(하온맥락() + q, 첨부)
+
+fn 하온보내기키(e)
+    하온묻기()
+    return "break"
 
 fn 하온고치기()
     if not S.haon_open
         하온토글()
-    하온기록("이 파일을 검사하고 고치는 중…")
+    하온시스템("이 파일을 실제 컴파일러로 검사하고 고치는 중…")
+    S.haon_thinking = false
     _haon_autofix(본문())
 
 fn 하온펌프()
     for 항목 in _haon_drain()
-        if 항목[0] == "say"
-            하온기록("하온 ▸ " + 항목[1])
-        else if 항목[0] == "badge"
+        갈래 = 항목[0]
+        if 갈래 == "say"
+            하온답(항목[1])
+            S.haon_history = S.haon_history + [["하온", 항목[1]]]
+        else if 갈래 == "badge"
             W.haon_sub.config(text: _haon_badge())
-            하온기록("하온 ▸ 이제 로컬 LLM 으로 답합니다.")
-        else if 항목[0] == "fix"
+            하온답("이제 로컬 LLM 으로 답합니다.")
+        else if 갈래 == "fix"
             본문설정(항목[1])
             S.dirty = true
             제목갱신()
-            하온기록("하온 ▸ 수정했어요.\n" + 항목[2])
+            하온답("고쳤어요.\n" + 항목[2])
     W.root.after(120, 하온펌프)
 
 fn 하온설치()
     if not S.haon_open
         하온토글()
-    하온기록("로컬 LLM 을 자동으로 설치·실행할게요. (Ollama + 작은 코더 모델, 1~2GB)")
+    하온시스템("로컬 LLM 을 자동으로 설치·실행할게요. (Ollama + 작은 코더 모델, 1~2GB)")
     _haon_install()
+
+fn 하온지우기()
+    W.haon_log.config(state: "normal")
+    W.haon_log.delete("1.0", "end")
+    W.haon_log.config(state: "disabled")
+    S.haon_history = []
+    S.haon_thinking = false
+    하온시스템("무엇이든 물어보세요. 오류는 '오류 자동수정' 이 실제 컴파일러로 고칩니다.")
+
+# ── 명령 팔레트 (Ctrl+Shift+P) ─────────────────────────────────────
+fn 팔레트()
+    항목 = [
+        ["새 파일", 새파일], ["열기…", 열기], ["최근 파일", 최근],
+        ["저장", 저장], ["다른 이름으로 저장", 다른이름저장],
+        ["실행 / 중지 / 서버 (F5)", 실행], ["콘솔 비우기", 콘솔지우기],
+        ["터미널에서 실행", 터미널실행], ["웹 폴더 열기", 웹폴더],
+        ["예제 코드 넣기", 예제넣기],
+        ["하온 채팅 열기 / 닫기", 하온토글],
+        ["하온: 이 파일 오류 자동수정", 하온고치기],
+        ["하온: 대화 지우기", 하온지우기],
+        ["하온: 로컬 LLM 설치·실행", 하온설치],
+        ["라이트 / 다크 테마 토글", 테마토글],
+        ["글자 크게", () => W.editor.event_generate("<Control-equal>")],
+        ["글자 작게", () => W.editor.event_generate("<Control-minus>")],
+        ["POI 문법 문서 (웹)", () => 웹열기("https://hagora.kr/poi/poi-for-llm.md")],
+        ["POI 입문서 (웹)", () => 웹열기("https://hagora.kr/poi/book/")]
+    ]
+    상태 = { items: 항목 }
+    top = tk.Toplevel(W.root)
+    top.title("명령 팔레트")
+    top.configure(bg: T.bg2)
+    top.geometry("480x360")
+    top.transient(W.root)
+    ent = tk.Entry(top, font: ui, relief: "flat", bg: T.bg, fg: T.ink,
+                   insertbackground: T.blue)
+    ent.pack(side: "top", fill: "x", padx: 12, pady: 12, ipady: 7)
+    lb = tk.Listbox(top, font: ui, relief: "flat", bg: T.bg, fg: T.ink,
+                    selectbackground: T.blue, selectforeground: "#ffffff",
+                    activestyle: "none", highlightthickness: 0, borderwidth: 0)
+    lb.pack(side: "top", fill: "both", expand: true, padx: 12, pady: 8)
+
+    fn 채우기(질의)
+        lb.delete(0, "end")
+        걸림 = []
+        낮은질의 = 질의.lower()
+        for a in 항목
+            if 질의 == "" or a[0].lower().find(낮은질의) >= 0
+                걸림 = 걸림 + [a]
+                lb.insert("end", "   " + a[0])
+        상태.items = 걸림
+        if lb.size() > 0
+            lb.selection_set(0)
+
+    fn 실행선택()
+        골라 = lb.curselection()
+        후보 = 상태.items
+        idx = 0
+        if len(골라) > 0
+            idx = 골라[0]
+        if idx < len(후보)
+            top.destroy()
+            후보[idx][1]()
+
+    채우기("")
+    ent.bind("<KeyRelease>", (e) => 채우기(ent.get()))
+    ent.bind("<Return>", (e) => 실행선택())
+    ent.bind("<Escape>", (e) => top.destroy())
+    ent.bind("<Down>", (e) => lb.focus_set())
+    lb.bind("<Return>", (e) => 실행선택())
+    lb.bind("<Double-Button-1>", (e) => 실행선택())
+    lb.bind("<Escape>", (e) => top.destroy())
+    ent.focus_set()
+
+# ── 상태줄 ─────────────────────────────────────────────────────────
+fn 하온짧은상태()
+    m = _HAON.get("mode")
+    if m == "groq"
+        return "Groq"
+    if m == "ollama"
+        return "로컬 LLM"
+    if m == "none"
+        return "없음"
+    return "규칙"
+
+fn 상태갱신()
+    자리 = W.editor.index("insert").split(".")
+    글 = 본문()
+    모드 = "일반"
+    if S.serving
+        모드 = "● 서버 실행 중"
+    else if _has_web(글)
+        모드 = "웹 서버"
+    else if _has_gui(글)
+        모드 = "GUI 앱"
+    W.status.config(text: "  {자리[0]}:{자리[1]}      {모드}      하온 {하온짧은상태()}      POI {버전}      Ctrl+Shift+P 명령 팔레트")
 
 # 부팅 스플래시 — 문어 로고가 콘솔에 쫘라락 (파란색)
 S.splash = 0
@@ -832,9 +993,34 @@ fn 테마적용()
     W.editor.tag_configure("com", foreground: T2.com)
     W.editor.tag_configure("num", foreground: T2.num)
     W.editor.tag_configure("fn", foreground: T2.fn)
+    W.editor.tag_configure("curline", background: T2.bg2)
+    W.mid.configure(bg: T2.bg)
+    try
+        W.haon_frame.configure(bg: T2.bg2)
+        W.haon_top.configure(bg: T2.bg2)
+        W.haon_head.configure(bg: T2.bg2, fg: T2.ink)
+        W.haon_clear.configure(bg: T2.bg2, fg: T2.ink3)
+        W.haon_sub.configure(bg: T2.bg2, fg: T2.ink3, text: _haon_badge())
+        W.haon_log.configure(bg: T2.bg, fg: T2.ink)
+        W.haon_log.tag_configure("me", foreground: T2.blue)
+        W.haon_log.tag_configure("bot", foreground: T2.ink)
+        W.haon_log.tag_configure("sys", foreground: T2.ink3)
+        W.haon_log.tag_configure("think", foreground: T2.ink3)
+        W.haon_actions.configure(bg: T2.bg2)
+        W.haon_attach_btn.configure(bg: T2.bg2)
+        W.haon_fix.configure(bg: T2.bg2, fg: T2.ink2)
+        W.haon_llm.configure(bg: T2.bg2, fg: T2.ink2)
+        W.haon_inwrap.configure(bg: T2.bg)
+        W.haon_in.configure(bg: T2.bg, fg: T2.ink, insertbackground: T2.blue)
+        W.haon_send.configure(bg: T2.blue)
+        for s in W.seps
+            s.configure(bg: T2.line)
+    catch e
+        pass
     for b in W.buttons
         스킨(b, false)
     스킨(W.run_btn, true)
+    상태갱신()
     설정["theme"] = S.theme
     _cfg_save(설정)
 
@@ -917,19 +1103,30 @@ fn 웹열기(주소)
     catch e
         로그("{e}")
 
-# 툴바
+# 툴바 — 그룹별로 얇은 구분선
 W.bar = tk.Frame(W.root, bg: T.bg2)
 W.bar.pack(side: "top", fill: "x")
+W.seps = []
+
+fn 구분선()
+    s = tk.Frame(W.bar, bg: T.line, width: 1)
+    s.pack(side: "left", fill: "y", padx: 6, pady: 8)
+    W.seps.add(s)
+
 버튼(W.bar, "＋ 새로", 새파일, false)
 버튼(W.bar, "📂 열기", 열기, false)
 버튼(W.bar, "🕘 최근", 최근, false)
 버튼(W.bar, "💾 저장", 저장, false)
+구분선()
 W.run_btn = 버튼(W.bar, "▶  실행  (F5)", 실행, true)
 버튼(W.bar, "⧉ 터미널", 터미널실행, false)
+구분선()
 버튼(W.bar, "📁 웹 폴더", 웹폴더, false)
 버튼(W.bar, "✦ 예제", 예제넣기, false)
 버튼(W.bar, "🧹 콘솔", 콘솔지우기, false)
+구분선()
 버튼(W.bar, "🐙 하온", 하온토글, false)
+버튼(W.bar, "⌘ 팔레트", 팔레트, false)
 버튼(W.bar, "◐ 테마", 테마토글, false)
 W.mode_lbl = tk.Label(W.bar, text: "", bg: T.bg2, fg: T.blue, font: ui)
 W.mode_lbl.pack(side: "right", padx: 12)
@@ -960,38 +1157,66 @@ W.editor.tag_configure("str", foreground: T.str)
 W.editor.tag_configure("com", foreground: T.com)
 W.editor.tag_configure("num", foreground: T.num)
 W.editor.tag_configure("fn", foreground: T.fn)
+W.editor.tag_configure("curline", background: T.bg2)
+W.editor.tag_lower("curline")
 
 _wire_editor(W.editor, 글꼴, 실행)
 
-# 하온 패널 (오른쪽, 처음엔 숨김)
-W.haon_frame = tk.Frame(W.body, bg: T.bg2, width: 360)
+# ── 하온 채팅 패널 (오른쪽 도크, 처음엔 숨김) ──────────────────────
+W.haon_frame = tk.Frame(W.body, bg: T.bg2, width: 380)
 W.haon_frame.pack_propagate(false)
-W.haon_head = tk.Label(W.haon_frame, text: "  🐙 하온", bg: T.bg2, fg: T.ink,
-                       font: ui, anchor: "w")
-W.haon_head.pack(side: "top", fill: "x", pady: 6)
+
+W.haon_top = tk.Frame(W.haon_frame, bg: T.bg2)
+W.haon_top.pack(side: "top", fill: "x", padx: 10, pady: 8)
+W.haon_head = tk.Label(W.haon_top, text: "🐙  하온", bg: T.bg2, fg: T.ink,
+                       font: tkfont.Font(family: "Segoe UI", size: 12, weight: "bold"))
+W.haon_head.pack(side: "left")
+W.haon_clear = tk.Button(W.haon_top, text: "대화 지우기", command: 하온지우기,
+                         bg: T.bg2, fg: T.ink3, relief: "flat", font: ui,
+                         borderwidth: 0, cursor: "hand2")
+W.haon_clear.pack(side: "right")
 W.haon_sub = tk.Label(W.haon_frame, text: _haon_badge(), bg: T.bg2, fg: T.ink3,
-                      font: ui, anchor: "w", wraplength: 340, justify: "left")
-W.haon_sub.pack(side: "top", fill: "x", padx: 10)
+                      font: ui, anchor: "w", wraplength: 360, justify: "left")
+W.haon_sub.pack(side: "top", fill: "x", padx: 12)
+
 W.haon_log = tk.Text(W.haon_frame, wrap: "word", font: ui, bg: T.bg, fg: T.ink,
-                     relief: "flat", padx: 12, pady: 10, state: "disabled")
+                     relief: "flat", padx: 12, pady: 12, state: "disabled",
+                     spacing1: 2, spacing3: 6, cursor: "arrow")
 W.haon_log.pack(side: "top", fill: "both", expand: true, padx: 8, pady: 8)
-W.haon_fix = tk.Button(W.haon_frame, text: "🔧  이 파일 오류 자동 수정", command: 하온고치기,
-                       bg: "#3182f6", fg: "#ffffff", relief: "flat", font: ui,
-                       pady: 8, borderwidth: 0, cursor: "hand2")
-W.haon_fix.pack(side: "top", fill: "x", padx: 8, pady: 2)
-W.haon_llm = tk.Button(W.haon_frame, text: "⬇  로컬 LLM 자동 설치·실행", command: 하온설치,
-                       bg: T.line, fg: T.ink, relief: "flat", font: ui,
-                       pady: 6, borderwidth: 0, cursor: "hand2")
-W.haon_llm.pack(side: "top", fill: "x", padx: 8, pady: 2)
-W.haon_in = tk.Entry(W.haon_frame, font: ui, relief: "flat", bg: T.bg, fg: T.ink,
-                     insertbackground: T.blue)
-W.haon_in.pack(side: "top", fill: "x", padx: 8, pady: 8, ipady: 6)
-W.haon_in.bind("<Return>", (e) => 하온묻기())
-W.haon_send = tk.Button(W.haon_frame, text: "물어보기", command: 하온묻기,
-                        bg: T.line, fg: T.ink, relief: "flat", font: ui,
-                        pady: 6, borderwidth: 0, cursor: "hand2")
-W.haon_send.pack(side: "top", fill: "x", padx: 8, pady: 2)
-하온기록("무엇이든 물어보세요. 오류는 '자동 수정' 이 실제 컴파일러로 고칩니다.")
+W.haon_log.tag_configure("me", foreground: T.blue, lmargin1: 40, lmargin2: 40,
+                         justify: "right", rmargin: 6)
+W.haon_log.tag_configure("bot", foreground: T.ink, lmargin1: 6, lmargin2: 6,
+                         rmargin: 36)
+W.haon_log.tag_configure("sys", foreground: T.ink3, lmargin1: 6, lmargin2: 6)
+W.haon_log.tag_configure("think", foreground: T.ink3, lmargin1: 6)
+
+W.haon_actions = tk.Frame(W.haon_frame, bg: T.bg2)
+W.haon_actions.pack(side: "top", fill: "x", padx: 8, pady: 2)
+W.haon_attach_btn = tk.Button(W.haon_actions, text: "✓ 코드 첨부: 켬",
+                              command: 하온첨부토글, bg: T.bg2, fg: T.blue,
+                              relief: "flat", font: ui, borderwidth: 0, cursor: "hand2")
+W.haon_attach_btn.pack(side: "left")
+W.haon_fix = tk.Button(W.haon_actions, text: "🔧 오류 자동수정", command: 하온고치기,
+                       bg: T.bg2, fg: T.ink2, relief: "flat", font: ui,
+                       borderwidth: 0, cursor: "hand2")
+W.haon_fix.pack(side: "left", padx: 8)
+W.haon_llm = tk.Button(W.haon_actions, text: "⬇ 로컬 LLM", command: 하온설치,
+                       bg: T.bg2, fg: T.ink2, relief: "flat", font: ui,
+                       borderwidth: 0, cursor: "hand2")
+W.haon_llm.pack(side: "left")
+
+W.haon_inwrap = tk.Frame(W.haon_frame, bg: T.bg)
+W.haon_inwrap.pack(side: "top", fill: "x", padx: 8, pady: 8)
+W.haon_in = tk.Text(W.haon_inwrap, font: ui, relief: "flat", bg: T.bg, fg: T.ink,
+                    insertbackground: T.blue, height: 3, wrap: "word",
+                    padx: 8, pady: 6)
+W.haon_in.pack(side: "left", fill: "both", expand: true)
+W.haon_in.bind("<Return>", 하온보내기키)
+W.haon_send = tk.Button(W.haon_inwrap, text: "보내기", command: 하온묻기,
+                        bg: T.blue, fg: "#ffffff", relief: "flat", font: ui,
+                        borderwidth: 0, cursor: "hand2", padx: 12)
+W.haon_send.pack(side: "right", fill: "y", padx: 4)
+하온시스템("무엇이든 물어보세요. Enter 로 보내고, Shift+Enter 로 줄바꿈. 오류는 '오류 자동수정' 이 실제 컴파일러로 고칩니다.")
 
 W.console = tk.Frame(W.root, bg: T.console)
 W.console.pack(side: "top", fill: "both")
@@ -1017,6 +1242,9 @@ W.root.bind("<Control-Shift-S>", (e) => 다른이름저장())
 W.root.bind("<Control-n>", (e) => 새파일())
 W.root.bind("<Control-o>", (e) => 열기())
 W.root.bind("<Control-r>", (e) => 터미널실행())
+W.root.bind("<Control-P>", (e) => 팔레트())
+W.root.bind("<Control-Shift-P>", (e) => 팔레트())
+W.root.bind("<Control-j>", (e) => 하온토글())
 
 열대상 = _open_target()
 if 열대상

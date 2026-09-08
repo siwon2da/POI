@@ -58,6 +58,49 @@ net.listen(9010, (conn) => conn.send("hi"))  # 연결마다 스레드
 - `poi install` 은 lock 이 있으면 그 버전으로 좁혀 설치. `poi install --frozen` 은
   `poi.lock` 만 그대로 설치 (CI 재현용).
 
+**폴리글롯 — 파이썬 문법을 POI 에 그대로 (합병)**
+```poi
+def add(a, b):          # def = fn.  func / function / fun 도.  : 블록은 원래 POI 문법
+    return a + b
+
+def grade(n):
+    if n >= 90:
+        return "A"
+    elif n >= 80:        # elif = else if
+        return "B"
+    else:
+        return "F"
+
+print("합", add(2, 3))   # print(...) — 파이썬 print 호환 (sep=/end= 도)
+sq = lambda x: x * x     # lambda a, b: 식  →  화살표 함수
+ok = True                # True / False / None  =  true / false / null
+msg = f"값 {add(1, 2)}"   # f"..." 접두사 허용 (POI 문자열은 원래 보간됨)
+
+def noop():
+    pass                 # pass = 아무것도 안 함
+```
+- 파서/렉서 레벨에서 흡수 — `def func function fun` → `fn`, `True/False/None` →
+  `true/false/null`, `elif` → `else if`, `lambda`/`pass` 는 정식 문법, `f"..."` 는 접두사만 무시.
+- `//` `/* */` 주석, `;` 문장 구분은 이미 됨. C/자바 상호운용은 `use py:ctypes` / `use py:jpype`.
+- `_FOREIGN_HINT` 는 이제 정말 안 되는 것만 안내 (`var`/`let`/`echo`/`switch`/`case`…).
+
+**블록 화살표 함수 `() => { ... }`**
+```poi
+task.run(() => {
+    x = 무거운계산()
+    저장(x)
+})
+```
+- 지금까지 `x => 식` 만 됐는데, 이제 여러 줄 본문도 됨 (컴파일러가 이름 있는 함수로 호이스트).
+
+**POI IDLE 대개편 — 하온 채팅창 + UX/UI**
+- **하온이 채팅창이 됐다** — 말풍선(나 오른쪽 / 하온 왼쪽), 여러 줄 입력(Enter 전송,
+  Shift+Enter 줄바꿈), "생각 중…" 이 자리에서 답으로 바뀜, 최근 6턴 대화 맥락 유지,
+  `＋ 코드 첨부` 토글, `대화 지우기`.
+- **명령 팔레트** `Ctrl+Shift+P` — 모든 동작을 검색해서 실행.
+- **툴바** 그룹별 구분선 + `⌘ 팔레트` 버튼. **상태줄** 이 커서 위치·모드·하온 백엔드·버전·단축키.
+- 현재 줄 하이라이트, 하온 도크 `Ctrl+J` 토글, 문법 강조에 `def`/`elif`/`lambda`/`background`/`task` 등 추가.
+
 ## v1.11.0 — 2026-09-08  (대규모 업데이트 — 확장성 · GUI 라이브러리 · 사진 편집기)
 
 **확장성 — 재사용 모듈 & 패키지**

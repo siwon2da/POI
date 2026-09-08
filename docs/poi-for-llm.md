@@ -41,9 +41,27 @@
 - **크기 리터럴**: `500x300` → 문자열 `"500x300"` (GUI `size:` 용).
 - **식별자**: 유니코드 letter/`_` 로 시작. 한글 가능.
 - **예약어**: `if else for in fn return const show ask use python try catch true false null
-  is between and or not repeat while as end raise assert match when break continue export`
+  is between and or not repeat while as end raise assert match when break continue export
+  elif pass lambda`
   (`test` 는 `test "이름" { }` 형태일 때만 키워드. GUI/웹 단어는 문맥에서만.)
 - **범위 연산자**: `1..10` (양끝 포함), `1..<10` (끝 미포함)
+
+### 폴리글롯 — 파이썬 문법을 그대로 (v1.12, "합병")
+
+파이썬 습관을 POI 가 그대로 흡수한다. 아래는 **오류가 아니라 정상 동작**:
+
+| 파이썬식 | POI 에서 |
+|---|---|
+| `def f(x):` / `func` / `function` / `fun` | `fn f(x)` 와 동일 (`:` 블록은 원래 POI 문법) |
+| `elif` | `else if` |
+| `True` / `False` / `None` | `true` / `false` / `null` |
+| `lambda x, y: 식` | 화살표 함수 `(x, y) => 식` |
+| `pass` | 아무것도 안 하는 문장 |
+| `print(a, b)` | `show` 와 같게 출력 (파이썬 `print` 호환, `sep=`/`end=` 도) |
+| `f"{x}"` | 접두사 `f` 무시 — POI 문자열은 원래 `"{x}"` 보간 |
+| `# …` `// …` `/* … */` · `;` | 이미 지원 |
+
+C·자바 등은 문법 레벨이 아니라 라이브러리로: `use py:ctypes`(C), `use py:jpype`(자바), `python { }` 원문 블록.
 
 ### 한국어 키워드 별칭 (영문과 100% 호환, 섞어도 됨)
 
@@ -539,32 +557,33 @@ app "제목" {
 
 ## 18. 자주 하는 실수 (LLM 체크리스트)
 
+**이제 그냥 되는 것** (v1.12 폴리글롯): `def` `func` `function` `fun` `elif` `lambda` `pass`
+`True/False/None` `print(...)` `f"..."` `//` `/* */` `;`. 굳이 안 바꿔도 된다.
+
+**아직 번역이 필요한 것:**
+
 | ✗ 파이썬 습관 | ✓ POI |
 |---|---|
-| `def f(x):` | `fn f(x) {` … `}`  또는  `fn f(x) => 식` |
-| `elif` | `else if` |
-| `True` / `False` / `None` | `true` / `false` / `null` |
-| `print(x)` | `show x` |
-| `f"{x}"` | `"{x}"` |
-| `lambda x: x+1` | `x => x + 1` |
 | `import math` | (필요 없음 — `math.sqrt(2)` 바로)  ·  외부는 `use py:name` |
-| `d["k"]` | `d.k` |
-| `for i in range(10):` | `repeat 10 as i {` … `}` |
+| `d["k"]` (문자열 키) | `d.k` (둘 다 됨) |
+| `for i in range(10):` | `repeat 10 as i {` … `}`  또는  `for i in 0..<10` |
 | `x = []` 후 함수 안에서 `x.append` **그리고 재대입** | 재대입 금지 — `상태.목록.add(v)` 처럼 필드 변경 |
 | `try: ... except E as e:` | `try { ... } catch e { ... }` |
-| `raise ValueError("msg")` | `raise "msg"` |
+| `raise ValueError("msg")` | `raise "msg"`  또는  `raise ValueError("msg")` |
 | `assert x == y, "msg"` | `assert x == y`  (test 블록 안) |
+| `switch` / `case` | `match` / `when` |
 
-작성 순서 권장: ① 블록 스타일 하나 고정(중괄호 또는 들여쓰기) → ② `fn`/`show`/`true` 확인 →
-③ 공유 상태는 객체 필드로 → ④ 표준 모듈은 import 없이, 외부는 `use py:`.
+작성 순서 권장: ① 블록 스타일 하나 고정(중괄호 또는 들여쓰기) → ② 공유 상태는 객체 필드로 →
+③ 표준 모듈은 import 없이, 외부는 `use py:`.
 
 ---
 
 ## 19. 붙여넣기용 한 줄 요약 (초압축)
 
-> POI 는 파이썬 위에서 도는 독립 언어다. `def→fn`, `elif→else if`, `True/False/None→true/false/null`,
-> `print→show`, `f"..."→"..."`, `lambda→=>`, `d["k"]→d.k`, `for i in range(n)→repeat n as i`,
-> `try/except→try/catch`, `raise "msg"`. 변수는 그냥 `x = 1`. 블록은 `{ }` 또는 들여쓰기.
+> POI 는 파이썬 위에서 도는 독립 언어다. **파이썬 문법 상당수는 그대로 동작한다** —
+> `def` `elif` `lambda` `pass` `True/False/None` `print()` `f"..."` 다 됨(v1.12).
+> `d["k"]→d.k`, `for i in range(n)→repeat n as i`, `try/except→try/catch`.
+> 변수는 그냥 `x = 1`. 블록은 `{ }` 또는 들여쓰기(콜론 `:` 도).
 > 표준 모듈(math, file, json, crypto, jwt, password, path, url, database, …)은 import 없이 바로.
 > 파이썬 라이브러리는 `use py:이름`. 웹은 `server { get "/" { } }` / `webapp { page "/" { } }`.
 > 동시성: `task.run/wait/all/channel`, 문장 `background { }` · `every 1 second { }`.

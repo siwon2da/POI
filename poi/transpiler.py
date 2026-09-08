@@ -126,6 +126,8 @@ class Transpiler:
             if self._loop_depth <= 0:
                 raise POIError("continue 는 반복문 안에서만 쓸 수 있어요.", "P018", n.line)
             self.emit("continue", n.line)
+        elif k == "Pass":
+            self.emit("pass", n.line)
         elif k == "Export":
             self._has_export = True
             self.stmt(n.decl)

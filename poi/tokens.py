@@ -25,6 +25,17 @@ RESERVED = {
     "repeat", "as", "end", "raise", "test", "assert",
     "match", "when",
     "break", "continue", "export", "while",
+    # 폴리글롯 — 파이썬 습관을 그대로 (아래 PY_ALIASES 로 대부분 흡수)
+    "elif", "pass", "lambda",
+}
+
+# 다른 언어(주로 파이썬) 키워드 → POI 키워드.  POI 와 "합병"되어 그냥 동작한다.
+#   def/func/function/fun -> fn ,  True/False/None -> true/false/null ,
+#   elif -> elif(파서가 else if 로) ,  pass/lambda -> 그대로 예약어로
+PY_ALIASES = {
+    "def": "fn", "func": "fn", "function": "fn", "fun": "fn",
+    "True": "true", "False": "false", "None": "null",
+    "elif": "elif", "pass": "pass", "lambda": "lambda",
 }
 
 # 한국어 키워드 별칭 — 영문 키워드와 완전 호환, 한 파일에서 섞어 써도 됨.

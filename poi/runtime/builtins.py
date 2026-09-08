@@ -27,6 +27,18 @@ def poi_show(*args):
     print(" ".join(_disp(a) for a in args))
 
 
+def poi_print(*args, sep=" ", end="\n", file=None, flush=False):
+    """파이썬 print 와 호환 — POI 에서 print(...) 를 그대로 써도 된다."""
+    import sys as _s
+    out = (file or _s.stdout)
+    out.write(str(sep).join(_disp(a) for a in args) + str(end))
+    if flush:
+        try:
+            out.flush()
+        except Exception:
+            pass
+
+
 def poi_fmt(v):
     """문자열 보간 `"{x}"` 안에서 값을 한 줄로 (true/false/null)."""
     if v is True:
@@ -396,7 +408,7 @@ def poi_std(name):
 
 
 __all__ = [
-    "Box", "boxify", "poi_show", "poi_fmt", "poi_ask", "number", "text", "boolean",
+    "Box", "boxify", "poi_show", "poi_print", "poi_fmt", "poi_ask", "number", "text", "boolean",
     "poi_getattr", "poi_getattr_safe", "poi_setattr", "poi_coalesce",
     "poi_error_value", "poi_import_pyfile", "poi_std",
 ]

@@ -1,0 +1,27 @@
+# v1.12 — 폴리글롯: 파이썬 문법을 POI 에 그대로
+def add(a, b):
+    return a + b
+print("add", add(2, 3))
+
+def grade(n):
+    if n >= 90:
+        return "A"
+    elif n >= 80:
+        return "B"
+    else:
+        return "F"
+print(grade(95), grade(83), grade(40))
+
+sq = lambda x: x * x
+print(sq(7))
+print(map([1, 2, 3], lambda n: n + 10))
+
+flag = True
+empty = None
+if flag and empty == null:
+    print(f"ok {add(1, 2)}")
+
+def skip():
+    pass
+skip()
+print("fin")

@@ -342,6 +342,18 @@ poi install               # poi.toml 의 의존성 전부
 
 `.venv` 가 있으면 `poi run` 이 자동으로 그 site-packages 를 import 경로 앞에 넣는다.
 
+### 폴리글롯 — 파이썬 문법 흡수 (v1.12)
+
+파이썬 습관이 오류가 아니라 그대로 동작한다: `def`/`func`/`function`/`fun` = `fn`,
+`elif` = `else if`, `True`/`False`/`None` = `true`/`false`/`null`, `lambda a, b: 식` =
+화살표 함수, `pass` = 무동작 문장, `print(...)` = 파이썬 `print` 호환 출력, `f"..."` =
+접두사만 무시(POI 문자열은 원래 보간). `//` `/* */` 주석, `;` 문장 구분도 이미 됨.
+C·자바는 `use py:ctypes` / `use py:jpype` / `python { }` 로.
+
+### 블록 화살표 함수 (v1.12)
+
+`x => 식` 뿐 아니라 `(a, b) => { 문장들 }` 도 된다 (컴파일러가 이름 있는 함수로 올린다).
+
 ### 동시성 — `task` · `background` · `every` (v1.12)
 
 ```poi

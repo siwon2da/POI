@@ -20,7 +20,7 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.12 — 확장성: 동시성 · 네트워크  ✅ (현재)
+## v1.12 — 확장성: 동시성 · 네트워크 · 폴리글롯 · IDLE 대개편  ✅ (현재)
 
 - [x] **`task`** — `run/wait/gather/all/race/map/sleep`, `channel`(스레드 큐), `every`/`after` 타이머, `lock`, `cpu_count`. import 없이
 - [x] **문장 문법** — `background { }` · `every 1 second { }` (ms·sec·min·hour·초·분·시간)
@@ -28,6 +28,9 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [x] **`net`** — 원시 TCP (`tcp/connect · listen · resolve · local_ip · free_port`)
 - [x] 안전 모드 — `http`·`net`·`task`·`background`·`every` 차단 (P210/P211)
 - [x] **`poi.lock`** — `poi add`/`install` 이 정확한 버전 기록, `poi install --frozen` 재현 설치
+- [x] **폴리글롯** — `def`/`func`/`elif`/`lambda`/`pass`/`True`/`False`/`None`/`print()`/`f"..."` 를 POI 가 그대로 흡수
+- [x] **블록 화살표 함수** `() => { 문장들 }` (컴파일러 호이스트)
+- [x] **POI IDLE 대개편** — 하온 채팅창(말풍선·여러 줄 입력·대화 맥락·코드 첨부 토글), 명령 팔레트 `Ctrl+Shift+P`, 그룹 툴바, 상태줄, 현재 줄 하이라이트
 
 ## v1.11 — 확장성 · GUI 라이브러리 · 사진 편집기  ✅
 

@@ -9,7 +9,8 @@ from __future__ import annotations
 import re
 
 from .errors import POIError
-from .tokens import KOREAN_ALIASES, MULTI_OPS, RESERVED, SINGLE_OPS, Token
+from .tokens import (KOREAN_ALIASES, MULTI_OPS, PY_ALIASES, RESERVED,
+                     SINGLE_OPS, Token)
 
 _NAME = re.compile(r"[^\W\d][\w]*", re.UNICODE)
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")
@@ -121,7 +122,12 @@ class Lexer:
             m = _NAME.match(self.src, self.i)
             if m:
                 word = m.group(0)
+                # 파이썬식 f"..." — 접두사 f 는 버리고 문자열만 (POI 문자열은 이미 보간됨)
+                if word == "f" and m.end() < self.n and self.src[m.end()] in ('"', "'"):
+                    self._advance(1)
+                    continue
                 kw = KOREAN_ALIASES.get(word, word)  # 한국어 별칭 → 영문 키워드
+                kw = PY_ALIASES.get(kw, kw)          # 파이썬 별칭 → POI 키워드
                 # python { ... } 원문 블록 (파이썬 별칭 포함)
                 if kw == "python" and _next_nonspace_is_brace(self.src, m.end()):
                     self._read_pyblock(m.end())
