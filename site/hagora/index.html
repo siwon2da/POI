@@ -277,6 +277,8 @@
   .road .r .v { font-family: var(--pixel); -webkit-font-smoothing: none; font-size: 12px; color: var(--blue); }
   .road .r.done { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); background: color-mix(in srgb, var(--good) 6%, var(--card)); }
   .road .r.done .v::after { content: " · 완료"; color: var(--good); }
+  .road .r.now { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 9%, var(--card)); }
+  .road .r.now .v::after { content: " · 현재"; color: var(--blue); }
   .road .r h3 { font-size: 1.05rem; margin-top: 8px; }
   .road .r ul { margin: 10px 0 0; padding-left: 16px; color: var(--ink-2); font-size: 12.5px; line-height: 1.7; }
 
@@ -435,7 +437,8 @@
     </span>
     <nav>
       <a class="hide-sm" href="#why">왜 POI</a>
-      <a class="hide-sm" href="#pro">전문</a>
+      <a class="hide-sm" href="#web">웹</a>
+      <a class="hide-sm" href="#idle">IDLE</a>
       <a class="hide-sm" href="/poi/book/">입문서</a>
       <a class="hide-sm" href="#play">실행</a>
       <a class="hide-sm" href="#roadmap">로드맵</a>
@@ -792,32 +795,112 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
   </div>
 </section>
 
+<!-- WEB / BACKEND -->
+<section class="band" id="web">
+  <div class="wrap">
+    <div class="rise"><h2 class="pixel">웹은 언어 기본기입니다</h2>
+      <p class="lede prose">v1.6–v1.7 은 백엔드를 겨냥합니다. <code>poi run app.poi</code> 하면 서버가 뜨고,
+        CSRF·보안 헤더·레이트 리밋·gzip·비밀번호 해시·JWT·SQLite 가 처음부터 켜져 있습니다.
+        파이썬/JS 백엔드보다 짧고, 기본값이 더 안전하게.</p></div>
+    <div class="promises">
+      <article class="promise rise">
+        <div><div class="n">내장 HTTP 서버</div><h3>server { get "/" { } }</h3>
+          <p>경로 파라미터 <code>:id</code> · <code>query</code> · <code>body</code>(JSON·폼 자동) · <code>headers</code>.
+            문자열이면 HTML, 객체면 JSON. <code>respond</code> · <code>redirect</code> · <code>cookie</code> · <code>session</code>.</p></div>
+<pre><span class="k">server</span> {
+  <span class="k">get</span> <span class="s">"/api/합/:a/:b"</span> {
+    <span class="k">return</span> { 합: <span class="fn">number</span>(params.a) + <span class="fn">number</span>(params.b) }
+  }
+  <span class="k">post</span> <span class="s">"/echo"</span> { <span class="k">return</span> body }
+  <span class="k">static</span> <span class="s">"./public"</span>
+}</pre>
+      </article>
+      <article class="promise rise">
+        <div><div class="n">선언형 페이지</div><h3>webapp { page "/" { } }</h3>
+          <p>heading·card·form·field·select… + <code>state</code> + <code>action</code>.
+            폼 제출 → 상태 갱신 → 재렌더(POST-redirect-GET). CSRF 토큰 자동 주입.
+            설정 0으로 반응형·다크 대응.</p></div>
+<pre><span class="k">webapp</span> <span class="s">"메모장"</span> {
+  <span class="k">state</span> 메모 = []
+  <span class="k">page</span> <span class="s">"/"</span> {
+    <span class="k">heading</span> <span class="s">"메모장"</span>
+    <span class="k">for</span> m <span class="k">in</span> 메모 { <span class="k">card</span> { <span class="k">text</span> m } }
+    <span class="k">form</span> <span class="s">"/추가"</span> { <span class="k">field</span> <span class="s">"새 메모"</span> -&gt; 내용  <span class="k">button</span> <span class="s">"추가"</span> }
+  }
+  <span class="k">action</span> <span class="s">"/추가"</span> { 메모.<span class="fn">add</span>(내용) }
+}</pre>
+      </article>
+      <article class="promise rise">
+        <div><div class="n">백엔드·보안 라이브러리</div><h3>import 없이 바로</h3>
+          <p><code>crypto</code> · <code>password</code>(PBKDF2) · <code>jwt</code>(HS256) · <code>path</code> · <code>url</code> ·
+            <code>html</code> · <code>compress</code> · <code>log</code> · <code>cache</code> · <code>bench</code> · <code>dotenv</code> ·
+            <code>system</code> · <code>uuid</code>. 전부 파이썬 표준 라이브러리 위, 외부 의존성 0.</p></div>
+<pre>h = password.<span class="fn">hash</span>(<span class="s">"hunter2"</span>)       <span class="c"># 솔트 자동</span>
+password.<span class="fn">verify</span>(<span class="s">"hunter2"</span>, h)     <span class="c"># → true (상수시간)</span>
+tok = jwt.<span class="fn">sign</span>({ uid: <span class="nu">7</span> }, 비밀, <span class="nu">3600</span>)
+jwt.<span class="fn">verify</span>(tok, 비밀)             <span class="c"># → {uid: 7} / null</span></pre>
+      </article>
+      <article class="promise rise">
+        <div><div class="n">데이터베이스</div><h3>database(...) — 0설정 SQLite</h3>
+          <p>파일 하나. 결과 행은 점 접근이 되는 객체. <code>run</code> · <code>query</code> · <code>one</code> ·
+            <code>value</code> · <code>insert</code> · <code>tables</code>. 안전 모드에선 차단.</p></div>
+<pre>db = <span class="fn">database</span>(<span class="s">"app.db"</span>)
+db.<span class="fn">run</span>(<span class="s">"insert into note(body) values(?)"</span>, [<span class="s">"안녕"</span>])
+db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   <span class="c"># → [{id:1, body:"안녕"}]</span></pre>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- IDLE -->
+<section class="band soft" id="idle">
+  <div class="wrap">
+    <div class="rise"><h2 class="pixel">POI IDLE — POI 로 만든 편집기</h2>
+      <p class="lede prose">코드 편집기를 POI 로 썼습니다. <code>tkinter</code> 위에서 순수 POI 문법(<code>fn</code>·<code>if</code>·<code>for</code>·문자열 보간·<code>=&gt;</code> 람다)으로.
+        문법 강조, <b>F5 실행</b>(별도 스레드·8초 타임아웃), 열기/저장. <code>poi idle</code> 또는 <code>poi build --app idle</code>.</p></div>
+    <div class="learn rise">
+      <div class="lcard">
+        <div class="lc-k">바로 실행</div>
+        <h3>poi idle</h3>
+        <p>설치돼 있으면 명령 한 줄. 예제가 열린 채로 뜨고, F5 로 실행됩니다.</p>
+<pre style="margin-top:12px"><span class="c">$</span> poi idle
+<span class="c">$</span> poi build --app idle   <span class="c"># → dist/poi-idle.exe</span></pre>
+      </div>
+      <div class="lcard">
+        <div class="lc-k">언어의 증거</div>
+        <h3>“우리가 만든 언어”</h3>
+        <p>380줄짜리 데스크톱 앱이 전부 <code>.poi</code>. 실행 엔진 연동만 <code>python { }</code> 블록으로.
+          POI 로 실무 앱이 나온다는 것을 스스로 증명합니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ROADMAP -->
 <section class="band" id="roadmap">
   <div class="wrap">
     <div class="rise"><h2 class="pixel">한 언어 안에서 입문 → 전문으로</h2>
-      <p class="lede prose">v1.1 은 작동하는 언어입니다 — 코어 문법·파이썬 인터롭·GUI·사람 친화 오류·<b>디버깅 도구</b>·CLI·회귀 테스트, 그리고 한생/토스 감성의 소개 페이지.</p></div>
+      <p class="lede prose">v1.1 부터 v1.7 까지, 매 버전이 대규모 업데이트였습니다 —
+        작동하는 언어 → 형식 자유 → 전문 분야 → 한국어·패턴매칭 → 정적 타입 → 웹 → 표준 라이브러리·백엔드·IDLE.</p></div>
     <div class="road rise">
       <div class="r done"><div class="v">v1.1</div><h3>작동하는 언어</h3>
-        <ul><li>Lexer · Parser · 컴파일러</li><li>조건·반복·함수·객체·파이프라인</li><li><b>inspect · watch · pause · --trace</b></li><li>use py: · python { }</li><li>file·json·web·math·time</li><li>선언형 GUI · P-코드 오류 · 새 버전 알림</li></ul></div>
-      <div class="r"><div class="v">v1.2</div><h3>언어 다듬기</h3>
-        <ul><li><b>한국어 키워드 별칭</b> (보여주기·만약·반복…)</li><li>match / when 패턴 매칭</li><li>파이프라인 확장·구조 분해</li><li>every 1 second · async</li></ul></div>
-      <div class="r"><div class="v">v1.3</div><h3>선택적 정적 타입</h3>
-        <ul><li>Int·Text·List&lt;T&gt;·Option&lt;T&gt;</li><li>시그니처 검사·타입 추론</li><li>poi check --types</li></ul></div>
-      <div class="r"><div class="v">v1.4</div><h3>표준 라이브러리</h3>
-        <ul><li>database() SQLite DSL</li><li>ai.chat (openai·gemini·ollama)</li><li>net·crypto·csv·test { }</li></ul></div>
-      <div class="r"><div class="v">v1.5</div><h3>웹</h3>
-        <ul><li>webapp { page "/" { } }</li><li>server { get "/api" { } }</li><li>상태 → 반응형 재렌더</li></ul></div>
-      <div class="r"><div class="v">v1.6</div><h3>GUI 2.0</h3>
-        <ul><li>state 변경 → 부분 갱신</li><li>grid · 전역 style</li><li>웹뷰 / Qt 백엔드</li></ul></div>
-      <div class="r"><div class="v">v1.7</div><h3>패키지 매니저</h3>
-        <ul><li>poi add · poi add py:numpy</li><li>프로젝트 전용 venv 자동</li><li>poi.lock · 레지스트리</li></ul></div>
-      <div class="r"><div class="v">v1.8</div><h3>빌드 · 배포</h3>
-        <ul><li>poi build → 단일 실행파일</li><li>PyInstaller → Nuitka</li><li>--native · --web</li></ul></div>
-      <div class="r"><div class="v">v1.9</div><h3>도구 생태계</h3>
-        <ul><li>POI Language Server (LSP)</li><li>VS Code 확장 · poi fmt</li><li>poi doctor</li></ul></div>
-      <div class="r"><div class="v">v2.0</div><h3>안정화</h3>
-        <ul><li>문법 고정 · 하위호환 정책</li><li>play.poi.dev (브라우저 실행)</li><li>튜토리얼 · 예제 갤러리</li></ul></div>
+        <ul><li>Lexer · Parser · 컴파일러 · 런타임</li><li>조건·반복·함수·객체·파이프라인</li><li><b>inspect · watch · pause · --trace</b></li><li>use py: · python { } · 선언형 GUI</li><li>P-코드 오류 · 새 버전 알림 · CLI</li></ul></div>
+      <div class="r done"><div class="v">v1.2</div><h3>형식 자유</h3>
+        <ul><li>블록 3방식 — 중괄호·콜론·<code>end</code></li><li>삼항식 · 안전 모드 · 부팅 배너</li><li>연습문제 300제 · 입문서 20장</li></ul></div>
+      <div class="r done"><div class="v">v1.3</div><h3>전문 분야에서도</h3>
+        <ul><li>람다 + 함수형 파이프 30여 개</li><li><code>test</code> · <code>assert</code> · <code>use "./x.poi"</code></li><li>regex·csv·datetime·stats · <code>poi build</code></li></ul></div>
+      <div class="r done"><div class="v">v1.4</div><h3>한국어 · match</h3>
+        <ul><li>한국어 키워드 별칭 (보여주기·만약·반복…)</li><li><code>match</code> / <code>when</code> 패턴 매칭</li><li>들여쓰기·<code>;</code> 까지 5방식 혼용 · <code>shell</code></li></ul></div>
+      <div class="r done"><div class="v">v1.5</div><h3>선택적 정적 타입</h3>
+        <ul><li><code>poi check --types</code> (오탐 없음)</li><li>한국어 타입명·<code>List&lt;T&gt;</code>·<code>Int?</code></li><li>한국어 내장함수 · 랜딩 모바일 UX</li></ul></div>
+      <div class="r done"><div class="v">v1.6</div><h3>웹</h3>
+        <ul><li><code>server { get "/" { } }</code></li><li><code>webapp { page "/" { } }</code></li><li>CSRF·보안 헤더·ETag 기본값</li></ul></div>
+      <div class="r done now"><div class="v">v1.7</div><h3>표준 라이브러리 · 백엔드 · IDLE</h3>
+        <ul><li>crypto·password·jwt·path·url·… 13 모듈</li><li><code>database(...)</code> SQLite · 서명 쿠키·레이트리밋·gzip</li><li><b>POI IDLE</b> — <code>poi idle</code> · <code>poi build --app idle</code></li></ul></div>
+      <div class="r"><div class="v">v1.8</div><h3>표준 라이브러리 확장</h3>
+        <ul><li><code>ai.chat</code> (openai·gemini·ollama)</li><li><code>net</code>·<code>path</code> 심화 · 데이터프레임 유사 API</li><li>클라이언트 반응형 (새로고침 없이)</li></ul></div>
+      <div class="r"><div class="v">v2.x</div><h3>생태계 · 안정화</h3>
+        <ul><li>패키지 매니저 <code>poi add</code> · <code>poi.lock</code></li><li>POI Language Server · VS Code 확장</li><li>문법 고정 · play.poi.dev (브라우저 실행)</li></ul></div>
     </div>
   </div>
 </section>
@@ -829,10 +912,10 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
       <p class="lede prose">파이썬이 없어도 됩니다. <code>poi.exe</code> 하나로 끝.</p></div>
 
     <div class="dl rise">
-      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.4.0.exe">
+      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.7.0.exe">
         <span class="dl-k">Windows 설치 마법사</span>
-        <span class="dl-t">poi-setup-1.4.0.exe</span>
-        <span class="dl-s">더블클릭 → 다음 → 설치. 22 MB · 파이썬 불필요</span>
+        <span class="dl-t">poi-setup-1.7.0.exe</span>
+        <span class="dl-s">더블클릭 → 다음 → 설치. 파이썬 불필요</span>
       </a>
       <div class="dl-alt">
         <div class="dl-row">
@@ -844,6 +927,10 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
           <code>poi.exe __install__     ·     poi.exe run 파일.poi</code>
         </div>
         <div class="dl-row">
+          <div class="dl-label">POI IDLE — <a href="https://hagora.kr/poi/poi-idle.exe">poi-idle.exe</a> (편집기, 설치 불필요)</div>
+          <code>더블클릭 → 예제가 열린 채로 실행 · F5</code>
+        </div>
+        <div class="dl-row">
           <div class="dl-label">저장소에서 (파이썬)</div>
           <code>git clone https://github.com/siwon2da/POI.git  ·  python -m poi run ...</code>
         </div>
@@ -851,12 +938,13 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
     </div>
 
     <div class="cmds rise" style="margin-top:32px">
-      <div><code>poi run [파일]</code><span>실행</span></div>
+      <div><code>poi run [파일]</code><span>실행 (server/webapp 이면 서버가 뜸)</span></div>
+      <div><code>poi idle</code><span>POI 로 만든 코드 편집기</span></div>
+      <div><code>poi build --app idle</code><span>poi-idle.exe 빌드</span></div>
       <div><code>poi debug &lt;파일&gt;</code><span>추적 + 변수 + 사후 분석</span></div>
       <div><code>poi run x.poi --safe</code><span>샌드박스 실행</span></div>
+      <div><code>poi check --types</code><span>문법 + 선택적 타입 검사</span></div>
       <div><code>poi exercises</code><span>연습문제 300제 채점</span></div>
-      <div><code>poi serve</code><span>플레이그라운드 서버</span></div>
-      <div><code>poi new &lt;이름&gt;</code><span>프로젝트 생성</span></div>
       <div><code>poi update</code><span>새 버전 확인 · 올리기</span></div>
     </div>
     <div class="updnote rise">
@@ -890,7 +978,7 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
       <span>MIT License</span><span>·</span>
       <a href="https://github.com/siwon2da/POI">github.com/siwon2da/POI</a><span>·</span>
       <a href="https://hagora.kr/poi/">hagora.kr/poi</a><span>·</span>
-      <span>made by SIWON</span><span>·</span><span>v1.4.0</span>
+      <span>made by SIWON</span><span>·</span><span>v1.7.0</span>
     </div>
   </div>
 </footer>

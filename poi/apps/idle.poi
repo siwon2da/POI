@@ -1,0 +1,306 @@
+# ┌─────────────────────────────────────────────────────────────────┐
+# │  POI IDLE  —  POI 로 작성한 코드 편집기                          │
+# │  실행:  poi idle          빌드:  poi build --app idle           │
+# │  이 파일 자체가 POI 프로그램입니다 (tkinter 위에서).            │
+# └─────────────────────────────────────────────────────────────────┘
+
+use py:tkinter as tk
+use py:tkinter.font as tkfont
+use py:tkinter.filedialog as fd
+use py:tkinter.messagebox as mb
+
+# ── 실행 엔진 · 문법 강조 (파이썬 상호운용으로 세밀하게) ──────────────
+python {
+    import io, re, os, queue, threading, contextlib, ctypes, traceback
+
+    _KW = ("show|ask|use|python|try|catch|if|else|elif|for|in|while|repeat|"
+           "fn|return|end|match|when|is|between|and|or|not|as|const|let|"
+           "server|webapp|page|state|action|app|window|raise|assert|test|true|false|null")
+    _KW_RE  = re.compile(r"(?<![\w.])(" + _KW + r")(?![\w])")
+    _STR_RE = re.compile(r'"(?:[^"\\]|\\.)*"')
+    _COM_RE = re.compile(r"#[^\n]*")
+    _NUM_RE = re.compile(r"(?<![\w.])\d+(?:\.\d+)?")
+    _FN_RE  = re.compile(r"(?<=\bfn\s)([A-Za-z_가-힣][\w가-힣]*)")
+
+    def _highlight(txt):
+        for tag in ("kw", "str", "com", "num", "fn"):
+            txt.tag_remove(tag, "1.0", "end")
+        body = txt.get("1.0", "end-1c")
+        for tag, rx in (("str", _STR_RE), ("com", _COM_RE),
+                        ("kw", _KW_RE), ("num", _NUM_RE), ("fn", _FN_RE)):
+            for m in rx.finditer(body):
+                txt.tag_add(tag, "1.0+%dc" % m.start(), "1.0+%dc" % m.end())
+
+    _Q = queue.Queue()
+    _worker = {"tid": None}
+
+    def _kill_worker():
+        tid = _worker.get("tid")
+        if tid:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                ctypes.c_long(tid), ctypes.py_object(KeyboardInterrupt))
+
+    def _drain():
+        out = []
+        try:
+            while True:
+                out.append(_Q.get_nowait())
+        except queue.Empty:
+            pass
+        return out
+
+    def _busy():
+        return _worker.get("tid") is not None
+
+    def _run_poi(src):
+        from poi.interpreter import compile_source
+        from poi.runtime import make_globals
+
+        class _Pipe(io.TextIOBase):
+            def write(self, s):
+                if s:
+                    _Q.put(s)
+                return len(s)
+
+        def job():
+            _worker["tid"] = threading.get_ident()
+            g = make_globals()
+            g["__name__"] = "__main__"
+            g["__poi_dir__"] = os.getcwd()
+            code = None
+            try:
+                py, _lm, cn = compile_source(src, "<idle>")
+                code = compile(py, cn, "exec")
+            except Exception as e:
+                _Q.put(getattr(e, "render", lambda _s: str(e))(src) + "\n")
+            if code is not None:
+                try:
+                    with contextlib.redirect_stdout(_Pipe()), \
+                         contextlib.redirect_stderr(_Pipe()):
+                        exec(code, g)
+                except SystemExit:
+                    pass
+                except KeyboardInterrupt:
+                    _Q.put("\n[중단됨 — 실행이 너무 오래 걸렸어요]\n")
+                except Exception as e:
+                    from poi.errors import translate_exception
+                    try:
+                        _Q.put("\n" + translate_exception(e, src, {}, "<idle>").render(src) + "\n")
+                    except Exception:
+                        _Q.put("\n" + traceback.format_exc() + "\n")
+            _worker["tid"] = None
+            _Q.put("<<<idle-done>>>")
+
+        threading.Thread(target=job, daemon=True).start()
+
+    SAMPLE = (
+        '# POI 에 오신 걸 환영해요. F5 를 누르면 실행됩니다.\n\n'
+        'show "안녕하세요, POI!"\n\n'
+        'fn 인사(이름)\n'
+        '    return "반가워요 {이름}님"\n\n'
+        'for 사람 in ["시원", "민수", "지연"]\n'
+        '    show 인사(사람)\n\n'
+        '합 = 0\n'
+        'repeat 10 as i\n'
+        '    합 = 합 + i\n'
+        'show "0~9 합계는 {합}"\n'
+    )
+}
+
+# ── 상태 · 위젯 보관함 (POI 함수는 전역 재대입을 안 하므로 Box 로) ────
+S = { file: null, dirty: false, running: false }
+W = {}
+버전 = system.poi_version()
+
+# ── 동작 ────────────────────────────────────────────────────────────
+fn 제목갱신()
+    이름 = "이름 없음"
+    if S.file != null
+        이름 = S.file
+    표시 = ""
+    if S.dirty
+        표시 = " ●"
+    W.root.title("POI IDLE  —  {이름}{표시}")
+
+fn 본문()
+    return W.editor.get("1.0", "end-1c")
+
+fn 본문설정(글)
+    W.editor.delete("1.0", "end")
+    W.editor.insert("1.0", 글)
+    _highlight(W.editor)
+    W.editor.edit_modified(false)
+
+fn 새파일()
+    if S.dirty and not mb.askokcancel("새 파일", "저장하지 않은 변경이 있어요. 계속할까요?")
+        return
+    S.file = null
+    S.dirty = false
+    본문설정("")
+    제목갱신()
+    로그("새 파일을 만들었어요.")
+
+fn 열기()
+    경로 = fd.askopenfilename(filetypes: [["POI 파일", "*.poi"], ["모든 파일", "*.*"]])
+    if not 경로
+        return
+    try
+        본문설정(file.read(경로))
+        S.file = 경로
+        S.dirty = false
+        제목갱신()
+        로그("열었어요:  {경로}")
+    catch e
+        mb.showerror("열기 실패", "{e}")
+
+fn 저장하기(다른이름)
+    경로 = S.file
+    if 다른이름 or 경로 == null
+        경로 = fd.asksaveasfilename(defaultextension: ".poi", filetypes: [["POI 파일", "*.poi"]])
+    if not 경로
+        return
+    file.write(경로, 본문())
+    S.file = 경로
+    S.dirty = false
+    제목갱신()
+    로그("저장했어요:  {경로}")
+
+fn 저장()
+    저장하기(false)
+
+fn 다른이름저장()
+    저장하기(true)
+
+fn 콘솔지우기()
+    W.out.config(state: "normal")
+    W.out.delete("1.0", "end")
+    W.out.config(state: "disabled")
+
+fn 로그(줄)
+    출력추가("{줄}\n")
+
+fn 출력추가(조각)
+    W.out.config(state: "normal")
+    W.out.insert("end", 조각)
+    W.out.see("end")
+    W.out.config(state: "disabled")
+
+fn 펌프()
+    for 조각 in _drain()
+        if 조각 == "<<<idle-done>>>"
+            실행끝()
+        else
+            출력추가(조각)
+    if S.running
+        W.root.after(40, 펌프)
+
+fn 실행끝()
+    S.running = false
+    W.run_btn.config(text: "▶  실행  (F5)", bg: "#3182f6")
+    로그("────────────────────────────────────────")
+
+fn 실행()
+    if S.running
+        _kill_worker()
+        return
+    콘솔지우기()
+    로그("▶  실행 중 …")
+    S.running = true
+    W.run_btn.config(text: "■  중단", bg: "#e03131")
+    _run_poi(본문())
+    W.root.after(40, 펌프)
+    W.root.after(8000, 시간초과)
+
+fn 시간초과()
+    if S.running
+        _kill_worker()
+
+fn 편집됨(e)
+    if W.editor.edit_modified()
+        S.dirty = true
+        제목갱신()
+        _highlight(W.editor)
+        W.editor.edit_modified(false)
+
+fn 커서이동(e)
+    자리 = W.editor.index("insert").split(".")
+    W.status.config(text: "  {자리[0]}줄  {자리[1]}칸        POI {버전}   ·   Ctrl+S 저장  ·  F5 실행")
+
+fn 예제넣기()
+    본문설정(SAMPLE)
+    S.dirty = false
+    제목갱신()
+
+# ── 창 만들기 ───────────────────────────────────────────────────────
+W.root = tk.Tk()
+W.root.geometry("1000x680")
+W.root.minsize(720, 480)
+W.root.configure(bg: "#0f1115")
+
+글꼴 = tkfont.Font(family: "Consolas", size: 12)
+ui = tkfont.Font(family: "Segoe UI", size: 10)
+
+fn 버튼(부모, 라벨, 동작, 강조)
+    색 = "#242a33"
+    글자 = "#e6e9ef"
+    if 강조
+        색 = "#3182f6"
+        글자 = "#ffffff"
+    b = tk.Button(부모, text: 라벨, command: 동작, bg: 색, fg: 글자,
+                  activebackground: 색, activeforeground: 글자, relief: "flat",
+                  font: ui, padx: 12, pady: 6, borderwidth: 0, cursor: "hand2")
+    b.pack(side: "left", padx: 5, pady: 7)
+    return b
+
+W.bar = tk.Frame(W.root, bg: "#161a20")
+W.bar.pack(side: "top", fill: "x")
+버튼(W.bar, "＋  새로", 새파일, false)
+버튼(W.bar, "📂  열기", 열기, false)
+버튼(W.bar, "💾  저장", 저장, false)
+W.run_btn = 버튼(W.bar, "▶  실행  (F5)", 실행, true)
+버튼(W.bar, "✦  예제", 예제넣기, false)
+버튼(W.bar, "🧹  콘솔 비우기", 콘솔지우기, false)
+
+W.mid = tk.Frame(W.root, bg: "#0f1115")
+W.mid.pack(side: "top", fill: "both", expand: true)
+W.editor = tk.Text(W.mid, wrap: "none", undo: true, font: 글꼴,
+                   bg: "#0f1115", fg: "#e6e9ef", insertbackground: "#3182f6",
+                   selectbackground: "#2a3b57", relief: "flat",
+                   padx: 16, pady: 12, spacing1: 2, spacing3: 2, maxundo: 400)
+W.editor.pack(side: "left", fill: "both", expand: true)
+W.scroll = tk.Scrollbar(W.mid, command: W.editor.yview)
+W.scroll.pack(side: "right", fill: "y")
+W.editor.configure(yscrollcommand: W.scroll.set)
+W.editor.tag_configure("kw", foreground: "#5aa2ff")
+W.editor.tag_configure("str", foreground: "#63d19e")
+W.editor.tag_configure("com", foreground: "#6b7480")
+W.editor.tag_configure("num", foreground: "#e0a458")
+W.editor.tag_configure("fn", foreground: "#c792ea")
+
+W.console = tk.Frame(W.root, bg: "#0b0d10")
+W.console.pack(side: "top", fill: "both")
+W.out_label = tk.Label(W.console, text: "  출력", bg: "#0b0d10", fg: "#6b7480",
+                       font: ui, anchor: "w")
+W.out_label.pack(side: "top", fill: "x", pady: 3)
+W.out = tk.Text(W.console, height: 12, wrap: "word", font: 글꼴,
+                bg: "#0b0d10", fg: "#c9cdd6", relief: "flat",
+                padx: 16, pady: 10, state: "disabled")
+W.out.pack(side: "top", fill: "both")
+
+W.status = tk.Label(W.root, text: "  준비됨        POI {버전}", bg: "#161a20",
+                    fg: "#8b95a1", font: ui, anchor: "w")
+W.status.pack(side: "bottom", fill: "x")
+
+W.editor.bind("<<Modified>>", 편집됨)
+W.editor.bind("<KeyRelease>", 커서이동)
+W.editor.bind("<ButtonRelease-1>", 커서이동)
+W.root.bind("<F5>", (e) => 실행())
+W.root.bind("<Control-s>", (e) => 저장())
+W.root.bind("<Control-Shift-S>", (e) => 다른이름저장())
+W.root.bind("<Control-n>", (e) => 새파일())
+W.root.bind("<Control-o>", (e) => 열기())
+
+예제넣기()
+커서이동(null)
+W.editor.focus_set()
+W.root.mainloop()

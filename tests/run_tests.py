@@ -10,6 +10,10 @@ import os
 import sys
 from contextlib import redirect_stderr, redirect_stdout
 
+os.environ.setdefault("POI_NO_SERVE", "1")       # server/webapp 테스트가 블록하지 않게
+os.environ.setdefault("POI_NO_UPDATE_CHECK", "1")
+os.environ.setdefault("POI_NO_BANNER", "1")
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)

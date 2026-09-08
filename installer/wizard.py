@@ -95,6 +95,22 @@ def start_menu_shortcut(exe: str, folder: str):
                    capture_output=True, creationflags=0x08000000)
 
 
+def start_menu_idle(idle_exe: str, folder: str):
+    sm = os.path.join(os.environ["APPDATA"],
+                      r"Microsoft\Windows\Start Menu\Programs\POI")
+    os.makedirs(sm, exist_ok=True)
+    lnk = os.path.join(sm, "POI IDLE.lnk").replace("\\", "\\\\")
+    ps = (
+        f'$w = New-Object -ComObject WScript.Shell; '
+        f'$s = $w.CreateShortcut("{lnk}"); '
+        f'$s.TargetPath = "{idle_exe}"; '
+        f'$s.WorkingDirectory = "{folder}"; '
+        f'$s.IconLocation = "{idle_exe},0"; $s.Save()'
+    )
+    subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                   capture_output=True, creationflags=0x08000000)
+
+
 def do_install(dest: str, opts: dict, log):
     exe_src = _res("poi.exe")
     os.makedirs(dest, exist_ok=True)
@@ -103,6 +119,12 @@ def do_install(dest: str, opts: dict, log):
     exe_dst = os.path.join(dest, "poi.exe")
     shutil.copy2(exe_src, exe_dst)
     log("poi.exe 복사 완료")
+
+    idle_dst = os.path.join(dest, "poi-idle.exe")
+    idle_src = _res("poi-idle.exe")
+    if os.path.exists(idle_src):
+        shutil.copy2(idle_src, idle_dst)
+        log("poi-idle.exe (편집기) 복사 완료")
 
     for extra in ("examples", "README.md", "LICENSE"):
         src = _res(extra)
@@ -123,6 +145,9 @@ def do_install(dest: str, opts: dict, log):
     if opts["startmenu"]:
         start_menu_shortcut(exe_dst, dest)
         log("시작 메뉴에 'POI REPL' 추가")
+        if os.path.exists(idle_dst):
+            start_menu_idle(idle_dst, dest)
+            log("시작 메뉴에 'POI IDLE' 추가")
 
     # 제거 정보
     try:

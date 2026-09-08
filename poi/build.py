@@ -31,15 +31,22 @@ def build(args: list[str]) -> int:
     console = False
     it = iter(args)
     for a in it:
-        if a in ("-o", "--out"):
+        if a in ("-o", "--out", "--name"):
             out_name = next(it, None)
-        elif a == "--console":
+        elif a in ("--console", "-c"):
             console = True
+        elif a == "--app":
+            name = next(it, None)
+            if name:
+                src_path = os.path.join(os.path.dirname(__file__), "apps",
+                                        name + ".poi")
+                out_name = out_name or ("poi-" + name)
         elif not a.startswith("-"):
             src_path = a
 
     if not src_path or not os.path.isfile(src_path):
-        print("빌드할 .poi 파일을 지정하세요:  poi build app.poi", file=sys.stderr)
+        print("빌드할 .poi 파일을 지정하세요:  poi build app.poi\n"
+              "               또는:  poi build --app idle", file=sys.stderr)
         return 1
     if not _have_pyinstaller():
         print("PyInstaller 가 필요합니다:  python -m pip install pyinstaller")
@@ -79,11 +86,13 @@ def build(args: list[str]) -> int:
 
     out_dist = os.path.join(os.getcwd(), "dist")
     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--onefile",
-           "--name", name, "--collect-all", "poi",
+           "--name", name, "--collect-all", "poi", "--collect-data", "poi",
            "--distpath", out_dist,
            "--workpath", os.path.join(work, "b"),
            "--specpath", work,
            "--console" if console else "--noconsole", boot]
+    if "tkinter" in py_src:      # GUI 앱 — tkinter 하위 모듈까지 챙긴다
+        cmd[3:3] = ["--collect-submodules", "tkinter"]
     ico = os.path.join(repo, "installer", "poi.ico")
     if os.path.isfile(ico):
         cmd[3:3] = ["--icon", ico]

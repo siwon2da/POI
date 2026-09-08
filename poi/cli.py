@@ -18,11 +18,15 @@ POI v{ver}  -  Power Of Imagination
        --vars                         --trace + 변수 변화까지
        --explain                      오류가 나면 그때의 지역 변수까지 사후 분석
        --debug                        위 세 개를 한 번에
-       --safe [--time N]              샌드박스로 실행 (python{}·use py·파일·네트워크 차단, 시간 제한)
+       --safe [--time N]              샌드박스로 실행 (python 블록·use py·파일·네트워크 차단, 시간 제한)
+       --types                       선택적 정적 타입 검사도 함께
   poi debug <파일.poi>                 = poi run --debug
+  poi test [파일.poi]                  파일 안의 test 블록 실행
+  poi build <파일.poi> [-o 이름]        단일 실행파일(.exe) 로 빌드
+  poi idle                            POI IDLE — POI 로 만든 코드 편집기
   poi serve [폴더] [--port 8900]       플레이그라운드 서버 (정적 서빙 + 안전 실행 /run)
   poi new <이름>                       새 프로젝트 폴더 만들기
-  poi check <파일.poi>                 문법만 검사 (실행 안 함)
+  poi check <파일.poi> [--types]        문법·타입만 검사 (실행 안 함)
   poi repl                            대화형 셸
   poi update                          새 버전 확인 / 올리기
   poi version                        버전 출력
@@ -93,6 +97,7 @@ _RUN_FLAGS = {"--emit-python", "--trace", "--vars", "--explain", "--debug",
 
 def _run(args: list[str], *, force_debug: bool = False) -> int:
     time_limit = 5.0
+    web_port = 8080
     kept = []
     it = iter(args)
     for a in it:
@@ -104,6 +109,16 @@ def _run(args: list[str], *, force_debug: bool = False) -> int:
         elif a.startswith("--time="):
             try:
                 time_limit = float(a.split("=", 1)[1])
+            except ValueError:
+                pass
+        elif a in ("--port", "-p"):
+            try:
+                web_port = int(next(it))
+            except (StopIteration, ValueError):
+                pass
+        elif a.startswith("--port="):
+            try:
+                web_port = int(a.split("=", 1)[1])
             except ValueError:
                 pass
         else:
@@ -129,7 +144,7 @@ def _run(args: list[str], *, force_debug: bool = False) -> int:
         _typecheck_file(path, block=False)
     rc = run_file(path, emit_python=emit, argv=rest[1:],
                   trace=trace, trace_vars=trace_vars, explain=explain,
-                  safe=safe, time_limit=time_limit)
+                  safe=safe, time_limit=time_limit, web_port=web_port)
     if not emit and not safe:
         _maybe_update_notice()
     return rc
@@ -273,6 +288,33 @@ def cmd_build(args: list[str]) -> int:
     return build(args)
 
 
+def _app_path(name: str) -> str:
+    return os.path.join(os.path.dirname(__file__), "apps", name + ".poi")
+
+
+def cmd_idle(args: list[str]) -> int:
+    """poi idle — POI 로 작성한 코드 편집기 (POI IDLE)."""
+    path = _app_path("idle")
+    if not os.path.isfile(path):
+        print("POI IDLE 을 찾을 수 없습니다.", file=sys.stderr)
+        return 1
+    os.environ["POI_NO_SERVE"] = "1"
+    return run_file(path)
+
+
+_REPL_HELP = """\
+POI REPL 도움말
+  show <값>              값 출력          예:  show "안녕"   /   show 2 + 3
+  이름 = <값>            변수                예:  나이 = 16
+  fn 함수(a, b) ...      함수 정의 (여러 줄은 자동으로 이어집니다)
+  for x in [1,2,3] ...   반복 / repeat 5 as i ...
+  use math              표준 모듈 (crypto·path·jwt·url·datetime …)
+  show test             ✦
+  exit / 나가기          REPL 종료        (Ctrl+C 도 됩니다)
+자세히:  poi help    ·    책:  https://hagora.kr/poi/book/
+"""
+
+
 def cmd_repl(_args: list[str]) -> int:
     from .runtime import make_globals
     from . import banner
@@ -288,8 +330,11 @@ def cmd_repl(_args: list[str]) -> int:
         except (EOFError, KeyboardInterrupt):
             print()
             return 0
-        if not buf and line.strip() in ("exit", "quit"):
+        if not buf and line.strip() in ("exit", "quit", "나가기"):
             return 0
+        if not buf and line.strip() in ("help", "?", "도움말", "도움"):
+            print(_REPL_HELP)
+            continue
         buf += line + "\n"
         if line.strip().endswith("{") or _unbalanced(buf):
             continue
@@ -355,7 +400,7 @@ def main(argv: list[str] | None = None) -> int:
     if not argv or argv[0] in ("help", "-h", "--help"):
         from . import banner
         banner.show()
-        print(HELP.format(ver=__version__))
+        print(HELP.replace("{ver}", __version__))
         return 0
     cmd, rest = argv[0], argv[1:]
     if cmd in ("version", "-v", "--version"):
@@ -367,7 +412,7 @@ def main(argv: list[str] | None = None) -> int:
         "repl": cmd_repl, "fmt": cmd_fmt, "build": cmd_build,
         "update": cmd_update, "upgrade": cmd_update, "debug": cmd_debug,
         "serve": cmd_serve, "playground": cmd_serve, "exercises": cmd_exercises,
-        "ex": cmd_exercises, "test": cmd_test, "build": cmd_build,
+        "ex": cmd_exercises, "test": cmd_test, "idle": cmd_idle,
     }
     if cmd in table:
         return table[cmd](rest)

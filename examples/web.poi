@@ -1,0 +1,36 @@
+# POI 웹 — poi run web.poi 하면 http://localhost:8080 에 뜬다
+
+server {
+    get "/" {
+        return "<h1>POI 웹</h1><p><a href='/app'>메모장 열기</a></p>"
+    }
+    get "/api/시간" {
+        return { 지금: time.now(), 유닉스: time.timestamp() }
+    }
+    get "/api/더하기/:a/:b" {
+        return { 합: number(params.a) + number(params.b) }
+    }
+    post "/api/에코" {
+        return { 받은것: body }
+    }
+}
+
+webapp "메모장" {
+    state 메모들 = ["장 볼 것", "코드 리뷰"]
+
+    page "/app" {
+        title "메모장"
+        for m in 메모들 {
+            card { text m }
+        }
+        form "/추가" {
+            input "새 메모" -> 내용
+            button "추가"
+        }
+        link "홈으로" -> "/"
+    }
+
+    action "/추가" {
+        메모들.add(내용)
+    }
+}

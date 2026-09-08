@@ -190,6 +190,16 @@ class Parser:
             title = self.advance().value
             return Node("App", line=t.line, title=title, body=self._gui_block())
 
+        # server { get "/" { ... } ... }
+        if t.type == "IDENT" and t.value == "server" \
+                and self.peek(1).type == "OP" and self.peek(1).value == "{":
+            return self._server_stmt()
+
+        # webapp "제목" { page "/" { ... } ... }
+        if t.type == "IDENT" and t.value == "webapp" and self.peek(1).type == "STRING" \
+                and self.peek(2).type == "OP" and self.peek(2).value == "{":
+            return self._webapp_stmt()
+
         # 타입 붙은 선언:  name: Type = value
         if t.type == "IDENT" and self.peek(1).type == "OP" and self.peek(1).value == ":":
             save = self.i
@@ -382,6 +392,151 @@ class Parser:
         handler, s2 = self.block(opener_col=t.col)
         self._end("end" if "end" in (s1, s2) else s2)
         return Node("TryCatch", line=t.line, body=body, name=name, handler=handler)
+
+    # -- WEB (v1.6) ---------------------------------------------
+    _HTTP_METHODS = {"get", "post", "put", "delete", "patch"}
+
+    def _server_stmt(self):
+        t = self.advance()  # 'server'
+        self.expect("OP", "{")
+        self.skip_nl()
+        routes = []
+        statics = []
+        while not self.check("OP", "}"):
+            if self.at_end():
+                raise POIError("server { 가 닫히지 않았습니다.", "P013", self.peek().line)
+            w = self.peek()
+            if w.type == "IDENT" and w.value in self._HTTP_METHODS:
+                self.advance()
+                path = self.expect("STRING", what="라우트 경로").value
+                body, style = self.block(opener_col=w.col)
+                self._end(style)
+                routes.append((w.value.upper(), path, body))
+            elif w.type == "IDENT" and w.value == "static":
+                self.advance()
+                statics.append(self.expect("STRING", what="정적 폴더").value)
+            else:
+                # 그밖의 문장(변수 선언 등)은 서버 시작 전에 실행
+                routes.append(("__setup__", None, [self.statement()]))
+            self.skip_nl()
+        self.expect("OP", "}")
+        return Node("Server", line=t.line, routes=routes, statics=statics)
+
+    def _webapp_stmt(self):
+        t = self.advance()  # 'webapp'
+        title = self.advance().value  # STRING
+        self.expect("OP", "{")
+        self.skip_nl()
+        states, pages, actions = [], [], []
+        while not self.check("OP", "}"):
+            if self.at_end():
+                raise POIError("webapp { 가 닫히지 않았습니다.", "P013", self.peek().line)
+            w = self.peek()
+            if w.type == "IDENT" and w.value == "state":
+                self.advance()
+                nm = self.expect("IDENT", what="상태 이름").value
+                self.expect("OP", "=")
+                states.append((nm, self.expression()))
+            elif w.type == "IDENT" and w.value == "page":
+                self.advance()
+                path = self.expect("STRING", what="페이지 경로").value
+                pages.append((path, self._web_block(w.col)))
+            elif w.type == "IDENT" and w.value == "action":
+                self.advance()
+                path = self.expect("STRING", what="액션 경로").value
+                body, style = self.block(opener_col=w.col)
+                self._end(style)
+                actions.append((path, body))
+            else:
+                actions.append(("__setup__", [self.statement()]))
+            self.skip_nl()
+        self.expect("OP", "}")
+        return Node("WebApp", line=t.line, title=title, states=states,
+                    pages=pages, actions=actions)
+
+    _WEB_WORDS = {"title", "text", "link", "card", "row", "column", "form",
+                  "input", "password", "textarea", "button", "html",
+                  "heading", "subtitle", "badge", "divider", "spacer",
+                  "image", "alert", "notice", "field", "select", "checkbox"}
+
+    def _web_block(self, opener_col):
+        self.expect("OP", "{")
+        self.skip_nl()
+        nodes = []
+        while not self.check("OP", "}"):
+            if self.at_end():
+                raise POIError("페이지 블록의 } 가 닫히지 않았습니다.", "P013",
+                               self.peek().line)
+            nodes.append(self._web_node())
+            self.skip_nl()
+        self.expect("OP", "}")
+        return nodes
+
+    def _web_node(self):
+        t = self.peek()
+        if t.type == "KEYWORD" and t.value == "for":
+            tk = self.advance()
+            var = self._var_name("반복 변수")
+            self.expect("KEYWORD", "in")
+            it = self.expression()
+            return Node("ForIn", line=tk.line, var=var, iterable=it,
+                        body=self._web_block(tk.col), gui=False, web=True)
+        if t.type == "KEYWORD" and t.value == "if":
+            tk = self.advance()
+            cond = self.expression()
+            body = self._web_block(tk.col)
+            orelse = None
+            self.skip_nl()
+            if self.match("KEYWORD", "else"):
+                orelse = self._web_block(tk.col)
+            return Node("If", line=tk.line, branches=[(cond, body)], orelse=orelse,
+                        web=True)
+        if t.type == "IDENT" and t.value in self._WEB_WORDS:
+            w = self.advance().value
+            if w in ("title", "text", "heading", "subtitle", "badge",
+                     "alert", "notice"):
+                return Node("WKind", line=t.line, kind_="W" + w, value=self.expression())
+            if w == "divider":
+                return Node("WKind", line=t.line, kind_="Wdivider", value=None)
+            if w == "spacer":
+                amt = self.expression() if self._starts_expr() else Node("Num", value=24)
+                return Node("WKind", line=t.line, kind_="Wspacer", value=amt)
+            if w == "image":
+                return Node("WKind", line=t.line, kind_="Wimage", value=self.expression())
+            if w in ("field", "select", "checkbox"):
+                label = self.expression()
+                self.expect("OP", "->")
+                name = self.expect("IDENT", what="입력 이름").value
+                opts = None
+                if w == "select":
+                    opts = self.expression()  # 옵션 배열
+                return Node("WField", line=t.line, ftype=w, label=label,
+                            name=name, opts=opts)
+            if w == "link":
+                label = self.expression()
+                self.expect("OP", "->")
+                href = self.expression()
+                return Node("WLink", line=t.line, text=label, href=href)
+            if w in ("card", "row", "column"):
+                kind = {"card": "WCard", "row": "WRow", "column": "WCol"}[w]
+                return Node(kind, line=t.line, body=self._web_block(t.col))
+            if w == "form":
+                action = self.expect("STRING", what="폼 액션 경로").value
+                return Node("WForm", line=t.line, action=action,
+                            body=self._web_block(t.col))
+            if w in ("input", "password", "textarea"):
+                label = self.expression()
+                name = None
+                if self.match("OP", "->"):
+                    name = self.expect("IDENT", what="입력 이름").value
+                return Node("WInput", line=t.line, label=label,
+                            name=name or "field", secret=(w == "password"),
+                            multiline=(w == "textarea"))
+            if w == "button":
+                return Node("WButton", line=t.line, value=self.expression())
+            if w == "html":
+                return Node("WHtml", line=t.line, value=self.expression())
+        return self.statement()
 
     # -- GUI ------------------------------------------------------
     def _gui_block(self):

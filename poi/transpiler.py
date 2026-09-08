@@ -11,7 +11,13 @@ import textwrap
 from .errors import POIError
 
 _STD_MODULES = {"file", "json", "web", "math", "time", "ui", "gui",
-                "regex", "csv", "datetime", "random", "stats", "env", "shell"}
+                "regex", "csv", "datetime", "random", "stats", "env", "shell",
+                # v1.7 — 백엔드 · 보안 · 시스템
+                "crypto", "password", "jwt", "path", "url", "html", "compress",
+                "log", "cache", "bench", "dotenv", "system", "uuid",
+                # 한국어 별칭
+                "암호", "비밀번호", "토큰", "경로", "주소", "압축", "기록",
+                "캐시", "성능측정", "시스템"}
 
 
 class Transpiler:
@@ -37,9 +43,13 @@ class Transpiler:
             self.lines.append("    " * self.ind + piece if piece else "")
             self.linemap[len(self.lines)] = line
 
+    _has_web = False
+
     def generate(self, program):
         for stmt in program.body:
             self.stmt(stmt)
+        if self._has_web:
+            self.emit("__poi_has_web__ = True")
         if not self.lines:
             self.emit("pass")
         return "\n".join(self.lines) + "\n", self.linemap
@@ -96,6 +106,10 @@ class Transpiler:
             self._pyblock(n)
         elif k == "App":
             self._app(n)
+        elif k == "Server":
+            self._server(n)
+        elif k == "WebApp":
+            self._webapp(n)
         elif k in ("GWindow", "GText", "GButton", "GRow", "GColumn", "GCard",
                    "GInput", "GState", "GOn"):
             self.gui_emit(n)
@@ -195,6 +209,108 @@ class Transpiler:
         if p.kind == "PatRange":
             return f"({self.ex(p.low)} <= {mv} <= {self.ex(p.high)})"
         return f"({mv} == {self.ex(p.value)})"
+
+    # -- WEB (v1.6) -----------------------------------------
+    _HANDLER_SIG = "(params, query, body, headers, method)"
+
+    def _server(self, n):
+        self._has_web = True
+        rd = f"_routes{self._next_h()}"
+        self.emit(f"{rd} = {{}}", n.line)
+        for method, path, body in n.routes:
+            if method == "__setup__":
+                for s in body:
+                    self.stmt(s)
+                continue
+            h = f"_route{self._next_h()}"
+            self.emit(f"def {h}{self._HANDLER_SIG}:", n.line)
+            self.block(body)
+            self.emit(f"{rd}[({method!r}, {path!r})] = {h}", n.line)
+        statics = ", ".join(repr(s) for s in n.statics)
+        self.emit(f"poi_web_register({{'routes': {rd}, 'static': [{statics}]}})", n.line)
+
+    def _webapp(self, n):
+        self._has_web = True
+        rd = f"_routes{self._next_h()}"
+        self.emit(f"{rd} = {{}}", n.line)
+        for nm, val in n.states:
+            self.emit(f"{nm} = {self.ex(val)}", n.line)
+        for path, nodes in n.pages:
+            h = f"_page{self._next_h()}"
+            self.emit(f"def {h}{self._HANDLER_SIG}:", n.line)
+            self.ind += 1
+            self.emit(f"return poi_render_page({self._web_list(nodes)}, "
+                      f"{n.title!r})", n.line)
+            self.ind -= 1
+            self.emit(f"{rd}[('GET', {path!r})] = {h}", n.line)
+        action_paths = []
+        for path, body in n.actions:
+            h = f"_act{self._next_h()}"
+            self.emit(f"def {h}{self._HANDLER_SIG}:", n.line)
+            self.ind += 1
+            self.emit("globals().update(dict(body))", n.line)
+            self.ind -= 1
+            self.block(body)
+            if path == "__setup__":
+                continue
+            self.ind += 1
+            self.emit("return poi_web_redirect(headers.get('Referer', '/'))", n.line)
+            self.ind -= 1
+            self.emit(f"{rd}[('POST', {path!r})] = {h}", n.line)
+            action_paths.append(path)
+        self.emit(f"poi_web_register({{'routes': {rd}, 'static': [], "
+                  f"'title': {n.title!r}, 'csrf_paths': {action_paths!r}}})", n.line)
+
+    def _web_list(self, nodes) -> str:
+        parts = []
+        for nd in nodes:
+            k = nd.kind
+            if k == "ForIn" and getattr(nd, "web", False):
+                parts.append(f"*[_wn for {nd.var} in {self.ex(nd.iterable)} "
+                             f"for _wn in {self._web_list(nd.body)}]")
+            elif k == "If" and getattr(nd, "web", False):
+                cond, body = nd.branches[0]
+                els = self._web_list(nd.orelse) if nd.orelse else "[]"
+                parts.append(f"*({self._web_list(body)} if {self.ex(cond)} else {els})")
+            elif k.startswith("W"):
+                parts.append(self._web_one(nd))
+            # 그밖의 문장은 페이지 안에서 무시 (부작용용은 action 에서)
+        return "[" + ", ".join(parts) + "]"
+
+    def _web_one(self, nd) -> str:
+        k = nd.kind
+        if k == "WKind":
+            t = nd.kind_[1:]  # 'title','heading','badge','divider','spacer','image',...
+            if nd.value is None:
+                return f"{{'t': {t!r}}}"
+            key = "px" if t == "spacer" else ("src" if t == "image" else "text")
+            return f"{{'t': {t!r}, {key!r}: {self.ex(nd.value)}}}"
+        if k == "WField":
+            opts = f", 'options': {self.ex(nd.opts)}" if nd.opts is not None else ""
+            return (f"{{'t': {nd.ftype!r}, 'label': {self.ex(nd.label)}, "
+                    f"'name': {nd.name!r}{opts}}}")
+        if k == "WTitle":
+            return f"{{'t': 'title', 'text': {self.ex(nd.value)}}}"
+        if k == "WText":
+            return f"{{'t': 'text', 'text': {self.ex(nd.value)}}}"
+        if k == "WLink":
+            return (f"{{'t': 'link', 'text': {self.ex(nd.text)}, "
+                    f"'href': {self.ex(nd.href)}}}")
+        if k in ("WCard", "WRow", "WCol"):
+            tt = {"WCard": "card", "WRow": "row", "WCol": "col"}[k]
+            return f"{{'t': {tt!r}, 'kids': {self._web_list(nd.body)}}}"
+        if k == "WForm":
+            return (f"{{'t': 'form', 'action': {nd.action!r}, "
+                    f"'kids': {self._web_list(nd.body)}}}")
+        if k == "WInput":
+            return (f"{{'t': 'input', 'label': {self.ex(nd.label)}, "
+                    f"'name': {nd.name!r}, 'secret': {nd.secret}, "
+                    f"'multiline': {nd.multiline}}}")
+        if k == "WButton":
+            return f"{{'t': 'button', 'text': {self.ex(nd.value)}}}"
+        if k == "WHtml":
+            return f"poi_html_raw({self.ex(nd.value)})"
+        return "{'t': 'text', 'text': ''}"
 
     # -- GUI -------------------------------------------------
     def _app(self, n):

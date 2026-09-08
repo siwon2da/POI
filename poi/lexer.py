@@ -27,7 +27,7 @@ class Lexer:
         self.src = source.lstrip("﻿")  # BOM(들) 제거
         self.filename = filename
         self.i = 0
-        self.n = len(source)
+        self.n = len(self.src)             # BOM 제거 후 길이 (원본 길이 아님)
         self.line = 1
         self.col = 1
         self.paren_depth = 0

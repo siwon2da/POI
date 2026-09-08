@@ -267,6 +267,9 @@ def poi_std(name):
         from . import gui as _guimod
         mapping["ui"] = _guimod
         mapping["gui"] = _guimod
+    from . import stdlib2
+    mapping.update(stdlib2.MODULES)
+    mapping.update(stdlib2.KO_MODULES)
     if name not in mapping:
         raise POIError(f"'{name}' 표준 모듈은 없습니다.", "P021")
     _STD_CACHE[name] = mapping[name]

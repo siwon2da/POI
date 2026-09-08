@@ -36,16 +36,26 @@ def main() -> int:
     ver = _ver()
     ico = os.path.join(HERE, "poi.ico")
     poi_exe = os.path.join(ROOT, "dist", "exe", "poi.exe")
+    idle_exe = os.path.join(ROOT, "dist", "exe", "poi-idle.exe")
 
-    print(f"[1/2] poi.exe  (POI {ver})")
+    print(f"[1/3] poi.exe  (POI {ver})")
     _pyi(["--console", "--name", "poi", "--collect-submodules", "poi",
-          "--paths", ROOT] + (["--icon", ico] if os.path.exists(ico) else []) +
+          "--collect-data", "poi", "--paths", ROOT] +
+         (["--icon", ico] if os.path.exists(ico) else []) +
          [os.path.join(HERE, "poi_entry.py")])
 
-    print(f"[2/2] poi-setup-{ver}.exe")
+    print(f"[2/3] poi-idle.exe")
+    _pyi(["--noconsole", "--name", "poi-idle", "--collect-submodules", "poi",
+          "--collect-data", "poi", "--collect-submodules", "tkinter",
+          "--paths", ROOT] +
+         (["--icon", ico] if os.path.exists(ico) else []) +
+         [os.path.join(HERE, "idle_entry.py")])
+
+    print(f"[3/3] poi-setup-{ver}.exe")
     _pyi(["--noconsole", "--name", f"poi-setup-{ver}"] +
          (["--icon", ico] if os.path.exists(ico) else []) +
          ["--add-binary", f"{poi_exe}{os.pathsep}.",
+          "--add-binary", f"{idle_exe}{os.pathsep}.",
           "--add-data", f"{os.path.join(ROOT, 'examples')}{os.pathsep}examples",
           "--add-data", f"{os.path.join(ROOT, 'README.md')}{os.pathsep}.",
           "--add-data", f"{os.path.join(ROOT, 'LICENSE')}{os.pathsep}."] +
@@ -53,7 +63,7 @@ def main() -> int:
          [os.path.join(HERE, "wizard.py")])
 
     print("\n완료:")
-    for f in ("poi.exe", f"poi-setup-{ver}.exe"):
+    for f in ("poi.exe", "poi-idle.exe", f"poi-setup-{ver}.exe"):
         p = os.path.join(ROOT, "dist", "exe", f)
         if os.path.exists(p):
             print(f"  {p}  ({os.path.getsize(p) / 1e6:.1f} MB)")

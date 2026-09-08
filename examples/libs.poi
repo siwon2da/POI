@@ -1,0 +1,32 @@
+# POI 표준 라이브러리 맛보기 (v1.7) — import 없이 바로
+
+show "─ crypto ─"
+show crypto.sha256("poi")
+show crypto.token(8)
+
+show "─ password ─"
+h = password.hash("hunter2")
+show password.verify("hunter2", h)
+
+show "─ jwt ─"
+t = jwt.sign({ user: "시원" }, "secret", 60)
+show jwt.verify(t, "secret").user
+
+show "─ path / url ─"
+show path.stem("docs/report.final.poi")
+show url.parse("https://hagora.kr/poi?tab=play").query.tab
+
+show "─ bench ─"
+r = bench.run(() => crypto.sha256("x"), 5000)
+show "5000회 / {r.per_sec} per_sec"
+
+show "─ database ─"
+db = database(":memory:")
+db.exec("create table t(k text, v int)")
+db.run("insert into t values(?, ?)", ["a", 1])
+db.run("insert into t values(?, ?)", ["b", 2])
+show db.query("select * from t")
+show db.value("select sum(v) from t")
+
+show "─ system ─"
+show "POI {system.poi_version()} on {system.platform()}"

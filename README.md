@@ -49,6 +49,8 @@ poi run examples/basics.poi
 | `poi debug 파일.poi` | 추적 + 변수 + 사후 분석 |
 | `poi test 파일.poi` | test 블록 실행·채점 |
 | `poi build 파일.poi` | 단일 실행파일로 |
+| `poi build --app idle` | POI IDLE 을 `poi-idle.exe` 로 |
+| `poi idle` | POI 로 만든 코드 편집기 (문법 강조·F5 실행) |
 | `poi run 파일.poi --safe` | 샌드박스 실행 |
 | `poi serve` / `poi exercises` | 플레이그라운드 / 300제 |
 | `poi new <이름>` | 새 프로젝트 폴더 생성 |
@@ -71,6 +73,9 @@ poi run examples/basics.poi
 9. **한국어 · match · 호환성 (v1.4)** — `보여주기`/`만약`/`반복`/`함수`/`끝` … 한국어 키워드 · `match`/`when` 패턴 매칭 ·
    들여쓰기·`;` 세미콜론까지 (5방식 혼용) · `shell` 로 어떤 언어·도구든 호출
 10. **선택적 정적 타입 · 모바일 (v1.5)** — `poi check --types` (오탐 없음) · 한국어 타입명·키워드·내장함수 대폭 확장 · 랜딩 모바일 UX
+11. **웹 (v1.6)** — `server { get "/" { } }` 내장 HTTP · `webapp { page "/" { } }` 선언형 페이지 · CSRF·보안 헤더·ETag 기본값 · 설정 0으로 예쁜 반응형·다크 페이지
+12. **표준 라이브러리 · 백엔드/보안 · IDLE (v1.7)** — `crypto`·`password`·`jwt`·`path`·`url`·`html`·`compress`·`log`·`cache`·`bench`·`dotenv`·`system`·`uuid` ·
+    `database(...)` SQLite 0설정 · 서명 쿠키/세션·레이트리밋·gzip · `poi idle` / `poi build --app idle`
 
 ## 예제
 
@@ -100,8 +105,10 @@ poi run examples/basics.poi
 
 ## 상태
 
-**v1.5.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + **디버깅 도구** + 새 버전 알림 + CLI + 회귀 테스트 24개 + 연습문제 300제.
-웹앱/서버, DB DSL, 선택적 정적 타입, 패키지 매니저, 네이티브 빌드, LSP 는 [로드맵](docs/ROADMAP.md) 참고.
+**v1.7.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + 디버깅 도구 + 선택적 정적 타입 +
+**내장 웹서버/선언형 페이지** + **백엔드·보안 표준 라이브러리** + **`database(...)` SQLite** +
+**POI IDLE** (POI 로 작성) + CLI + 회귀 테스트 28개 + 연습문제 300제.
+패키지 매니저, 네이티브 빌드, LSP 는 [로드맵](docs/ROADMAP.md) 참고.
 
 ## 내려받기
 

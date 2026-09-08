@@ -1,5 +1,108 @@
 # 변경 이력
 
+## v1.7.0 — 2026-09-08  (대규모 업데이트 — 표준 라이브러리 · 백엔드/보안 · POI IDLE)
+
+파이썬이 하는 건 다 하고, 더 한다. 새 모듈은 `import` 없이 바로, 또는 `use 이름`.
+
+**백엔드 · 보안 표준 라이브러리** (외부 의존성 0, 전부 파이썬 표준 라이브러리 위)
+```poi
+h = password.hash("hunter2")            # PBKDF2-HMAC-SHA256, 솔트 자동
+password.verify("hunter2", h)           # → true (상수시간 비교)
+tok = jwt.sign({ id: 7 }, "secret", 3600)   # HS256, 의존성 0
+jwt.verify(tok, "secret")               # → {id: 7, ...}  (만료·서명 검사)
+crypto.sha256(s) · crypto.hmac(k, m) · crypto.token(32) · crypto.uuid()
+```
+- `crypto` — sha256/512·md5·blake2·hmac·base64·hex·random_bytes·token·uuid·constant_eq
+- `password` — hash·verify·strong
+- `jwt` — sign·verify·decode (HS256)
+- `path` — join·base·dir·ext·stem·abs·norm·exists·is_file·is_dir·parts·home·cwd
+- `url` — parse(→ scheme/host/port/path/query/fragment)·build·encode·decode·query_encode/parse·join
+- `html` — escape·unescape·strip_tags·attr
+- `compress` — gzip·gunzip·zlib·unzlib·zip_read·zip_make (안전 모드 차단)
+- `log` — debug·info·warn·error·level
+- `cache` — get·set·has·clear·ttl·memo
+- `bench` — time(fn)·run(fn, times)→{total,avg,per_sec}
+- `dotenv` — load(".env")  (안전 모드 차단)
+- `system` — platform·release·python_version·poi_version·cpu_count·hostname·pid·cwd·args·env  (안전 모드 차단)
+- `uuid` — v4·hex·short·is_valid
+
+**데이터베이스 — `database(...)` (import 없이, SQLite 0설정)**
+```poi
+db = database("app.db")                 # 또는 database(":memory:")
+db.exec("create table note(id integer primary key, body text)")
+db.run("insert into note(body) values(?)", ["안녕"])   # → {changed, id}
+db.query("select * from note")          # → [{id:1, body:"안녕"}]  (점 접근)
+db.one(sql, p) · db.value(sql, p) · db.insert("note", {body:"x"}) · db.tables()
+```
+- 안전 모드에서는 `database(...)` 차단
+
+**내장 웹서버 강화 (v1.6 → v1.7)**
+- **서명 쿠키 / 세션** — `cookie("sid", token)` (HttpOnly·SameSite·Max-Age, blake2 서명),
+  `session.read(headers, "sid")` → 위조 시 `null`
+- **레이트 리밋** — IP 당 토큰 버킷 (`POI_RATE_MAX`, `POI_RATE_WINDOW`), 초과 시 429
+- **gzip 응답 압축** — `Accept-Encoding: gzip` + 텍스트/JSON + 900바이트 이상일 때 자동
+- 라우트: `put`/`delete` 에 더해 안정화, 500 핸들러 오류 사람 말 렌더
+
+**POI IDLE — POI 로 작성한 코드 편집기** (`poi/apps/idle.poi`)
+- `poi idle` 로 실행, `poi build --app idle` 로 `poi-idle.exe`
+- 다크 UI · 문법 강조(키워드·문자열·주석·숫자·함수) · 줄:칸 표시 · 예제 버튼
+- **F5 실행** — 별도 스레드에서 in-process 실행, 콘솔에 스트리밍, 8초 넘으면 자동 중단
+- 새로(Ctrl+N) · 열기(Ctrl+O) · 저장(Ctrl+S) · 다른 이름 저장(Ctrl+Shift+S)
+- tkinter 위에서 순수 POI 문법(`fn`·`if`·`for`·문자열 보간·`=>` 람다)으로 작성
+
+**REPL**
+- `help` / `?` / `도움말` — REPL 도움말
+- `poi help` 에 `test` · `build` · `idle` 추가
+
+**회귀**: 28개 케이스 + 300 연습문제 통과.
+
+---
+
+## v1.6.0 — 2026-09-08  (대규모 업데이트 — 웹)
+
+파이썬/JS 백엔드보다 나은 것을 목표로. `poi run app.poi` → 서버가 뜬다 (기본 :8080, `--port`).
+
+**내장 HTTP 서버**
+```poi
+server {
+    get "/" { return "<h1>안녕</h1>" }              # 문자열 → HTML
+    get "/api/합/:a/:b" { return { 합: number(params.a) + number(params.b) } }  # dict → JSON
+    post "/echo" { return body }
+    static "./public"
+}
+```
+- 경로 파라미터 `:id` · `query` · `body`(JSON+폼 자동 파싱) · `headers` · `method` 주입
+- `respond(body, status, headers)` · `redirect("/x")` · `html("<raw>")` 헬퍼
+- `ThreadingHTTPServer` + HTTP/1.1 keep-alive, 정적 파일 **ETag + Cache-Control**(304 지원)
+
+**선언형 페이지 `webapp`**
+```poi
+webapp "메모장" {
+    state 메모 = []
+    page "/" {
+        heading "메모장"
+        for m in 메모 { card { text m } }
+        form "/추가" { field "새 메모" -> 내용   button "추가" }
+    }
+    action "/추가" { 메모.add(내용) }
+}
+```
+- 노드: heading·subtitle·text·badge·alert·notice·divider·spacer·image·link·card·row·column·
+  form·field·input·password·textarea·select·checkbox·button·html · 안에서 `for`/`if`
+- `state` + `action` — 폼 제출 → 액션 실행 → 상태 갱신 → 페이지 재렌더 (POST-redirect-GET)
+- **설정 0으로 예쁜 반응형·다크 대응 페이지** (내장 디자인 시스템)
+
+**보안 기본값**
+- HTML **자동 이스케이프** (`_html.escape`)
+- **CSRF 토큰** 자동 — 모든 webapp 폼에 hidden `_csrf` 주입, 액션 POST 에서 검증 (틀리면 403)
+- 보안 헤더 기본: `Content-Security-Policy` · `X-Frame-Options: DENY` · `X-Content-Type-Options: nosniff` · `Referrer-Policy`
+- 본문 크기 제한(2MB), 정적 경로 traversal 차단, 클라이언트에 스택트레이스 안 보냄
+- 안전 모드(`--safe`)에서는 `server`/`webapp` 차단
+
+**기타**
+- CLI `poi run --port N`, `POI_NO_SERVE=1` 로 서버 시작 안 함(테스트용)
+- 회귀 테스트 26 → 27
+
 ## v1.5.1 — 2026-09-08  (디버깅 QA 후 버그 수정)
 
 - **빈 블록** — `if true {}`, `fn f() end`, `for x in [] {}`, `match x {}`, `else {}` 가

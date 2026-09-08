@@ -1,0 +1,20 @@
+# v1.7 표준 라이브러리 — 백엔드 · 보안
+h = password.hash("hunter2")
+show password.verify("hunter2", h)
+show password.verify("nope", h)
+
+tok = jwt.sign({ id: 7, role: "admin" }, "s3cr3t")
+show jwt.verify(tok, "s3cr3t").role
+show jwt.verify(tok, "wrong")
+
+show crypto.sha256("poi")
+show path.ext("a/b/c.poi")
+show path.stem("a/b/c.poi")
+show url.parse("https://x.io/p?q=1&r=2").query.q
+
+d = database(":memory:")
+d.exec("create table t(id integer primary key, v text)")
+d.run("insert into t(v) values(?)", ["a"])
+d.run("insert into t(v) values(?)", ["b"])
+show d.value("select count(*) from t")
+show d.one("select v from t where id = 1").v

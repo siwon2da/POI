@@ -1,0 +1,14 @@
+server {
+    base = "v1"
+    get "/" { return "<h1>" + base + "</h1>" }
+    get "/n/:x" { return { got: params.x } }
+}
+webapp "T" {
+    state items = ["a"]
+    page "/app" {
+        title "T"
+        for x in items { text x }
+    }
+    action "/push" { items.add("b") }
+}
+show "web defined ok"

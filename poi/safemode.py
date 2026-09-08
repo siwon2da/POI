@@ -35,7 +35,10 @@ _SAFE_NAMES = {
     "ArithmeticError", "LookupError", "OverflowError", "NameError",
 }
 
-_FORBIDDEN_STD = {"file", "web", "gui", "ui", "env", "shell"}
+_FORBIDDEN_STD = {"file", "web", "gui", "ui", "env", "shell",
+                  # v1.7 — 파일/환경/네트워크에 닿는 것
+                  "dotenv", "system", "compress",
+                  "압축", "시스템"}
 
 
 def safe_builtins() -> dict:
@@ -72,6 +75,7 @@ def harden_globals(g: dict) -> dict:
     g["poi_import_pyfile"] = _denied("다른 파일 불러오기")
     g["poi_import_module"] = _denied("다른 파일 불러오기")
     g["poi_std"] = _guard_std(g.get("poi_std"))
+    g["database"] = _denied("데이터베이스 열기")
     return g
 
 
@@ -88,6 +92,9 @@ def _guard_std(orig):
 def assert_safe(program) -> None:
     for node in _walk(program):
         k = getattr(node, "kind", None)
+        if k in ("Server", "WebApp"):
+            raise POIError("안전 모드에서는 server / webapp (포트 열기) 를 쓸 수 없습니다.",
+                           "P211", getattr(node, "line", None))
         if k == "PyBlock":
             raise POIError("안전 모드에서는 python { ... } 블록을 쓸 수 없습니다.",
                            "P211", getattr(node, "line", None),

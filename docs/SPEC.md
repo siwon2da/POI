@@ -1,4 +1,4 @@
-# POI v1.5 문법 명세
+# POI v1.7 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -302,10 +302,84 @@ python {                     # 파이썬 코드 그대로
 | `env` | `get(name, default) set(name, v) has(name) all()` (안전 모드 차단) |
 | `shell` | `run(cmd, stdin, timeout)` → `{out,err,code,ok}` · `text(cmd)` → stdout (안전 모드 차단) |
 
+### 백엔드 · 보안 (v1.7)
+
+| 모듈 | 함수 |
+|---|---|
+| `crypto` | `sha256/sha512/sha1/md5/blake2(s) hmac(k,m,algo) base64_encode/decode hex_encode/decode random_bytes(n) token(n) uuid() constant_eq(a,b)` |
+| `password` | `hash(pw)` → `pbkdf2_sha256$…` · `verify(pw, stored)` (상수시간) · `strong(pw)` |
+| `jwt` | `sign(payload, secret, expires_in?)` · `verify(token, secret)` → payload/`null` · `decode(token)` (HS256) |
+| `path` | `join(*p) base(p) dir(p) ext(p) stem(p) abs(p) norm(p) exists/is_file/is_dir(p) parts(p) home() cwd() size(p)` |
+| `url` | `parse(u)` → `{scheme,host,port,path,query,fragment}` · `build(…)` · `encode/decode(s)` · `query_encode/parse` · `join(base,rel)` |
+| `html` | `escape(s) unescape(s) strip_tags(s) attr(s)` |
+| `compress` | `gzip/gunzip zlib/unzlib zip_read(path) zip_make(path, files)` (안전 모드 차단) |
+| `log` | `debug/info/warn/error(*m)` · `level(name)` |
+| `cache` | `get(k,default) set(k,v,ttl) has(k) clear() ttl(k,sec,fn) memo(fn)` |
+| `bench` | `time(fn)` → 초 · `run(fn, times)` → `{total,avg,per_sec,runs}` |
+| `dotenv` | `load(path)` → 읽은 값 Box, `os.environ` 에도 반영 (안전 모드 차단) |
+| `system` | `platform() release() python_version() poi_version() cpu_count() hostname() pid() cwd() args() env(name)` (안전 모드 차단) |
+| `uuid` | `v4() hex() short() is_valid(s)` |
+
 `shell` 로 node·go 바이너리·git·ffmpeg 등 **어떤 언어·도구든** 부른다. `python { }` · `use py:` ·
 `use pyfile` · `use "./x.poi"` 와 함께 POI 는 사실상 모든 것과 이어진다.
 
-명시하고 싶으면 `use file` / `use json` / ... 도 가능.
+명시하고 싶으면 `use file` / `use json` / `use crypto` / ... 도 가능. 한국어 별칭:
+`암호`(crypto) · `비밀번호`(password) · `경로`(path) · `주소`(url) · `압축`(compress) · `기록`(log) · `캐시`(cache) · `시스템`(system).
+
+## 12.5 데이터베이스 — `database(...)` (import 없이)
+
+0설정 SQLite. 결과 행은 점 접근이 되는 `Box`.
+
+```poi
+db = database("app.db")                     # 파일 · 또는 database(":memory:")
+db.exec("create table note(id integer primary key, body text)")
+db.run("insert into note(body) values(?)", ["안녕"])   # → {changed, id}
+db.query("select * from note order by id")   # → [{id: 1, body: "안녕"}]
+db.one("select * from note where id = ?", [1])   # → Box 또는 null
+db.value("select count(*) from note")            # → 스칼라
+db.insert("note", { body: "빠르게" })            # → 새 id
+db.tables()                                       # → ["note"]
+```
+
+`?` 파라미터는 리스트로, 이름 파라미터(`:name`)는 객체로. 안전 모드에서는 `database(...)` 차단.
+
+## 12.6 웹 — `server` / `webapp` (v1.6, v1.7 강화)
+
+```poi
+server {
+    get "/" { return "<h1>안녕</h1>" }                  # 문자열 → HTML
+    get "/api/합/:a/:b" { return { 합: number(params.a) + number(params.b) } }  # dict → JSON
+    post "/echo" { return body }
+    static "./public"
+}
+```
+
+핸들러에 주입되는 것: `params`(경로 `:id`) · `query` · `body`(JSON·폼 자동 파싱) · `headers` · `method`.
+헬퍼: `respond(body, status, headers)` · `redirect("/x")` · `html("<raw>")` ·
+`cookie("sid", token)`(서명·HttpOnly·SameSite) · `session.read(headers, "sid")` → 위조 시 `null`.
+
+```poi
+webapp "메모장" {
+    state 메모 = []
+    page "/" {
+        heading "메모장"
+        for m in 메모 { card { text m } }
+        form "/추가" { field "새 메모" -> 내용   button "추가" }
+    }
+    action "/추가" { 메모.add(내용) }
+}
+```
+
+노드: `heading` `subtitle` `text` `badge` `alert` `notice` `divider` `spacer` `image` `link`
+`card` `row` `column` `form` `field` `input` `password` `textarea` `select` `checkbox` `button` `html`
+— 안에서 `for` / `if` 가능. `state` + `action` = 폼 제출 → 액션 → 상태 갱신 → 재렌더(POST-redirect-GET).
+
+기본 제공: HTML 자동 이스케이프 · **CSRF 토큰 자동** · 보안 헤더(CSP·X-Frame-Options·nosniff·Referrer-Policy) ·
+본문 크기 제한 · 정적 경로 traversal 차단 · 정적 파일 ETag/`Cache-Control`(304) ·
+**IP 레이트 리밋**(`POI_RATE_MAX`/`POI_RATE_WINDOW`, 초과 시 429) · **gzip 응답 자동 압축** ·
+설정 0으로 예쁜 반응형·다크 대응 페이지.
+
+`poi run app.poi` → 서버가 뜬다 (기본 `:8080`, `poi run --port 3000`). 안전 모드에서는 `server`/`webapp` 차단.
 
 ## 13. GUI (선언형, tkinter 기반)
 
@@ -362,6 +436,8 @@ poi debug x.poi            # 위 전부
 | `poi debug 파일` | 추적 + 변수 + 사후 분석 |
 | `poi test 파일` | 파일 안의 `test` 블록 실행·채점 |
 | `poi build 파일 [-o 이름]` | 단일 실행파일로 (PyInstaller 필요) |
+| `poi build --app idle` | POI IDLE 을 `poi-idle.exe` 로 빌드 |
+| `poi idle` | POI IDLE — POI 로 작성한 코드 편집기 (문법 강조·F5 실행) |
 | `poi serve [폴더] [--port]` | 플레이그라운드 서버 (정적 서빙 + 안전 실행 `/run`) |
 | `poi exercises [번호\|--topic\|--show]` | 연습문제 300제 실행·채점 |
 | `poi new <이름>` | 프로젝트 폴더 생성 |
@@ -375,8 +451,10 @@ poi debug x.poi            # 위 전부
 ### 안전 모드 (`--safe`)
 
 모르는 사람의 코드를 받아 실행할 때(플레이그라운드) 쓴다. 막는 것:
-`python { }` · `use py:` · `use pyfile` · `file.*` · `web.*` · 위험한 파이썬 내장(`open`/`eval`/`exec`/`__import__` 등) ·
-무한 루프(벽시계 제한) · 출력 폭탄(바이트 상한). `poi serve` 는 여기에 **별도 프로세스 격리**를 더한다.
+`python { }` · `use py:` · `use pyfile` · `file.*` · `web.*` · `shell.*` · `env.*` · `system.*` · `compress.*` · `dotenv.*` ·
+`database(...)` · `server`/`webapp` · 위험한 파이썬 내장(`open`/`eval`/`exec`/`__import__` 등) ·
+무한 루프(벽시계 제한) · 출력 폭탄(바이트 상한). `crypto`·`password`·`jwt`·`path`·`url`·`html`·`cache`·`bench`·`log` 는 허용.
+`poi serve` 는 여기에 **별도 프로세스 격리**를 더한다.
 
 ## 16. 프로젝트 구조
 

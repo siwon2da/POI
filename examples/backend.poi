@@ -1,0 +1,34 @@
+# POI 백엔드 — 회원가입/로그인 API + SQLite + JWT + 비밀번호 해시
+# 실행:  poi run examples/backend.poi   (http://localhost:8080)
+
+db = database(":memory:")
+db.exec("create table users(id integer primary key, email text unique, pw text)")
+
+비밀 = "change-me-in-production"
+
+server {
+    post "/signup" {
+        기존 = db.one("select id from users where email = ?", [body.email])
+        if 기존 != null {
+            return respond({ error: "이미 가입된 이메일" }, 409)
+        }
+        id = db.insert("users", { email: body.email, pw: password.hash(body.pw) })
+        return { id: id, token: jwt.sign({ uid: id }, 비밀, 3600) }
+    }
+
+    post "/login" {
+        u = db.one("select * from users where email = ?", [body.email])
+        if u == null or not password.verify(body.pw, u.pw) {
+            return respond({ error: "이메일 또는 비밀번호가 틀립니다" }, 401)
+        }
+        return { token: jwt.sign({ uid: u.id }, 비밀, 3600) }
+    }
+
+    get "/me" {
+        claims = jwt.verify(query.token, 비밀)
+        if claims == null {
+            return respond({ error: "토큰이 없거나 만료됐습니다" }, 401)
+        }
+        return db.one("select id, email from users where id = ?", [claims.uid])
+    }
+}

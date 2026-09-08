@@ -20,7 +20,23 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.5 — 선택적 정적 타입 · 한국어 확장 · 모바일  ✅ (현재)
+## v1.7 — 표준 라이브러리 · 백엔드/보안 · POI IDLE  ✅ (현재)
+
+- [x] **백엔드/보안 모듈** (외부 의존성 0) — `crypto` · `password`(PBKDF2) · `jwt`(HS256) · `path` · `url` · `html` · `compress` · `log` · `cache` · `bench` · `dotenv` · `system` · `uuid`
+- [x] **`database(...)`** — import 없이 SQLite 0설정, 결과 행은 점 접근 (`run`/`query`/`one`/`value`/`insert`/`tables`)
+- [x] **웹서버 강화** — 서명 쿠키/세션(`cookie`·`session`), IP 레이트 리밋(429), gzip 응답 자동 압축
+- [x] **POI IDLE** — `poi idle` / `poi build --app idle`. POI 로 작성, 문법 강조·F5 실행(스레드+타임아웃)·저장/열기
+- [x] REPL `help`, `poi help` 에 test/build/idle, 안전 모드에서 database/compress/system 차단, 회귀 28
+
+## v1.6 — 웹  ✅
+
+- [x] **내장 HTTP 서버** `server { get/post/put/delete "path" { } }` — 경로 파라미터 :id, JSON/폼 body, static, respond/redirect
+- [x] **선언형 페이지** `webapp { page "/" { } }` — heading·card·form·field·select… + state + action (POST-redirect-GET)
+- [x] **보안 기본값** — HTML 자동 이스케이프, CSRF 토큰 자동, 보안 헤더(CSP·X-Frame·nosniff), 본문 제한, traversal 차단
+- [x] **설정 0으로 예쁜 반응형·다크 페이지** (내장 디자인 시스템), 정적 파일 ETag/캐시
+- [x] `poi run --port N`, 안전 모드에서 server/webapp 차단, 회귀 27
+
+## v1.5 — 선택적 정적 타입 · 한국어 확장 · 모바일  ✅
 
 - [x] **선택적 정적 타입** — `poi check --types` / `poi run --types` (오탐 없음, 실행 무영향)
   - 타입 붙은 선언·반환·인자 불일치, `Text+Int` 등. 타입명 한국어(`정수·문자·목록…`)·`List<T>`·`Int?`
@@ -74,7 +90,7 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [x] Windows 설치 마법사 (`poi.iss` + `install.ps1`) · 로고 · 회귀 테스트 14개
 - [x] 한생(Galmuri)/토스 감성 소개 페이지 (hagora.kr/poi)
 
-## v1.6 — 언어 다듬기
+## v1.7 — 언어 다듬기
 
 - [ ] `const` 재대입 금지 실제 적용, 스코프 규칙 문서화
 - [ ] 리스트 컴프리헨션 대체 문법: `[x * 2 for x in xs where x > 0]`
@@ -83,36 +99,36 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [ ] 문자열 보간 형식 지정: `"{price:money}"`, `"{ratio:%}"`
 - [ ] 타입 추론 강화 (List<T> 원소 타입, Member/Index 추적), `did you mean` 오타 제안
 
-## v1.7 — 표준 라이브러리 확장
+## v1.8 — 표준 라이브러리 확장
 
 - [ ] `database("x.db")` SQLite DSL
 - [ ] `ai` 모듈: `ai.chat(model:, prompt:)` (openai / gemini / ollama)
 - [ ] `net`(소켓/websocket) · `crypto` · `path` · `http.server` 고수준
 - [ ] 데이터프레임 유사 API (`table`), 플로팅 헬퍼
 
-## v1.8 — 웹
+## v1.9 — 웹 심화
 
-- [ ] `webapp "..." { page "/" { ... } }` — GUI 문법으로 정적/SPA
-- [ ] `server { get "/api/x" { return {...} } }` — `poi run` 하면 서버 기동
-- [ ] 상태 → 반응형 재렌더 (데스크톱 GUI 에도 소급)
+- [ ] 클라이언트 반응형 (state 변경 → 부분 갱신, 새로고침 없이)
+- [ ] 세션/쿠키·인증 헬퍼, 미들웨어, 웹소켓
+- [ ] `poi build --web` (정적 번들)
 
-## v1.9 — GUI 2.0
+## v1.10 — GUI 2.0
 
 - [ ] 반응형 렌더 (`state` 변경 → 부분 갱신), `grid`, 전역 `style`
 - [ ] 웹뷰 / Qt 백엔드 선택, 테마 시스템
 
-## v2.0 — 패키지 매니저 · 빌드 심화
+## v2.1 — 패키지 매니저 · 빌드 심화
 
 - [ ] `poi add <이름>` / `poi add py:numpy` — 프로젝트 전용 venv
 - [ ] `poi.lock`, POI 패키지 레지스트리
 - [ ] `poi build --native`(Nuitka) · `--web`(정적 번들) · 코드 서명 훅
 
-## v2.1 — 도구 생태계
+## v2.2 — 도구 생태계
 
 - [ ] **POI Language Server (LSP)** — 자동완성/정의이동/진단/리네임
 - [ ] VS Code 확장, `poi fmt` 정식 구현, `poi doctor`
 
-## v2.2 — 안정화
+## v2.3 — 안정화
 
 - [ ] 문법 안정화 + 하위호환 정책
 - [ ] **play.poi.dev** — 브라우저 실행 (Pyodide)

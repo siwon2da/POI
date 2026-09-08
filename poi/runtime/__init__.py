@@ -5,7 +5,9 @@ from .. import debugtools as _dbg
 from . import easter as _easter
 from . import functional as _fn
 from . import gui as _gui
+from . import stdlib2 as _std2
 from . import stdmods as _std
+from . import webserver as _web
 from .boxes import Box, boxify
 from .builtins import (boolean, number, poi_ask, poi_assert, poi_coalesce,
                        poi_error_value, poi_fmt, poi_getattr, poi_getattr_safe,
@@ -63,6 +65,18 @@ _RUNTIME = {
     "poi_column": _gui.poi_column,
     "poi_card": _gui.poi_card,
     "poi_on": _gui.poi_on,
+    # 웹 (v1.6)
+    "poi_web_register": _web.register,
+    "poi_render_page": _web.render_page,
+    "poi_html_raw": _web.html_raw,
+    "poi_web_redirect": _web.redirect,
+    "respond": _web.respond,
+    "redirect": _web.redirect,
+    "html": _web.html_raw,
+    "cookie": _web.set_cookie,
+    "session": _web.session,
+    # 데이터베이스 (v1.7) — import 없이 바로
+    "database": _std2.open_database,
 }
 
 
@@ -79,11 +93,16 @@ _KOREAN_BUILTINS = {
     "묶기": "group_by", "앞에서": "take", "뒤로": "drop",
     "중복제거": "unique", "합계": "sum_of", "평균값": "avg",
     "최댓값": "max_of", "최솟값": "min_of", "개수": "count_of",
+    "데이터베이스": "database",
 }
 
 
 def make_globals() -> dict:
     g = dict(_RUNTIME)
+    # v1.7 표준 라이브러리 — import 없이 바로 (html 은 web 헬퍼와 겹쳐 제외)
+    for _name, _mod in _std2.MODULES.items():
+        if _name != "html":
+            g[_name] = _mod
     g.update(_fn.EXPORTS)  # map/filter/reduce/sort_by/group_by/take/... (파이프라인)
     g["__builtins__"] = __import__("builtins")
     for ko, en in _KOREAN_BUILTINS.items():
