@@ -191,6 +191,28 @@ python {
             _Q.put("터미널 실행 실패: %s\n" % e)
             return False
 
+    def _pw_entry(parent, **kw):
+        import tkinter as _tk2
+        return _tk2.Entry(parent, show="•", **kw)
+
+    def _build_exe_bg(build_args, base_dir):
+        def job():
+            argv = _poi_launcher() + list(build_args)
+            try:
+                p = subprocess.Popen(argv, cwd=base_dir or None,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT, text=True,
+                                     encoding="utf-8", errors="replace")
+                for line in p.stdout:
+                    _Q.put(line)
+                p.wait()
+                _Q.put("\n[빌드 %s]\n" % ("완료 — dist/ 폴더 확인"
+                                        if p.returncode == 0 else "실패"))
+            except Exception as e:
+                _Q.put("빌드 실행 실패: %s\n" % e)
+            _Q.put("<<<idle-done>>>")
+        threading.Thread(target=job, daemon=True).start()
+
     # ── 최근 파일 ────────────────────────────────────────────────
     _RECENT = os.path.join(os.path.expanduser("~"), ".poi", "idle_recent.json")
 
@@ -707,6 +729,56 @@ fn 터미널실행()
     if _run_terminal(S.file, 현재폴더())
         로그("터미널에서 실행했어요:  {S.file}")
 
+fn EXE빌드()
+    if S.file == null or S.dirty
+        저장()
+    if S.file == null
+        로그("먼저 파일을 저장하세요.")
+        return
+    top = tk.Toplevel(W.root)
+    top.title("EXE 빌드")
+    top.configure(bg: T.bg2)
+    top.transient(W.root)
+    tk.Label(top, text: "  " + path.base(S.file) + " → 단일 실행파일", bg: T.bg2,
+             fg: T.ink, font: ui).pack(anchor: "w", padx: 14, pady: 10)
+    난독 = tk.IntVar(value: 1)
+    콘솔 = tk.IntVar(value: 1)
+    tk.Checkbutton(top, text: "난독화 (쉽게 못 읽게)", variable: 난독, bg: T.bg2,
+                   fg: T.ink, selectcolor: T.bg, activebackground: T.bg2).pack(anchor: "w", padx: 16)
+    tk.Checkbutton(top, text: "콘솔 창 표시", variable: 콘솔, bg: T.bg2,
+                   fg: T.ink, selectcolor: T.bg, activebackground: T.bg2).pack(anchor: "w", padx: 16)
+    프레임 = tk.Frame(top, bg: T.bg2)
+    프레임.pack(anchor: "w", fill: "x", padx: 16, pady: 6)
+    tk.Label(프레임, text: "비밀번호(선택):", bg: T.bg2, fg: T.ink2, font: ui).pack(side: "left")
+    비번 = _pw_entry(프레임, font: ui, relief: "flat", bg: T.bg, fg: T.ink, width: 18)
+    비번.pack(side: "left", padx: 8)
+    실행시물음 = tk.IntVar(value: 0)
+    tk.Checkbutton(top, text: "비번을 exe 에 안 넣고 실행할 때 물어보기 (가장 안전)",
+                   variable: 실행시물음, bg: T.bg2, fg: T.ink,
+                   selectcolor: T.bg, activebackground: T.bg2).pack(anchor: "w", padx: 16)
+
+    fn 시작()
+        인자 = ["build", S.file]
+        if 난독.get() == 1 and 비번.get() == ""
+            인자 = 인자 + ["--obfuscate"]
+        if 콘솔.get() == 1
+            인자 = 인자 + ["--console"]
+        if 비번.get() != ""
+            인자 = 인자 + ["--lock", 비번.get()]
+            if 실행시물음.get() == 1
+                인자 = 인자 + ["--ask-password"]
+        top.destroy()
+        콘솔지우기()
+        로그("EXE 빌드 시작… (처음엔 1~2분)")
+        S.running = true
+        W.run_btn.config(text: "■  빌드 중", bg: "#e03131", fg: "#ffffff")
+        _build_exe_bg(인자, 현재폴더())
+        W.root.after(60, 펌프)
+
+    tk.Button(top, text: "빌드 시작", command: 시작, bg: T.blue, fg: "#ffffff",
+              relief: "flat", font: ui, padx: 16, pady: 7, cursor: "hand2").pack(anchor: "e", padx: 14, pady: 12)
+    비번.focus_set()
+
 fn 웹폴더()
     폴더 = fd.askdirectory(title: "웹으로 열 폴더")
     if not 폴더
@@ -871,6 +943,7 @@ fn 팔레트()
         ["저장", 저장], ["다른 이름으로 저장", 다른이름저장],
         ["실행 / 중지 / 서버 (F5)", 실행], ["콘솔 비우기", 콘솔지우기],
         ["터미널에서 실행", 터미널실행], ["웹 폴더 열기", 웹폴더],
+        ["EXE 로 빌드 (난독화·비번)", EXE빌드],
         ["예제 코드 넣기", 예제넣기],
         ["하온 채팅 열기 / 닫기", 하온토글],
         ["하온: 이 파일 오류 자동수정", 하온고치기],
@@ -1127,6 +1200,7 @@ W.run_btn = 버튼(W.bar, "▶  실행  (F5)", 실행, true)
 구분선()
 버튼(W.bar, "🐙 하온", 하온토글, false)
 버튼(W.bar, "⌘ 팔레트", 팔레트, false)
+버튼(W.bar, "📦 EXE", EXE빌드, false)
 버튼(W.bar, "◐ 테마", 테마토글, false)
 W.mode_lbl = tk.Label(W.bar, text: "", bg: T.bg2, fg: T.blue, font: ui)
 W.mode_lbl.pack(side: "right", padx: 12)

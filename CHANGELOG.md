@@ -1,5 +1,57 @@
 # 변경 이력
 
+## v1.9.9 — 2026-09-09  (v2.0 앞의 대통합 — 생태계 · 게임 · 3D · 하온 에이전트)
+
+> v1.14 · v1.15 의 내용(WSGI · 프로덕션 · scene3d · htmx-lite · 정적 굽기 등)을 포함해
+> **2.0 직전의 모든 것**을 하나로 낸다.
+
+**생태계 & 프로젝트**
+- **`poi.toml [project]`** — `name` `version` `entry` `type`. `poi run` 이 `entry` 를 기본 진입점으로.
+- **`poi init`** — 대화형: 콘솔 / 웹 / REST API / GUI / 게임 / 데이터 / 빈 프로젝트 → 스캐폴딩 + `poi.toml`.
+- **패키지 레지스트리** — `poi search <말>` · `poi add <이름>` (인덱스에 있으면 `poi_modules/` 로 받고
+  `poi.toml [poi-packages]` 기록, 없으면 pip 폴백) · `poi publish` (묶음 + 등록 안내).
+- **`poi migrate <파일|.> [--write]`** — 2.0 스타일로 정리: `def→fn` · `elif→else if` ·
+  `True/False/None→true/false/null` · `if x: 문장` 한 줄 → `if x { 문장 }`. 미리보기 후 `--write`.
+- **REPL 개편** — `:type <식>` · `:vars` · `:clear` · `:reset` · 마지막 식은 자동으로 값이 찍힘 · 여러 줄 입력.
+- **`poi doctor`** — 실행 환경 진단.
+
+**게임 — `game` (2D, tkinter Canvas, 의존성 0)**
+```poi
+win = game.window("POI Jump", 800, 500)
+p = game.sprite(win, { x: 100, y: 300, w: 40, h: 40, color: "#5b9dff" })
+game.on_key(win, "space", () => p.jump(14))
+game.on_key(win, "Left", () => p.move(-6, 0))
+game.every_frame(win, (dt) => {
+    p.vy = p.vy + 0.6
+    p.move(0, p.vy)
+})
+game.run(win)
+```
+- `window sprite text on_key on_hold every_frame hits/collide out_of_bounds score close run`
+- 스프라이트: `.x .y .vx .vy .move(dx,dy) .to(x,y) .jump(power) .set(...) .remove() .cx .cy`. 별칭 `게임`.
+
+**3D 웹 — `scene3d`** (v1.15 에서 들어옴): 선언형 씬 → 자체 완결 HTML(Three.js@cdnjs). box/sphere/torus/…,
+spin/float/pulse, orbit/grid. `scene3d.render()` / `scene3d.page()`.
+
+**웹** (v1.14~v1.15): WSGI(`poi wsgi`), `/healthz`, `POI_ENV=production`, `poi run --host/--prod`,
+`render()` 템플릿 엔진 + `{% component %}` + `{% include %}`, htmx-lite(`data-poi-get/post/target/load/every`),
+multipart 업로드(`body.files`), `poi build --site`(정적 굽기), `auth`·미들웨어·`respond.*`.
+
+**하온 — ChatGPT 연결 + 에이전트**
+- **`poi haon login`** — 브라우저로 **ChatGPT 계정에 OAuth(PKCE)** 로그인 (API 키 불필요, Codex CLI 와 같은 흐름).
+  `poi haon status` / `poi haon logout`. 백엔드 우선순위: ChatGPT → Groq → 로컬 Ollama → 규칙.
+- **`poi haon agent <폴더> "<할 일>"`** — 정해진 폴더 안에서 스스로 `.poi` 파일을 쓰고 `poi check`/`run` 으로
+  검증하며 반복 (Claude Code / Codex 처럼). GPT 는 번들된 POI 레퍼런스를 시스템 프롬프트로 받는다.
+- `poi haon fix <파일> [--write]` — 규칙 기반 자동 수정(실제 컴파일러 구동).
+
+**EXE 보호 — `poi build`**
+- **`--obfuscate`** — 트랜스파일 결과의 이름 치환·문자열 인코딩·marshal 포장 (쉽게 못 읽게).
+- **`--lock <비번>`** — 코드 객체를 비번으로 암호화(PBKDF2 + Fernet, 없으면 stdlib 스트림). 기본은
+  비번을 exe 안에 숨겨 넣고, **`--ask-password`** 를 붙이면 실행할 때 물어본다 (비번을 모르면 코드가 안 풀림).
+- IDLE 툴바 **`📦 EXE`** 버튼 — 난독화·콘솔·비밀번호를 골라 빌드.
+
+**소개 페이지** — 다른 언어를 언급하지 않도록 문구 정리 (POI 는 그 자체로).
+
 ## v1.15.0 — 2026-09-09  (대규모 업데이트 — 웹 최강 + 3D 웹)
 
 **`scene3d` — POI 로 3D 웹** (import 없이, `poi/runtime/scene3d.py`)

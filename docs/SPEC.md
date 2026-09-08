@@ -1,4 +1,4 @@
-# POI v1.15 문법 명세
+# POI v1.9.9 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 

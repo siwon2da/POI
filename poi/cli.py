@@ -28,10 +28,15 @@ POI v{ver}  -  Power Of Imagination
   poi add / remove / install          프로젝트 파이썬 의존성 (.venv + poi.toml + poi.lock)
        install --frozen               poi.lock 그대로 설치 (재현용)
   poi cache [clear]                   컴파일 캐시 상태 / 비우기 (~/.poi/cache)
-  poi run 파일 --serve --host 0.0.0.0 --port 80 [--prod]   운영 서버로 노출
+  poi run 파일 --host 0.0.0.0 --port 80 [--prod]   운영 서버로 노출
   poi wsgi <앱.poi> [-o wsgi.py]      gunicorn/waitress 용 WSGI 진입점 생성
-  poi doctor                          실행 환경 진단 (파이썬·tkinter·캐시·하온 …)
+  poi doctor                          실행 환경 진단
+  poi init                            대화형으로 프로젝트 만들기 (콘솔/웹/API/GUI/게임/데이터)
   poi new <이름> [--web|--api|--cli]   템플릿으로 프로젝트 생성
+  poi search <말>                     패키지 레지스트리 검색      poi add <이름>  설치
+  poi publish                         현재 프로젝트를 패키지로 묶기
+  poi migrate <파일|.> [--write]      v2.0 스타일로 정리 (콜론/파이썬 습관 → 중괄호/POI)
+  poi haon login | status | agent <폴더> "<할 일>"    하온: ChatGPT 연결 · 에이전트
   poi fmt [파일 | .] [--check]         소스 정리 (탭·공백·들여쓰기)
   poi lint [파일 | .] [--strict]       안 쓴 변수 등 가벼운 점검
   poi serve [폴더] [--port 8900]       플레이그라운드 서버 (정적 서빙 + 안전 실행 /run)
@@ -82,7 +87,30 @@ version = "0.1"
 '''
 
 
+def _project_meta() -> dict:
+    """poi.toml 의 [project] 를 읽는다 (아주 최소)."""
+    p = "poi.toml"
+    out, section = {}, None
+    if not os.path.isfile(p):
+        return out
+    try:
+        for line in open(p, encoding="utf-8"):
+            s = line.strip()
+            if s.startswith("[") and s.endswith("]"):
+                section = s[1:-1]
+                continue
+            if section == "project" and "=" in s and not s.startswith("#"):
+                k, _, v = s.partition("=")
+                out[k.strip()] = v.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return out
+
+
 def _find_default_entry() -> str | None:
+    meta = _project_meta()
+    if meta.get("entry") and os.path.exists(meta["entry"]):
+        return meta["entry"]
     for cand in ("src/main.poi", "main.poi", "app.poi"):
         if os.path.exists(cand):
             return cand
@@ -399,6 +427,100 @@ application = load(r"__APP__")
 '''
 
 
+def _eco(name):
+    return getattr(__import__("poi.ecosystem", fromlist=[name]), name)
+
+
+def _cmd_add(args: list[str]) -> int:
+    """poi add <이름> — 레지스트리에 있으면 POI 모듈, 없으면 pip 패키지."""
+    names = [a for a in args if not a.startswith("-")]
+    from . import ecosystem as eco
+    handled = []
+    for n in list(names):
+        try:
+            if eco.registry_add(n):
+                handled.append(n)
+        except Exception:
+            pass
+    leftover = [a for a in args if a not in handled]
+    if [a for a in leftover if not a.startswith("-")]:
+        from .pkg import cmd_add
+        return cmd_add(leftover)
+    return 0 if handled else 1
+
+
+def cmd_haon(args: list[str]) -> int:
+    """poi haon login | logout | status | agent <폴더> "<할 일>" | fix <파일>"""
+    sub = args[0] if args else "status"
+    rest = args[1:]
+    from .apps import haon as h
+    if sub == "login":
+        try:
+            from .apps import haon_gpt as cg
+        except Exception as e:  # noqa: BLE001
+            print(f"불가: {e}", file=sys.stderr)
+            return 1
+        return 0 if cg.login(print) else 1
+    if sub == "logout":
+        from .apps import haon_gpt as cg
+        cg.logout()
+        print("ChatGPT 로그아웃 했어요.")
+        return 0
+    if sub in ("status", "whoami"):
+        try:
+            from .apps import haon_gpt as cg
+            st = cg.status()
+            info = cg.detect()
+        except Exception:
+            st, info = {"logged_in": False}, h.detect()
+        print(f"하온 백엔드:  {info.get('mode')}")
+        if st.get("logged_in"):
+            print(f"ChatGPT:      로그인됨 ({st.get('email') or '계정'})"
+                  + ("  · 만료 — poi haon login" if st.get("expired") else ""))
+        else:
+            print("ChatGPT:      로그아웃  (poi haon login 으로 연결)")
+        print(f"Groq:         {'있음' if info.get('groq') else '없음 (GROQ_API_KEY)'}")
+        print(f"로컬 LLM:      {', '.join(info.get('models') or []) or '없음 (poi 로 ollama 설치)'}")
+        return 0
+    if sub == "prompt":
+        print(h._POI_RULES)
+        return 0
+    if sub in ("agent", "do"):
+        folder = "."
+        task = ""
+        pos = [a for a in rest if not a.startswith("-")]
+        if pos and (os.path.isdir(pos[0]) or "/" not in pos[0] and "\\" not in pos[0]
+                    and not pos[0].endswith((".poi",)) and len(pos) > 1):
+            folder, task = pos[0], " ".join(pos[1:])
+        else:
+            task = " ".join(pos)
+        if not task:
+            print('poi haon agent <폴더> "<만들 것>"', file=sys.stderr)
+            return 1
+        from .apps import haon_gpt as cg
+        r = cg.agent(task, folder, print)
+        print()
+        print("결과:", "성공 — " + r.get("message", "") if r.get("ok")
+              else "미완 — " + r.get("message", ""))
+        if r.get("files"):
+            print("파일:", ", ".join(r["files"]))
+        return 0 if r.get("ok") else 1
+    if sub == "fix":
+        if not rest:
+            print("poi haon fix <파일.poi>", file=sys.stderr)
+            return 1
+        src = open(rest[0], encoding="utf-8").read()
+        new, log = h.autofix(src)
+        print("\n".join(log) or "고칠 게 없었어요.")
+        if new != src and ("--write" in rest or "-w" in rest):
+            open(rest[0], "w", encoding="utf-8", newline="\n").write(new)
+            print("고쳐서 저장했어요.")
+        return 0
+    print(f"모르는 하온 명령: {sub}\n  login / logout / status / agent / fix / prompt",
+          file=sys.stderr)
+    return 1
+
+
 def cmd_wsgi(args: list[str]) -> int:
     rest = [a for a in args if not a.startswith("-")]
     if not rest:
@@ -619,15 +741,58 @@ def cmd_photo(args: list[str]) -> int:
 
 _REPL_HELP = """\
 POI REPL 도움말
-  show <값>              값 출력          예:  show "안녕"   /   show 2 + 3
-  이름 = <값>            변수                예:  나이 = 16
+  이름 = <값>            변수 (마지막 식은 자동으로 값이 찍힙니다)
+  show <값>              값 출력          예:  show 2 + 3
   fn 함수(a, b) ...      함수 정의 (여러 줄은 자동으로 이어집니다)
-  for x in [1,2,3] ...   반복 / repeat 5 as i ...
   use math              표준 모듈 (crypto·path·jwt·url·datetime …)
-  show test             ✦
-  exit / 나가기          REPL 종료        (Ctrl+C 도 됩니다)
+  :type <식>            식의 타입          :type "안녕"  →  Text
+  :vars                 지금까지의 변수
+  :clear               화면 지우기        :reset  변수 전부 비우기
+  :help                이 도움말          exit / 나가기  종료
 자세히:  poi help    ·    책:  https://hagora.kr/poi/book/
 """
+
+
+def _repl_kind(v):
+    import numbers as _n
+    if v is True or v is False:
+        return "Bool"
+    if v is None:
+        return "Null"
+    if isinstance(v, bool):
+        return "Bool"
+    if isinstance(v, int):
+        return "Int"
+    if isinstance(v, float):
+        return "Float"
+    if isinstance(v, str):
+        return "Text"
+    if isinstance(v, dict):
+        return "Map"
+    if isinstance(v, (list, tuple)):
+        return "List"
+    if callable(v):
+        return "Fn"
+    return type(v).__name__
+
+
+_REPL_STMT = __import__("re").compile(
+    r"^\s*(show|ask|use|python|if|else|elif|for|while|repeat|fn|def|return|const|"
+    r"try|catch|match|when|raise|assert|test|break|continue|export|import|pass|"
+    r"server|webapp|app|background|every|game)\b")
+
+
+def _repl_block_open(text: str) -> bool:
+    """마지막 비어있지 않은 줄이 블록 여는 키워드인데 { 도 : 도 없으면 계속 입력받는다."""
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return False
+    last = lines[-1].rstrip()
+    if last.endswith(("{", ":", "\\", ",", "(", "[", "+", "-", "=>", "|>")):
+        return True
+    m = __import__("re").match(
+        r"\s*(if|else if|elif|for|while|repeat|fn|def|try|catch|match|when)\b", last)
+    return bool(m) and not last.endswith("}")
 
 
 def cmd_repl(_args: list[str]) -> int:
@@ -636,7 +801,8 @@ def cmd_repl(_args: list[str]) -> int:
     banner.show()
     g = make_globals()
     g["__name__"] = "__main__"
-    print(f"POI {__version__} REPL - 나가려면 exit 또는 Ctrl+C")
+    _repl_base = set(g)
+    print(f"POI {__version__} REPL   ·   :help  도움말   ·   exit  종료")
     buf = ""
     while True:
         try:
@@ -645,19 +811,72 @@ def cmd_repl(_args: list[str]) -> int:
         except (EOFError, KeyboardInterrupt):
             print()
             return 0
-        if not buf and line.strip() in ("exit", "quit", "나가기"):
+        s = line.strip()
+        if not buf and s in ("exit", "quit", "나가기"):
             return 0
-        if not buf and line.strip() in ("help", "?", "도움말", "도움"):
+        if not buf and s in ("help", "?", "도움말", "도움", ":help", ":h"):
             print(_REPL_HELP)
             continue
+        if not buf and s in (":clear", ":cls"):
+            os.system("cls" if os.name == "nt" else "clear")
+            continue
+        if not buf and s in (":reset",):
+            from .runtime import make_globals as _mg
+            g.clear()
+            g.update(_mg())
+            g["__name__"] = "__main__"
+            print("변수를 전부 비웠어요.")
+            continue
+        if not buf and s == ":vars":
+            base = set(_repl_base)
+            names = [k for k in g
+                     if k not in base and not k.startswith("_") and k != "__name__"]
+            if not names:
+                print("(아직 변수 없음)")
+            for k in sorted(names):
+                v = g[k]
+                try:
+                    from .runtime.builtins import poi_fmt as _pf
+                    disp = _pf(v)
+                except Exception:
+                    disp = repr(v)
+                print(f"  {k} : {_repl_kind(v)} = {disp}")
+            continue
+        if not buf and s.startswith(":type "):
+            expr = s[6:].strip()
+            try:
+                py_src, _lm, cn = compile_source(expr, "<repl>")
+                val = eval(compile(py_src.strip() or "None", cn, "eval"), g)  # noqa: S307
+                print(f"  {_repl_kind(val)}")
+            except Exception:
+                try:
+                    exec(compile(f"__t = ({expr})", "<repl>", "exec"), g)
+                    print(f"  {_repl_kind(g.get('__t'))}")
+                except Exception as e:  # noqa: BLE001
+                    print(f"  ? ({e})")
+            continue
         buf += line + "\n"
-        if line.strip().endswith("{") or _unbalanced(buf):
+        if buf.strip() and line.strip() == "":
+            pass  # 빈 줄 → 여러 줄 입력 끝
+        elif line.strip().endswith(("{", ":")) or _unbalanced(buf) \
+                or _repl_block_open(buf):
             continue
         code = buf
         buf = ""
         try:
             py_src, linemap, cname = compile_source(code, "<repl>")
-            exec(compile(py_src, cname, "exec"), g)
+            _co = compile(py_src, cname, "exec")
+            exec(_co, g)
+            # 마지막 줄이 순수 식이면 값도 찍는다
+            _last = code.strip().splitlines()[-1] if code.strip() else ""
+            if _last and not _REPL_STMT.match(_last) and "=" not in _last.split("#")[0]:
+                try:
+                    val = eval(compile(_last, cname, "eval"), g)  # noqa: S307
+                    if val is not None:
+                        from .runtime.builtins import poi_fmt as _pf
+                        print(_pf(val))
+                except Exception:
+                    pass
         except POIError as e:
             print(e.render(code), file=sys.stderr)
         except Exception as e:  # noqa: BLE001
@@ -729,12 +948,17 @@ def main(argv: list[str] | None = None) -> int:
         "serve": cmd_serve, "playground": cmd_serve, "exercises": cmd_exercises,
         "ex": cmd_exercises, "test": cmd_test, "idle": cmd_idle,
         "lint": cmd_lint, "photo": cmd_photo,
-        "add": lambda a: __import__("poi.pkg", fromlist=["cmd_add"]).cmd_add(a),
+        "add": _cmd_add,
         "remove": lambda a: __import__("poi.pkg", fromlist=["cmd_remove"]).cmd_remove(a),
         "rm": lambda a: __import__("poi.pkg", fromlist=["cmd_remove"]).cmd_remove(a),
         "install": lambda a: __import__("poi.pkg", fromlist=["cmd_install"]).cmd_install(a),
         "cache": lambda a: __import__("poi.cache", fromlist=["cmd_cache"]).cmd_cache(a),
         "doctor": cmd_doctor, "wsgi": cmd_wsgi,
+        "init": lambda a: _eco("cmd_init")(a),
+        "search": lambda a: _eco("cmd_search")(a),
+        "publish": lambda a: _eco("cmd_publish")(a),
+        "migrate": lambda a: _eco("cmd_migrate")(a),
+        "haon": cmd_haon,
     }
     if cmd in table:
         return table[cmd](rest)

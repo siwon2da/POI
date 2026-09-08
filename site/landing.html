@@ -1,5 +1,5 @@
 <title>POI</title>
-<meta name="description" content="POI (Power Of Imagination) — 우리가 만든 언어. 문법 자체가 파이썬보다 쉽고, 쓸 수 있는 범위는 더 넓게.">
+<meta name="description" content="POI (Power Of Imagination) — 우리가 만든 언어. 문법은 더없이 쉽고, 할 수 있는 일은 끝없이 넓게.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
@@ -496,9 +496,9 @@ nums |&gt; <span class="fn">filter</span>(<span class="s">"&gt; 0"</span>) |&gt;
       <article class="promise rise">
         <div>
           <div class="n">03</div>
-          <h3>세상의 모든 파이썬 라이브러리가 곧 POI 라이브러리</h3>
-          <p>새 언어인데 첫날부터 라이브러리 수십만 개. <code>numpy</code>·<code>pandas</code>·<code>torch</code>·<code>requests</code>·<code>opencv</code> —
-            <code>use py:</code> 한 줄이면 끝.</p>
+          <h3>세상의 모든 라이브러리가 곧 POI 라이브러리</h3>
+          <p>새 언어인데 첫날부터 라이브러리 수십만 개. 데이터·머신러닝·이미지·네트워크 —
+            <code>use</code> 한 줄이면 끝.</p>
         </div>
 <pre><span class="k">use</span> <span class="fn">py:numpy</span> <span class="k">as</span> np
 data = np.<span class="fn">array</span>([<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>, <span class="nu">4</span>])
@@ -623,7 +623,7 @@ final = <span class="fn">watch</span>(<span class="fn">total_with_tax</span>(car
   <div class="wrap">
     <div class="rise"><h2 class="pixel">새 언어인데, 첫날부터 라이브러리 수십만 개</h2>
       <p class="lede prose">POI 는 자체 문법·타입·오류·GUI 모델을 가진 독립 언어입니다.
-        실행만 세계에서 가장 검증된 런타임 위에서 하기 때문에, 만들자마자 파이썬 생태계 전부를 물려받습니다.
+        실행은 세계에서 가장 검증된 런타임 위에서. 만들자마자 방대한 라이브러리 생태계를 물려받습니다.
         성능도 그만큼 나옵니다.</p></div>
     <div class="flow rise">
       <div class="s"><div class="t">.poi</div><div class="d">소스</div></div>
@@ -639,7 +639,7 @@ final = <span class="fn">watch</span>(<span class="fn">total_with_tax</span>(car
 <!-- FREEDOM -->
 <section class="band soft">
   <div class="wrap">
-    <div class="rise"><h2 class="pixel">파이썬보다 자유롭게</h2>
+    <div class="rise"><h2 class="pixel">생각한 그대로, 자유롭게</h2>
       <p class="lede prose">중괄호도, 들여쓰기도 강제하지 않습니다. 같은 블록을 세 가지로 쓸 수 있고, 섞어도 됩니다.</p></div>
     <div class="promises">
       <article class="promise rise">
@@ -706,7 +706,7 @@ show "double(21) = " + text(double(21))</textarea>
       <a class="lcard" href="/poi/book/">
         <div class="lc-k">입문서</div>
         <h3>POI 를 처음부터</h3>
-        <p>설치 → 값 → 조건 → 반복 → 함수 → 목록 → 객체 → 파일 → 웹 → 오류 → 디버깅 → GUI → 파이썬 우주 → 프로젝트.
+        <p>설치 → 값 → 조건 → 반복 → 함수 → 목록 → 객체 → 파일 → 웹 → 오류 → 디버깅 → GUI → 라이브러리 → 프로젝트.
           예제는 전부 그대로 실행됩니다.</p>
         <span class="lc-go">입문서 열기 →</span>
       </a>
@@ -725,7 +725,7 @@ show "double(21) = " + text(double(21))</textarea>
 <!-- PRO -->
 <section class="band soft" id="pro">
   <div class="wrap">
-    <div class="rise"><h2 class="pixel">입문용이 아닙니다. 실무에서 파이썬보다.</h2>
+    <div class="rise"><h2 class="pixel">입문용이 아닙니다. 실무에서 쓰라고.</h2>
       <p class="lede prose">v1.3 은 전문 분야를 겨냥합니다 — 함수형 데이터 처리, 테스트, 모듈, 정규식·CSV·통계, 단일 실행파일 빌드.</p></div>
     <div class="promises">
       <article class="promise rise">
@@ -761,9 +761,9 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
       </article>
       <article class="promise rise">
         <div><div class="n">배포</div><h3>poi build → 단일 실행파일</h3>
-          <p>만든 프로그램을 파이썬 없는 컴퓨터에서도 돌게. PyInstaller 로 한 방.</p></div>
+          <p>만든 프로그램을 아무것도 안 깔린 컴퓨터에서도. 한 방에 실행파일.</p></div>
 <pre><span class="c">$</span> poi build 리포트.poi -o report
-<span class="c">→ dist/report.exe  (15 MB, 파이썬 불필요)</span></pre>
+<span class="c">→ dist/report.exe  (15 MB, 단독 실행)</span></pre>
       </article>
     </div>
   </div>
@@ -775,7 +775,7 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
     <div class="rise"><h2 class="pixel">웹은 언어 기본기입니다</h2>
       <p class="lede prose">v1.6–v1.7 은 백엔드를 겨냥합니다. <code>poi run app.poi</code> 하면 서버가 뜨고,
         CSRF·보안 헤더·레이트 리밋·gzip·비밀번호 해시·JWT·SQLite 가 처음부터 켜져 있습니다.
-        파이썬/JS 백엔드보다 짧고, 기본값이 더 안전하게.</p></div>
+        다른 어떤 백엔드보다 짧고, 기본값이 더 안전하게.</p></div>
     <div class="promises">
       <article class="promise rise">
         <div><div class="n">내장 HTTP 서버</div><h3>server { get "/" { } }</h3>
@@ -808,7 +808,7 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
         <div><div class="n">백엔드·보안 라이브러리</div><h3>import 없이 바로</h3>
           <p><code>crypto</code> · <code>password</code>(PBKDF2) · <code>jwt</code>(HS256) · <code>path</code> · <code>url</code> ·
             <code>html</code> · <code>compress</code> · <code>log</code> · <code>cache</code> · <code>bench</code> · <code>dotenv</code> ·
-            <code>system</code> · <code>uuid</code>. 전부 파이썬 표준 라이브러리 위, 외부 의존성 0.</p></div>
+            <code>system</code> · <code>uuid</code>. 전부 내장. 외부 의존성 0.</p></div>
 <pre>h = password.<span class="fn">hash</span>(<span class="s">"hunter2"</span>)       <span class="c"># 솔트 자동</span>
 password.<span class="fn">verify</span>(<span class="s">"hunter2"</span>, h)     <span class="c"># → true (상수시간)</span>
 tok = jwt.<span class="fn">sign</span>({ uid: <span class="nu">7</span> }, 비밀, <span class="nu">3600</span>)
@@ -854,11 +854,11 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
 <section class="band" id="roadmap">
   <div class="wrap">
     <div class="rise"><h2 class="pixel">한 언어 안에서 입문 → 전문으로</h2>
-      <p class="lede prose">v1.1 부터 v1.15 까지, 매 버전이 대규모 업데이트였습니다 —
+      <p class="lede prose">v1.1 부터 여기까지, 매 버전이 대규모 업데이트였습니다 —
         작동하는 언어 → 형식 자유 → 전문 분야 → 한국어·패턴매칭 → 정적 타입 → 웹 → 표준 라이브러리·백엔드·IDLE → 언어 안정화 → POI IDLE 대개편 → AI·구조 분해 → 확장성·GUI → 동시성·네트워크.</p></div>
     <div class="road rise">
       <div class="r done"><div class="v">v1.1</div><h3>작동하는 언어</h3>
-        <ul><li>Lexer · Parser · 컴파일러 · 런타임</li><li>조건·반복·함수·객체·파이프라인</li><li><b>inspect · watch · pause · --trace</b></li><li>use py: · python { } · 선언형 GUI</li><li>P-코드 오류 · 새 버전 알림 · CLI</li></ul></div>
+        <ul><li>Lexer · Parser · 컴파일러 · 런타임</li><li>조건·반복·함수·객체·파이프라인</li><li><b>inspect · watch · pause · --trace</b></li><li>외부 라이브러리 연동 · 선언형 GUI</li><li>P-코드 오류 · 새 버전 알림 · CLI</li></ul></div>
       <div class="r done"><div class="v">v1.2</div><h3>형식 자유</h3>
         <ul><li>블록 3방식 — 중괄호·콜론·<code>end</code></li><li>삼항식 · 안전 모드 · 부팅 배너</li><li>연습문제 300제 · 입문서 20장</li></ul></div>
       <div class="r done"><div class="v">v1.3</div><h3>전문 분야에서도</h3>
@@ -885,8 +885,10 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
         <ul><li><b>컴파일 캐시</b> — 안 바뀐 <code>.poi</code> 는 변환을 건너뜀 (큰 파일 39배)</li><li><b>웹</b> — <code>render()</code> 템플릿 엔진 · <code>respond.json/error</code> · <code>auth</code> 로그인 · 미들웨어</li><li><b>GUI</b> — <code>uikit.bind</code>(양방향) · <code>form</code>(검증) · <code>chart</code> · <code>toast</code></li></ul></div>
       <div class="r done"><div class="v">v1.14</div><h3>프로덕션 · 개발자 경험</h3>
         <ul><li><b>WSGI</b> — <code>poi wsgi app.poi</code> → gunicorn/waitress/uvicorn 로 실서비스</li><li><code>/healthz</code> · <code>POI_ENV=production</code> · <code>--host</code> · <code>poi doctor</code> · <code>poi new --web/--api/--cli</code></li><li><b><a href="https://hagora.kr/poi/webma/">webma</a></b> — POI 로 만든 웹사이트 제작기</li></ul></div>
-      <div class="r done now"><div class="v">v1.15</div><h3>웹 최강 · 3D 웹</h3>
+      <div class="r done"><div class="v">v1.15</div><h3>웹 최강 · 3D 웹</h3>
         <ul><li><b><a href="https://hagora.kr/poi/3d/">scene3d</a></b> — 선언형 3D 씬 → 자체 완결 HTML (Three.js, 서버 불필요)</li><li><b>htmx-lite</b> — <code>data-poi-get/post</code> 로 새로고침 없는 부분 갱신</li><li><code>{% component %}</code> · 파일 업로드 · <code>poi build --site</code> 정적 굽기</li></ul></div>
+      <div class="r done now"><div class="v">1.9.9</div><h3>v2.0 앞의 대통합</h3>
+        <ul><li><b>생태계</b> — <code>poi.toml</code> · <code>poi init</code> · 레지스트리(<code>poi search/add</code>) · <code>poi migrate</code> · REPL 개편</li><li><b><code>game</code></b> 2D 게임 · <b>하온</b> ChatGPT 로그인 + 에이전트(<code>poi haon agent</code>)</li><li>EXE 난독화·비밀번호 잠금 (<code>poi build --obfuscate / --lock</code>)</li></ul></div>
       <div class="r"><div class="v">v2.0</div><h3>문법 정리 · 생태계</h3>
         <ul><li>블록은 <code>{ }</code>+들여쓰기만 정식 (<code>end</code>·콜론 정리)</li><li>POI Language Server · VS Code 확장 · <code>poi doctor</code></li><li>문법 고정 · play.poi.dev (브라우저 실행)</li></ul></div>
     </div>
@@ -897,13 +899,13 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
 <section class="band" id="start">
   <div class="wrap">
     <div class="rise"><h2 class="pixel">받기 · 설치</h2>
-      <p class="lede prose">파이썬이 없어도 됩니다. <code>poi.exe</code> 하나로 끝.</p></div>
+      <p class="lede prose">아무것도 미리 깔 필요 없습니다. <code>poi.exe</code> 하나로 끝.</p></div>
 
     <div class="dl rise">
-      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.15.0.exe">
+      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.9.9.exe">
         <span class="dl-k">Windows 설치 마법사</span>
-        <span class="dl-t">poi-setup-1.15.0.exe</span>
-        <span class="dl-s">더블클릭 → 다음 → 설치. 파이썬 불필요</span>
+        <span class="dl-t">poi-setup-1.9.9.exe</span>
+        <span class="dl-s">더블클릭 → 다음 → 설치. 준비물 없음</span>
       </a>
       <div class="dl-alt">
         <div class="dl-row">
@@ -919,7 +921,7 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
           <code>더블클릭 → 예제가 열린 채로 실행 · F5</code>
         </div>
         <div class="dl-row">
-          <div class="dl-label">저장소에서 (파이썬)</div>
+          <div class="dl-label">저장소에서 (개발자용)</div>
           <code>git clone https://github.com/siwon2da/POI.git  ·  python -m poi run ...</code>
         </div>
       </div>
@@ -966,7 +968,7 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <span>MIT License</span><span>·</span>
       <a href="https://github.com/siwon2da/POI">github.com/siwon2da/POI</a><span>·</span>
       <a href="https://hagora.kr/poi/">hagora.kr/poi</a><span>·</span>
-      <span>made by SIWON</span><span>·</span><span>v1.15.0</span>
+      <span>made by SIWON</span><span>·</span><span>v1.9.9</span>
     </div>
   </div>
 </footer>

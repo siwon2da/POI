@@ -1,6 +1,6 @@
-1.15.0
-POI 1.15.0 — 웹 최강 + 3D 웹. scene3d — 선언형 3D 씬 그래프 → 자체 완결 HTML(Three.js@cdnjs),
-서버 불필요. box/sphere/torus/cone/dodeca/light/orbit/autorotate/grid, spin/float/pulse.
-htmx-lite: data-poi-get/post/target/load/every 로 새로고침 없는 부분 갱신(자동 주입).
-{% component "x.html" k=v %} 템플릿, multipart 파일 업로드(body.files), poi build --site(정적 굽기).
-올리기:  poi update
+1.9.9
+POI 1.9.9 — v2.0 앞의 대통합. 생태계: poi.toml [project], poi init(대화형), poi search/add(레지스트리),
+poi publish, poi migrate(v2.0 스타일 정리). 게임: game 모듈(sprite·on_key·every_frame·hits). 3D 웹:
+scene3d. 웹: htmx-lite(data-poi-get/post), {% component %}, 파일 업로드, poi build --site, WSGI. 도구:
+poi doctor, REPL 개편(:type/:vars/:clear). 하온: ChatGPT 로그인(poi haon login), 에이전트(poi haon agent).
+EXE: poi build --obfuscate / --lock <비번>. 올리기:  poi update

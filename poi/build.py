@@ -29,12 +29,23 @@ def build(args: list[str]) -> int:
     src_path = None
     out_name = None
     console = False
+    obfuscate = False
+    lock_pw = None
+    ask_pw = False
     it = iter(args)
     for a in it:
         if a in ("-o", "--out", "--name"):
             out_name = next(it, None)
         elif a in ("--console", "-c"):
             console = True
+        elif a in ("--obfuscate", "--obf"):
+            obfuscate = True
+        elif a == "--lock":
+            lock_pw = next(it, "") or ""
+        elif a.startswith("--lock="):
+            lock_pw = a.split("=", 1)[1]
+        elif a == "--ask-password":
+            ask_pw = True
         elif a == "--app":
             name = next(it, None)
             if name:
@@ -69,20 +80,46 @@ def build(args: list[str]) -> int:
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     work = tempfile.mkdtemp(prefix="poi_build_")
     boot = os.path.join(work, "_poi_app.py")
-    with open(boot, "w", encoding="utf-8") as f:
-        f.write(
-            "import os, sys\n"
-            "from poi.runtime import make_globals\n"
-            "PY_SRC = " + repr(py_src) + "\n"
-            "g = make_globals()\n"
-            "g['__name__'] = '__main__'\n"
-            "g['__poi_dir__'] = os.getcwd()\n"
-            "g['__poi_file__'] = " + repr(os.path.basename(src_path)) + "\n"
-            "g['__poi_source__'] = ''\n"
-            "g['__poi_linemap__'] = {}\n"
-            "g['poi_argv'] = sys.argv[1:]\n"
-            "exec(compile(PY_SRC, '<poi app>', 'exec'), g)\n"
-        )
+
+    if lock_pw is not None:
+        # 비밀번호 잠금 — 코드 객체를 암호화, 로더만 exe 에
+        from .protect import make_locked_entry
+        if not lock_pw and not ask_pw:
+            try:
+                import getpass
+                lock_pw = getpass.getpass("exe 비밀번호: ")
+            except Exception:
+                lock_pw = input("exe 비밀번호: ")
+        code_obj = compile(py_src, "<poi app>", "exec")
+        entry = make_locked_entry(code_obj, lock_pw or "poi", embed=not ask_pw)
+        with open(boot, "w", encoding="utf-8") as f:
+            f.write("import os, sys\n"
+                    "from poi.runtime import make_globals\n"
+                    "sys.modules.setdefault('__poi_g__', None)\n"
+                    + entry.replace('g = {"__name__": "__main__"}',
+                                    "g = make_globals(); g['__name__']='__main__';"
+                                    " g['__poi_dir__']=os.getcwd();"
+                                    " g['poi_argv']=sys.argv[1:]"))
+        print("🔒 비밀번호 잠금" + (" (실행 시 물어봄)" if ask_pw else " (내장)"))
+    else:
+        if obfuscate:
+            from .protect import obfuscate_py
+            py_src = obfuscate_py(py_src)
+            print("🌫  난독화 적용")
+        with open(boot, "w", encoding="utf-8") as f:
+            f.write(
+                "import os, sys\n"
+                "from poi.runtime import make_globals\n"
+                "PY_SRC = " + repr(py_src) + "\n"
+                "g = make_globals()\n"
+                "g['__name__'] = '__main__'\n"
+                "g['__poi_dir__'] = os.getcwd()\n"
+                "g['__poi_file__'] = " + repr(os.path.basename(src_path)) + "\n"
+                "g['__poi_source__'] = ''\n"
+                "g['__poi_linemap__'] = {}\n"
+                "g['poi_argv'] = sys.argv[1:]\n"
+                "exec(compile(PY_SRC, '<poi app>', 'exec'), g)\n"
+            )
 
     out_dist = os.path.join(os.getcwd(), "dist")
     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--onefile",

@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.15**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
+> 버전 기준: **POI v1.9.9**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
 
 ---
 

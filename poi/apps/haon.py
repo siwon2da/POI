@@ -304,6 +304,15 @@ def _pick_model(models: list) -> str:
 def chat(prompt: str, code: str = "", info: dict | None = None,
          system: str = "", model: str = "") -> str:
     info = info or detect()
+    # 1) ChatGPT 로그인이 돼 있으면 그걸 먼저
+    try:
+        from . import haon_gpt as _cg
+        if _cg.status().get("logged_in"):
+            out = _cg.chat(prompt, code, system, model)
+            if out and out != "CHATGPT_AUTH_EXPIRED":
+                return out
+    except Exception:
+        pass
     if info.get("groq"):
         out = _groq_chat(prompt, code, system)
         if out:

@@ -42,7 +42,7 @@ _FORBIDDEN_STD = {"file", "web", "gui", "ui", "env", "shell",
                   # v1.10/1.11 — 외부 LLM · GUI
                   "ai", "uikit", "유아이", "지유아이",
                   # v1.12 — 네트워크 · 백그라운드 스레드
-                  "http", "net", "task",
+                  "http", "net", "task", "game", "게임",
                   "요청", "망", "네트워크", "작업", "동시성"}
 
 
@@ -80,6 +80,7 @@ def harden_globals(g: dict) -> dict:
     g["http"] = _Denied("네트워크 요청")
     g["net"] = _Denied("네트워크")
     g["task"] = _Denied("백그라운드 작업")
+    g["game"] = _Denied("게임(GUI)")
     g["render"] = _denied("템플릿 렌더(파일 읽기)")
     g["auth"] = _Denied("인증")
     g["on_request"] = _denied("웹 미들웨어")
