@@ -1,5 +1,34 @@
 # 변경 이력
 
+## v1.14.0 — 2026-09-09  (대규모 업데이트 — 프로덕션 & 개발자 경험)
+
+**WSGI — 진짜 프로덕션 서버에 얹는다**
+```bash
+poi wsgi src/main.poi          # wsgi.py 생성 + 배포 명령 안내
+gunicorn wsgi:application -w 4 -b 0.0.0.0:8000
+waitress-serve --port=8000 wsgi:application
+uvicorn --interface wsgi wsgi:application --port 8000
+```
+- `poi/runtime/wsgi.py` — `.poi` 파일을 실행해 `server{}` 라우트를 등록하고 PEP 3333
+  `application(environ, start_response)` 를 돌려준다. `POI_APP=app.poi gunicorn "poi.runtime.wsgi:app"` 도 됨.
+- 내부 리팩터링: `serve_request(method, path, raw, headers, ip)` 공용 디스패치 함수 —
+  개발 서버(`ThreadingHTTPServer`)와 WSGI 어댑터가 **같은 코드**로 라우팅·미들웨어·정적파일을 처리.
+  라우트 컴파일은 `_APPS` 버전 카운터로 캐시.
+
+**프로덕션 하드닝**
+- **`/healthz`** (그리고 `/_health`) — 모든 서버에 자동. `{"status":"ok"}`.
+- **`POI_ENV=production`** — 핸들러·미들웨어 오류의 상세를 숨기고 `{"error":"internal error"}` 만.
+- `poi run 앱.poi --host 0.0.0.0 --port 80 --prod` — 바인드 주소·포트·운영 모드.
+- 폼 body 파싱이 잘못된 인코딩에도 안 죽음(utf-8 replace).
+
+**개발자 경험**
+- **`poi doctor`** — 파이썬·tkinter·Pillow·컴파일 캐시·git·gunicorn/waitress·하온 백엔드 점검 (✓/-- 표).
+- **`poi new <이름> --web | --api | --cli`** — 바로 도는 시작점 생성.
+  `--web` 은 `views/home.html` 템플릿까지. 공유 상태는 Box 로 (전역 재대입 함정 회피).
+- **`examples/showcase/`** — `app.poi` 한 파일 + `views/*.html` 로 만든 완전한 웹사이트.
+  랜딩 · 로그인/대시보드(auth+미들웨어 가드) · 실시간 DB 집계 API ·
+  `/play` 에서 **POI 가 POI 를 `--safe` 로 실행**. 바탕화면 `POI 쇼케이스.bat` 런처.
+
 ## v1.13.0 — 2026-09-08  (대규모 업데이트 — 전문화: 성능 · 웹 · GUI)
 
 **성능 — 컴파일 캐시**

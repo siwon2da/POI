@@ -1,6 +1,5 @@
-1.13.0
-POI 1.13.0 — 전문화: 성능 + 웹 + GUI. 컴파일 캐시(~/.poi/cache) — 안 바뀐 .poi 는 렉싱·파싱·
-트랜스파일·compile 을 건너뛴다(큰 파일 30배+). poi cache / --no-cache. 웹: render() 템플릿
-엔진({{}}·{% for %}·{% if %}·include), respond.json/text/status/file, auth(서명 쿠키 로그인),
-on_request/on_response 미들웨어. GUI: uikit.bind(양방향)·form(검증)·chart(막대/선)·toast·card·split.
-IDLE 하온 채팅 입력칸 레이아웃 수정. 올리기:  poi update
+1.14.0
+POI 1.14.0 — 프로덕션 & 개발자 경험. WSGI 어댑터(poi wsgi app.poi → gunicorn/waitress/uvicorn),
+공용 디스패치(HTTP·WSGI 공유), /healthz 자동, POI_ENV=production 오류 마스킹, poi run --host/--prod.
+poi doctor(환경 진단), poi new <이름> --web|--api|--cli(템플릿). examples/showcase — POI 로만 작성한
+웹사이트(server·render·auth·미들웨어·DB·POI가 POI를 실행). 올리기:  poi update

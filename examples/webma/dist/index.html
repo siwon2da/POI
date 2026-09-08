@@ -1,0 +1,286 @@
+<!doctype html><html lang=ko><head>
+<meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>WEBMA — 웹사이트 제작기</title>
+<style>
+  :root{--bg:#f4f6f9;--panel:#fff;--line:#e5e8ee;--ink:#1f2430;--ink2:#6b7280;--accent:#0d6efd}
+  *{box-sizing:border-box;margin:0}
+  body{font:15px/1.6 -apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",Segoe UI,sans-serif;
+    background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:12px 18px;display:flex;align-items:center;gap:14px}
+  header b{font-size:1.05rem;letter-spacing:-.02em}
+  header b span{color:var(--accent)}
+  header .sp{flex:1}
+  button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:10px;padding:8px 13px;cursor:pointer;transition:.12s}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.primary:hover{filter:brightness(1.08);color:#fff}
+  main{flex:1;display:grid;grid-template-columns:280px 1fr 340px;min-height:0}
+  .col{overflow:auto;padding:16px}
+  .col.mid{background:#dde3ea;padding:0}
+  .col.right{background:var(--panel);border-left:1px solid var(--line)}
+  .col.left{background:var(--panel);border-right:1px solid var(--line)}
+  h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);margin:6px 0 10px}
+  .palette button{display:block;width:100%;text-align:left;margin:6px 0}
+  iframe{width:100%;height:100%;border:0;background:#fff}
+  .layer{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0;display:flex;align-items:center;gap:6px;cursor:pointer}
+  .layer.sel{border-color:var(--accent);background:#f0f6ff}
+  .layer .nm{flex:1;font-size:.9rem}
+  .layer .mini{border:0;background:transparent;padding:2px 5px;font-size:.85rem;color:var(--ink2)}
+  .field{margin:10px 0}
+  .field label{display:block;font-size:.8rem;color:var(--ink2);margin-bottom:4px}
+  .field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit}
+  .field input[type=color]{padding:2px;height:38px}
+  .field textarea{min-height:80px;resize:vertical}
+  .empty{color:var(--ink2);text-align:center;padding:40px 10px;font-size:.9rem}
+  code{background:#eef1f5;padding:1px 5px;border-radius:5px;font-size:.85em}
+  dialog{border:0;border-radius:14px;padding:0;max-width:680px;width:92vw}
+  dialog textarea{width:100%;height:52vh;border:0;padding:16px;font-family:ui-monospace,Consolas,monospace;font-size:.85rem}
+  dialog .bar{display:flex;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid var(--line)}
+</style></head><body>
+<header>
+  <b>WEB<span>MA</span></b>
+  <span style="color:var(--ink2);font-size:.85rem">POI 1.14.0 로 만든 웹사이트 제작기</span>
+  <span class=sp></span>
+  <button onclick="showCode()">&lt;/&gt; POI 코드</button>
+  <button onclick="resetAll()">비우기</button>
+  <button class=primary onclick="exportSite()">↓ 내보내기 (index.html)</button>
+</header>
+<main>
+  <div class="col left">
+    <h4>블록 추가</h4>
+    <div class=palette id=palette></div>
+    <h4 style="margin-top:20px">레이어</h4>
+    <div id=layers></div>
+  </div>
+  <div class="col mid"><iframe id=preview></iframe></div>
+  <div class="col right" id=inspector><div class=empty>블록을 추가하고 여기서 편집하세요.</div></div>
+</main>
+
+<dialog id=codeDlg>
+  <textarea id=codeOut readonly></textarea>
+  <div class=bar>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('codeOut').value)">복사</button>
+    <button class=primary onclick="document.getElementById('codeDlg').close()">닫기</button>
+  </div>
+</dialog>
+
+<script>
+const LIB = [
+  {
+    "key": "hero",
+    "name": "히어로",
+    "fields": [
+      {
+        "k": "title",
+        "label": "큰 제목",
+        "v": "우리 브랜드"
+      },
+      {
+        "k": "sub",
+        "label": "부제목",
+        "v": "한 줄로 설명하는 우리"
+      },
+      {
+        "k": "cta",
+        "label": "버튼 글자",
+        "v": "시작하기"
+      },
+      {
+        "k": "bg",
+        "label": "배경색",
+        "v": "#0d6efd",
+        "type": "color"
+      },
+      {
+        "k": "fg",
+        "label": "글자색",
+        "v": "#ffffff",
+        "type": "color"
+      }
+    ],
+    "tpl": "<section style='background:@bg@;color:@fg@;padding:88px 24px;text-align:center'><h1 style='font-size:clamp(2rem,6vw,3.4rem);margin:0 0 14px;letter-spacing:-.03em'>@title@</h1><p style='font-size:1.2rem;opacity:.9;margin:0 0 26px'>@sub@</p><a href='#' style='display:inline-block;background:@fg@;color:@bg@;padding:13px 26px;border-radius:12px;font-weight:700;text-decoration:none'>@cta@</a></section>"
+  },
+  {
+    "key": "about",
+    "name": "소개 글",
+    "fields": [
+      {
+        "k": "head",
+        "label": "제목",
+        "v": "우리는 누구인가"
+      },
+      {
+        "k": "body",
+        "label": "본문",
+        "v": "여기에 회사·서비스·나에 대한 이야기를 적으세요. 두세 문장이면 충분합니다.",
+        "type": "area"
+      }
+    ],
+    "tpl": "<section style='max-width:720px;margin:0 auto;padding:64px 24px'><h2 style='font-size:1.7rem;letter-spacing:-.02em'>@head@</h2><p style='font-size:1.05rem;line-height:1.8;color:#444'>@body@</p></section>"
+  },
+  {
+    "key": "features",
+    "name": "특징 3칸",
+    "fields": [
+      {
+        "k": "t1",
+        "label": "특징1 제목",
+        "v": "빠르다"
+      },
+      {
+        "k": "d1",
+        "label": "특징1 설명",
+        "v": "군더더기 없이 핵심만."
+      },
+      {
+        "k": "t2",
+        "label": "특징2 제목",
+        "v": "쉽다"
+      },
+      {
+        "k": "d2",
+        "label": "특징2 설명",
+        "v": "누구나 5분이면 익힌다."
+      },
+      {
+        "k": "t3",
+        "label": "특징3 제목",
+        "v": "튼튼하다"
+      },
+      {
+        "k": "d3",
+        "label": "특징3 설명",
+        "v": "실서비스에서 검증됐다."
+      }
+    ],
+    "tpl": "<section style='max-width:960px;margin:0 auto;padding:64px 24px;display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))'><div style='border:1px solid #e5e7eb;border-radius:16px;padding:22px'><h3 style='margin:0 0 6px'>@t1@</h3><p style='margin:0;color:#555'>@d1@</p></div><div style='border:1px solid #e5e7eb;border-radius:16px;padding:22px'><h3 style='margin:0 0 6px'>@t2@</h3><p style='margin:0;color:#555'>@d2@</p></div><div style='border:1px solid #e5e7eb;border-radius:16px;padding:22px'><h3 style='margin:0 0 6px'>@t3@</h3><p style='margin:0;color:#555'>@d3@</p></div></section>"
+  },
+  {
+    "key": "cta",
+    "name": "행동 유도",
+    "fields": [
+      {
+        "k": "text",
+        "label": "문구",
+        "v": "지금 바로 시작하세요"
+      },
+      {
+        "k": "btn",
+        "label": "버튼 글자",
+        "v": "문의하기"
+      },
+      {
+        "k": "link",
+        "label": "버튼 링크",
+        "v": "mailto:hello@example.com"
+      },
+      {
+        "k": "bg",
+        "label": "배경색",
+        "v": "#111827",
+        "type": "color"
+      }
+    ],
+    "tpl": "<section style='background:@bg@;color:#fff;text-align:center;padding:56px 24px'><p style='font-size:1.4rem;margin:0 0 20px;font-weight:700'>@text@</p><a href='@link@' style='display:inline-block;background:#fff;color:@bg@;padding:12px 24px;border-radius:11px;font-weight:700;text-decoration:none'>@btn@</a></section>"
+  },
+  {
+    "key": "footer",
+    "name": "푸터",
+    "fields": [
+      {
+        "k": "name",
+        "label": "이름/상호",
+        "v": "우리 브랜드"
+      },
+      {
+        "k": "note",
+        "label": "작은 글씨",
+        "v": "(c) 2026. All rights reserved."
+      }
+    ],
+    "tpl": "<footer style='padding:34px 24px;text-align:center;color:#9ca3af;border-top:1px solid #eee;font-size:.9rem'><b style='color:#374151'>@name@</b><br>@note@</footer>"
+  }
+];
+const LIBMAP = Object.fromEntries(LIB.map(s => [s.key, s]));
+let doc = load() || [];
+let sel = null;
+
+function load(){ try{ return JSON.parse(localStorage.getItem("webma")||"null"); }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem("webma", JSON.stringify(doc)); }catch(e){} }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function fill(tpl, vals){ return tpl.replace(/@(\w+)@/g, (_,k)=> esc(vals[k] ?? "")); }
+function bodyHTML(){ return doc.map(b => fill(LIBMAP[b.key].tpl, b.vals)).join("\n"); }
+function fullHTML(){
+  return "<!doctype html><html lang=ko><head><meta charset=utf-8>"
+    + "<meta name=viewport content='width=device-width,initial-scale=1'>"
+    + "<title>"+esc((doc[0]&&doc[0].vals.title)||"내 웹사이트")+"</title>"
+    + "<style>body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif}</style>"
+    + "</head><body>\n" + bodyHTML() + "\n</body></html>";
+}
+function poiCode(){
+  let out = '# WEBMA 로 만든 사이트 —  poi run site.poi\nwebapp "내 웹사이트" {\n    page "/" {\n';
+  for(const b of doc){ out += '        html """' + fill(LIBMAP[b.key].tpl, b.vals).replace(/"""/g,'\\"\\"\\"') + '"""\n'; }
+  return out + "    }\n}\n";
+}
+
+function render(){
+  document.getElementById("preview").srcdoc = fullHTML();
+  const L = document.getElementById("layers"); L.innerHTML = "";
+  doc.forEach((b,i)=>{
+    const d = document.createElement("div");
+    d.className = "layer" + (i===sel ? " sel" : "");
+    d.innerHTML = "<span class=nm>"+esc(LIBMAP[b.key].name)+"</span>"
+      + "<button class=mini data-a=up>▲</button><button class=mini data-a=dn>▼</button><button class=mini data-a=rm>✕</button>";
+    d.querySelector(".nm").onclick = ()=>{ sel=i; render(); inspect(); };
+    d.querySelectorAll("button").forEach(x=> x.onclick = e=>{
+      const a = x.dataset.a;
+      if(a==="up" && i>0){ [doc[i-1],doc[i]]=[doc[i],doc[i-1]]; sel=i-1; }
+      if(a==="dn" && i<doc.length-1){ [doc[i+1],doc[i]]=[doc[i],doc[i+1]]; sel=i+1; }
+      if(a==="rm"){ doc.splice(i,1); sel=null; }
+      save(); render(); inspect();
+    });
+    L.appendChild(d);
+  });
+  save();
+}
+function inspect(){
+  const R = document.getElementById("inspector");
+  if(sel===null || !doc[sel]){ R.innerHTML = "<div class=empty>블록을 추가하고 여기서 편집하세요.</div>"; return; }
+  const b = doc[sel], lib = LIBMAP[b.key];
+  R.innerHTML = "<h4>"+esc(lib.name)+" 편집</h4>";
+  lib.fields.forEach(f=>{
+    const wrap = document.createElement("div"); wrap.className="field";
+    const cur = b.vals[f.k] ?? f.v;
+    if(f.type==="area"){
+      wrap.innerHTML = "<label>"+esc(f.label)+"</label><textarea>"+esc(cur)+"</textarea>";
+      wrap.querySelector("textarea").oninput = e=>{ b.vals[f.k]=e.target.value; render(); };
+    }else{
+      wrap.innerHTML = "<label>"+esc(f.label)+"</label><input type='"+(f.type||"text")+"' value='"+esc(cur)+"'>";
+      wrap.querySelector("input").oninput = e=>{ b.vals[f.k]=e.target.value; render(); };
+    }
+    R.appendChild(wrap);
+  });
+}
+function addBlock(key){
+  const lib = LIBMAP[key];
+  const vals = {}; lib.fields.forEach(f=> vals[f.k]=f.v);
+  doc.push({ key, vals }); sel = doc.length-1;
+  render(); inspect();
+}
+function exportSite(){
+  const blob = new Blob([fullHTML()], {type:"text/html"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "index.html"; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function showCode(){ document.getElementById("codeOut").value = poiCode(); document.getElementById("codeDlg").showModal(); }
+function resetAll(){ if(confirm("전부 지울까요?")){ doc=[]; sel=null; render(); inspect(); } }
+
+const P = document.getElementById("palette");
+LIB.forEach(s=>{ const b=document.createElement("button"); b.textContent = "＋ "+s.name; b.onclick = ()=> addBlock(s.key); P.appendChild(b); });
+if(doc.length===0){ addBlock("hero"); addBlock("features"); addBlock("footer"); }
+render(); inspect();
+</script>
+</body></html>

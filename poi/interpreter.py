@@ -39,7 +39,8 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
                trace_vars: bool = False, explain: bool = False,
                safe: bool = False, time_limit: float = 5.0,
                output_limit: int = 64_000, run_tests: bool = False,
-               base_dir: str | None = None, web_port: int = 8080) -> int:
+               base_dir: str | None = None, web_port: int = 8080,
+               web_host: str = "127.0.0.1") -> int:
     from .runtime import make_globals
     from .runtime import webserver as _ws
     _ws.reset()
@@ -96,7 +97,7 @@ def run_source(src: str, filename: str = "main.poi", *, emit_python: bool = Fals
                     return g["poi_run_tests"]()
                 if g.get("__poi_has_web__") and not safe \
                         and not __import__("os").environ.get("POI_NO_SERVE"):
-                    return _ws.run_all(web_port)
+                    return _ws.run_all(web_port, web_host)
             except KeyboardInterrupt:
                 if isinstance(_to, dict) and _to.get("v"):
                     print(f"\n시간이 초과됐습니다 ({time_limit:g}초). 무한 루프가 아닌지 보세요.",
@@ -139,11 +140,12 @@ def run_file(path: str, *, emit_python: bool = False, argv: list[str] | None = N
              trace: bool = False, trace_vars: bool = False,
              explain: bool = False, safe: bool = False,
              time_limit: float = 5.0, run_tests: bool = False,
-             web_port: int = 8080) -> int:
+             web_port: int = 8080, web_host: str = "127.0.0.1") -> int:
     import os
     with open(path, "r", encoding="utf-8") as f:
         src = f.read()
     return run_source(src, os.path.basename(path), emit_python=emit_python, argv=argv,
                       trace=trace, trace_vars=trace_vars, explain=explain,
                       safe=safe, time_limit=time_limit, run_tests=run_tests,
-                      base_dir=os.path.dirname(os.path.abspath(path)), web_port=web_port)
+                      base_dir=os.path.dirname(os.path.abspath(path)), web_port=web_port,
+                      web_host=web_host)

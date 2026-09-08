@@ -20,7 +20,15 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 
 ---
 
-## v1.13 — 전문화: 성능 · 웹 · GUI  ✅ (현재)
+## v1.14 — 프로덕션 & 개발자 경험  ✅ (현재)
+
+- [x] **WSGI 어댑터** — `poi wsgi app.poi` → gunicorn/waitress/uvicorn. `serve_request()` 공용 디스패치(HTTP·WSGI 공유)
+- [x] **프로덕션 하드닝** — `/healthz` 자동 · `POI_ENV=production` 오류 마스킹 · `poi run --host/--port/--prod`
+- [x] **`poi doctor`** — 실행 환경 진단
+- [x] **`poi new <이름> --web|--api|--cli`** — 템플릿 스캐폴딩
+- [x] **`examples/showcase/`** — POI 로만 작성한 완전한 웹사이트 (끝판왕 데모) + 바탕화면 런처
+
+## v1.13 — 전문화: 성능 · 웹 · GUI  ✅
 
 - [x] **컴파일 캐시** — 안 바뀐 `.poi` 는 렉싱·파싱·트랜스파일·compile 을 건너뜀 (`~/.poi/cache/`, 큰 파일 39배). `poi cache` / `--no-cache`
 - [x] **웹 — `render()` 템플릿 엔진** (`{{ }}` · `{% for %}` · `{% if %}` · `{% include %}`, 자동 이스케이프)

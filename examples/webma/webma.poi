@@ -1,0 +1,78 @@
+# ╔════════════════════════════════════════════════════════════════════╗
+# ║  WEBMA — POI 로 만든 웹사이트 제작기                                 ║
+# ║  실행:  poi run examples/webma/webma.poi                            ║
+# ║  → examples/webma/dist/index.html (자체 완결 SPA, 서버 불필요)        ║
+# ║  배포:  hagora.kr/poi/webma/                                        ║
+# ║                                                                    ║
+# ║  POI 가 하는 일: 아래 '섹션들' 블록 라이브러리(POI 데이터)를 정의하고,  ║
+# ║  template.html 을 읽어 __SECTIONS__ 자리에 JSON 으로 끼운 뒤 저장한다. ║
+# ╚════════════════════════════════════════════════════════════════════╝
+
+버전 = system.poi_version()
+
+# ── 섹션 라이브러리 — 제작기가 이 데이터로 편집 가능한 블록을 만든다 ──
+섹션들 = [
+    {
+        key: "hero", name: "히어로",
+        fields: [
+            { k: "title", label: "큰 제목",   v: "우리 브랜드" },
+            { k: "sub",   label: "부제목",     v: "한 줄로 설명하는 우리" },
+            { k: "cta",   label: "버튼 글자",  v: "시작하기" },
+            { k: "bg",    label: "배경색", v: "#0d6efd", type: "color" },
+            { k: "fg",    label: "글자색", v: "#ffffff", type: "color" }
+        ],
+        tpl: "<section style='background:@bg@;color:@fg@;padding:88px 24px;text-align:center'><h1 style='font-size:clamp(2rem,6vw,3.4rem);margin:0 0 14px;letter-spacing:-.03em'>@title@</h1><p style='font-size:1.2rem;opacity:.9;margin:0 0 26px'>@sub@</p><a href='#' style='display:inline-block;background:@fg@;color:@bg@;padding:13px 26px;border-radius:12px;font-weight:700;text-decoration:none'>@cta@</a></section>"
+    },
+    {
+        key: "about", name: "소개 글",
+        fields: [
+            { k: "head", label: "제목", v: "우리는 누구인가" },
+            { k: "body", label: "본문", v: "여기에 회사·서비스·나에 대한 이야기를 적으세요. 두세 문장이면 충분합니다.", type: "area" }
+        ],
+        tpl: "<section style='max-width:720px;margin:0 auto;padding:64px 24px'><h2 style='font-size:1.7rem;letter-spacing:-.02em'>@head@</h2><p style='font-size:1.05rem;line-height:1.8;color:#444'>@body@</p></section>"
+    },
+    {
+        key: "features", name: "특징 3칸",
+        fields: [
+            { k: "t1", label: "특징1 제목", v: "빠르다" },
+            { k: "d1", label: "특징1 설명", v: "군더더기 없이 핵심만." },
+            { k: "t2", label: "특징2 제목", v: "쉽다" },
+            { k: "d2", label: "특징2 설명", v: "누구나 5분이면 익힌다." },
+            { k: "t3", label: "특징3 제목", v: "튼튼하다" },
+            { k: "d3", label: "특징3 설명", v: "실서비스에서 검증됐다." }
+        ],
+        tpl: "<section style='max-width:960px;margin:0 auto;padding:64px 24px;display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))'><div style='border:1px solid #e5e7eb;border-radius:16px;padding:22px'><h3 style='margin:0 0 6px'>@t1@</h3><p style='margin:0;color:#555'>@d1@</p></div><div style='border:1px solid #e5e7eb;border-radius:16px;padding:22px'><h3 style='margin:0 0 6px'>@t2@</h3><p style='margin:0;color:#555'>@d2@</p></div><div style='border:1px solid #e5e7eb;border-radius:16px;padding:22px'><h3 style='margin:0 0 6px'>@t3@</h3><p style='margin:0;color:#555'>@d3@</p></div></section>"
+    },
+    {
+        key: "cta", name: "행동 유도",
+        fields: [
+            { k: "text", label: "문구",      v: "지금 바로 시작하세요" },
+            { k: "btn",  label: "버튼 글자",  v: "문의하기" },
+            { k: "link", label: "버튼 링크",  v: "mailto:hello@example.com" },
+            { k: "bg",   label: "배경색", v: "#111827", type: "color" }
+        ],
+        tpl: "<section style='background:@bg@;color:#fff;text-align:center;padding:56px 24px'><p style='font-size:1.4rem;margin:0 0 20px;font-weight:700'>@text@</p><a href='@link@' style='display:inline-block;background:#fff;color:@bg@;padding:12px 24px;border-radius:11px;font-weight:700;text-decoration:none'>@btn@</a></section>"
+    },
+    {
+        key: "footer", name: "푸터",
+        fields: [
+            { k: "name", label: "이름/상호", v: "우리 브랜드" },
+            { k: "note", label: "작은 글씨", v: "(c) 2026. All rights reserved." }
+        ],
+        tpl: "<footer style='padding:34px 24px;text-align:center;color:#9ca3af;border-top:1px solid #eee;font-size:.9rem'><b style='color:#374151'>@name@</b><br>@note@</footer>"
+    }
+]
+
+use py:os as _os
+_os.makedirs("examples/webma/dist", exist_ok: true)
+
+껍데기 = file.read("examples/webma/template.html")
+문서 = 껍데기.replace("__SECTIONS__", json.stringify(섹션들))
+문서 = 문서.replace("__VER__", 버전)
+
+file.write("examples/webma/dist/index.html", 문서)
+file.write("examples/webma/dist/.htaccess", "RewriteEngine On\n")   # 부모 .htaccess 404 fallback 차단
+
+show "만들었어요:  examples/webma/dist/index.html   ({문서.length} bytes)"
+show "섹션 " + text(섹션들.length) + "종:  " + (섹션들 |> map(s => s.name) |> (xs => xs.join(", ")))
+show "배포 위치:  hagora.kr/poi/webma/"

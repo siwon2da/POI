@@ -189,6 +189,7 @@ _SECURITY_HEADERS = {
 
 
 _MIDDLEWARE = {"before": [], "after": []}
+_APPS_VERSION = [0]
 
 
 def reset():
@@ -196,6 +197,7 @@ def reset():
     _STATE.clear()
     _MIDDLEWARE["before"].clear()
     _MIDDLEWARE["after"].clear()
+    _APPS_VERSION[0] += 1
 
 
 def on_request(fn):
@@ -212,6 +214,7 @@ def on_response(fn):
 
 def register(app: dict):
     _APPS.append(app)
+    _APPS_VERSION[0] += 1
 
 
 def state_get(name, default=None):
@@ -630,7 +633,155 @@ def _input_html(label, name, secret=False, multiline=False):
     return f"<input class=poi type={typ} name='{_esc(name)}' placeholder='{ph}'>"
 
 
-# ── 서버 ─────────────────────────────────────────────────────────────
+# ── 서버 — 공용 디스패치 (HTTP 핸들러 · WSGI 둘 다 이걸 쓴다) ──────────
+
+_PROD = None
+
+
+def _is_prod():
+    global _PROD
+    if _PROD is None:
+        _PROD = os.environ.get("POI_ENV", "").lower() in ("prod", "production")
+    return _PROD
+
+
+_ROUTE_CACHE = {"key": None, "compiled": None, "static": None, "actions": None,
+                "title": "POI"}
+
+
+def _routes_now():
+    """_APPS 로부터 (compiled, static_dirs, action_paths, title) — _APPS 바뀌면 재계산."""
+    key = _APPS_VERSION[0]
+    if _ROUTE_CACHE["key"] != key:
+        routes, static_dirs, csrf = {}, [], []
+        title = "POI"
+        for app in _APPS:
+            routes.update(app.get("routes", {}))
+            static_dirs.extend(app.get("static", []))
+            csrf.extend(app.get("csrf_paths", []))
+            if app.get("title"):
+                title = app["title"]
+        _ROUTE_CACHE.update(
+            key=key,
+            compiled=[(m, _compile_path(p), fn) for (m, p), fn in routes.items()],
+            static=static_dirs,
+            actions={p.rstrip("/") for p in csrf},
+            title=title)
+    return (_ROUTE_CACHE["compiled"], _ROUTE_CACHE["static"],
+            _ROUTE_CACHE["actions"], _ROUTE_CACHE["title"])
+
+
+def _static_file(path, static_dirs):
+    """(data, ctype, etag) 또는 None."""
+    import mimetypes
+    for d in static_dirs:
+        base = os.path.abspath(d)
+        fp = os.path.normpath(os.path.join(base, path.lstrip("/")))
+        if not fp.startswith(base) or not os.path.isfile(fp):
+            continue
+        with open(fp, "rb") as f:
+            data = f.read()
+        stt = os.stat(fp)
+        etag = f'"{stt.st_mtime_ns:x}-{stt.st_size:x}"'
+        return data, (mimetypes.guess_type(fp)[0] or "application/octet-stream"), etag
+    return None
+
+
+def serve_request(method, full_path, raw_body, req_headers, client_ip):
+    """POI 웹 요청 한 건 처리 → (status, data:bytes, content_type, extra_headers).
+
+    HTTP 핸들러와 WSGI 어댑터가 공유한다. req_headers 는 dict 또는 .get 가능한 객체.
+    """
+    def _hget(name):
+        try:
+            return req_headers.get(name) or req_headers.get(name.lower()) or ""
+        except Exception:
+            return ""
+
+    if not _rate_ok(client_ip or "?"):
+        return 429, "요청이 너무 많습니다.".encode("utf-8"), \
+            "text/plain; charset=utf-8", {"Retry-After": "10"}
+
+    parsed = _up.urlparse(full_path)
+    path = _up.unquote(parsed.path)
+    if path in ("/healthz", "/_health"):
+        return 200, b'{"status":"ok"}', "application/json", {}
+    query = boxify({k: v[0] for k, v in _up.parse_qs(parsed.query).items()})
+
+    raw = raw_body or b""
+    if len(raw) > _MAX_BODY:
+        return 413, b"too large", "text/plain", {}
+    ctype = _hget("Content-Type")
+    body = Box()
+    if raw:
+        text = raw.decode("utf-8", "replace")
+        try:
+            if "json" in ctype:
+                body = boxify(_json.loads(text))
+            elif "multipart/form-data" in ctype:
+                body = Box({"raw": text})
+            else:
+                body = boxify({k: v[0] for k, v in
+                               _up.parse_qs(text, keep_blank_values=True).items()})
+        except Exception:
+            body = Box({"raw": text})
+
+    compiled, static_dirs, action_paths, _title = _routes_now()
+
+    if method == "POST" and path.rstrip("/") in action_paths:
+        if body.get("_csrf") != _CSRF:
+            return 403, "CSRF 토큰이 없거나 틀립니다.".encode("utf-8"), \
+                "text/plain; charset=utf-8", {}
+
+    hdr_box = boxify(dict(req_headers)) if not isinstance(req_headers, Box) \
+        else req_headers
+    req = Box({"path": path, "method": method, "query": query, "body": body,
+               "headers": hdr_box, "params": Box(), "ip": client_ip or ""})
+
+    for mw in _MIDDLEWARE["before"]:
+        try:
+            r = mw(req)
+        except Exception as e:  # noqa: BLE001
+            return _err_response(500, f"미들웨어 오류: {e}")
+        if r is not None and r is not True:
+            return _coerce(r)
+
+    for m, rx, fn in compiled:
+        if m != method:
+            continue
+        mt = rx.match(path)
+        if not mt:
+            continue
+        req["params"] = boxify(mt.groupdict())
+        try:
+            result = fn(req["params"], query, body, hdr_box, method)
+        except Exception as e:  # noqa: BLE001
+            return _err_response(500, f"핸들러 오류: {e}")
+        for mw in _MIDDLEWARE["after"]:
+            try:
+                r2 = mw(req, result)
+            except Exception:  # noqa: BLE001
+                r2 = None
+            if r2 is not None:
+                result = r2
+        return _coerce(result)
+
+    sf = _static_file(path, static_dirs)
+    if sf is not None:
+        data, sct, etag = sf
+        if _hget("If-None-Match") == etag:
+            return 304, b"", "text/plain", {"ETag": etag}
+        return 200, data, sct, {"ETag": etag, "Cache-Control": "public, max-age=3600"}
+
+    return 404, "<h1>404</h1><p>없는 경로입니다.</p>".encode("utf-8"), \
+        "text/html; charset=utf-8", {}
+
+
+def _err_response(status, detail):
+    if _is_prod():
+        return status, b'{"error":"internal error"}', "application/json", {}
+    return status, str(detail).encode("utf-8"), "text/plain; charset=utf-8", {}
+
 
 def _make_handler(routes, static_dirs, title, csrf_paths=None):
     compiled = [(m, _compile_path(p), fn) for (m, p), fn in routes.items()]
@@ -644,81 +795,15 @@ def _make_handler(routes, static_dirs, title, csrf_paths=None):
             pass
 
         def _dispatch(self, method):
-            if not _rate_ok(self.client_address[0]):
-                return self._send(429, "요청이 너무 많습니다.".encode("utf-8"),
-                                  "text/plain; charset=utf-8",
-                                  {"Retry-After": "10"})
-            parsed = _up.urlparse(self.path)
-            path = _up.unquote(parsed.path)
-            query = boxify({k: v[0] for k, v in _up.parse_qs(parsed.query).items()})
             length = int(self.headers.get("Content-Length", 0) or 0)
-            if length > _MAX_BODY:
-                return self._send(413, b"too large", "text/plain", {})
             raw = self.rfile.read(length) if length else b""
-            ctype = self.headers.get("Content-Type", "")
-            body = Box()
-            if raw:
-                text = raw.decode("utf-8", "replace")
-                try:
-                    if "json" in ctype:
-                        body = boxify(_json.loads(text))
-                    elif "multipart/form-data" in ctype:
-                        body = Box({"raw": text})
-                    else:
-                        body = boxify({k: v[0] for k, v in
-                                       _up.parse_qs(text, keep_blank_values=True).items()})
-                except Exception:
-                    body = Box({"raw": text})
-
-            # CSRF — webapp 폼(POST + 등록된 액션 경로)에만. server{} 의 API POST 는 제외.
-            if method == "POST" and path.rstrip("/") in action_paths:
-                if body.get("_csrf") != _CSRF:
-                    return self._send(403,
-                                      "CSRF 토큰이 없거나 틀립니다.".encode("utf-8"),
-                                      "text/plain; charset=utf-8", {})
-
-            hdr_box = boxify({k: v for k, v in self.headers.items()})
-            req = Box({"path": path, "method": method, "query": query,
-                       "body": body, "headers": hdr_box, "params": Box(),
-                       "ip": self.client_address[0]})
-
-            # 미들웨어 — before: 응답을 돌려주면 거기서 끝
-            for mw in _MIDDLEWARE["before"]:
-                try:
-                    r = mw(req)
-                except Exception as e:  # noqa: BLE001
-                    return self._send(500, f"미들웨어 오류: {e}".encode("utf-8"),
-                                      "text/plain; charset=utf-8", {})
-                if r is not None and not (r is True):
-                    st, data, ct, extra = _coerce(r)
-                    return self._send(st, data, ct, extra)
-
-            for m, rx, fn in compiled:
-                if m != method:
-                    continue
-                mt = rx.match(path)
-                if not mt:
-                    continue
-                req["params"] = boxify(mt.groupdict())
-                try:
-                    result = fn(req["params"], query, body, hdr_box, method)
-                except Exception as e:  # noqa: BLE001
-                    return self._send(500, f"핸들러 오류: {e}".encode("utf-8"),
-                                      "text/plain; charset=utf-8", {})
-                for mw in _MIDDLEWARE["after"]:
-                    try:
-                        r2 = mw(req, result)
-                    except Exception:  # noqa: BLE001
-                        r2 = None
-                    if r2 is not None:
-                        result = r2
-                st, data, ct, extra = _coerce(result)
-                return self._send(st, data, ct, extra)
-
-            if self._try_static(path):
-                return
-            self._send(404, "<h1>404</h1><p>없는 경로입니다.</p>".encode("utf-8"),
-                       "text/html; charset=utf-8", {})
+            try:
+                st, data, ct, extra = serve_request(
+                    method, self.path, raw, self.headers,
+                    self.client_address[0])
+            except Exception as e:  # noqa: BLE001
+                st, data, ct, extra = _err_response(500, f"서버 오류: {e}")
+            self._send(st, data, ct, extra)
 
         def _try_static(self, path):
             import mimetypes
