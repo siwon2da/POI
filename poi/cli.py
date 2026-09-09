@@ -38,6 +38,7 @@ POI v{ver}  -  Power Of Imagination
   poi publish                         현재 프로젝트를 패키지로 묶기
   poi migrate <파일|.> [--write]      v2.0 스타일로 정리 (콜론/파이썬 습관 → 중괄호/POI)
   poi haon login | status | agent <폴더> "<할 일>"    하온: ChatGPT 연결 · 에이전트
+  poi lsp                             Language Server (stdio) — VS Code·Neovim 등에서 연결
   poi fmt [파일 | .] [--check]         소스 정리 (탭·공백·들여쓰기)
   poi lint [파일 | .] [--strict]       안 쓴 변수 등 가벼운 점검
   poi serve [폴더] [--port 8900]       플레이그라운드 서버 (정적 서빙 + 안전 실행 /run)
@@ -1081,6 +1082,7 @@ def main(argv: list[str] | None = None) -> int:
         "install": lambda a: __import__("poi.pkg", fromlist=["cmd_install"]).cmd_install(a),
         "cache": lambda a: __import__("poi.cache", fromlist=["cmd_cache"]).cmd_cache(a),
         "doctor": cmd_doctor, "wsgi": cmd_wsgi,
+        "lsp": lambda a: __import__("poi.lsp", fromlist=["main"]).main(),
         "init": lambda a: _eco("cmd_init")(a),
         "search": lambda a: _eco("cmd_search")(a),
         "publish": lambda a: _eco("cmd_publish")(a),

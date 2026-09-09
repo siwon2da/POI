@@ -1,0 +1,59 @@
+{
+  "name": "poi-language",
+  "displayName": "POI Language Support (Preview)",
+  "description": "POI 언어 — 구문 강조 · 진단 · 자동완성 · 호버 · 정의로 이동",
+  "version": "0.1.0",
+  "publisher": "hansaeng",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/siwon2da/POI" },
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages", "Linters"],
+  "activationEvents": ["onLanguage:poi"],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "poi",
+        "aliases": ["POI", "poi"],
+        "extensions": [".poi"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "poi",
+        "scopeName": "source.poi",
+        "path": "./syntaxes/poi.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      { "command": "poi.run", "title": "POI: 이 파일 실행" },
+      { "command": "poi.check", "title": "POI: 문법 검사" },
+      { "command": "poi.build", "title": "POI: EXE 로 빌드" }
+    ],
+    "configuration": {
+      "title": "POI",
+      "properties": {
+        "poi.path": {
+          "type": "string",
+          "default": "poi",
+          "description": "poi 실행 파일 경로 (PATH 에 없으면 절대경로)"
+        },
+        "poi.lsp": {
+          "type": "boolean",
+          "default": false,
+          "description": "실험적: poi lsp 서버 사용 (vscode-languageclient 필요). 끄면 내장 진단만."
+        },
+        "poi.checkOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "저장할 때 poi check 로 진단"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "vsce package"
+  },
+  "devDependencies": {}
+}

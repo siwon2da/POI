@@ -50,6 +50,15 @@ multipart 업로드(`body.files`), `poi build --site`(정적 굽기), `auth`·�
   비번을 exe 안에 숨겨 넣고, **`--ask-password`** 를 붙이면 실행할 때 물어본다 (비번을 모르면 코드가 안 풀림).
 - IDLE 툴바 **`📦 EXE`** 버튼 — 난독화·콘솔·비밀번호를 골라 빌드.
 
+**LSP + VS Code 확장 (프리뷰)**
+- **`poi lsp`** — stdio Language Server (표준 라이브러리만). 진단(문법 P-코드·린트·타입) ·
+  호버 · 자동완성(키워드·표준 모듈·이 파일의 함수) · 정의로 이동 · 문서 심볼 · 이름 바꾸기.
+  Neovim·Helix 등에서도 붙일 수 있다.
+- **`editors/vscode/`** — VS Code 확장. TextMate 구문 강조 + `.poi` 설정 + `extension.js`
+  (npm 없이도 동작: 저장 시 `poi check` 진단, 자동완성·호버·정의로 이동, `POI: 실행/검사/빌드` 명령).
+  `~/.vscode/extensions/` 에 복사 후 재시작, 또는 F5 개발 실행, 또는 `vsce package`.
+  `poi.lsp` 설정을 켜면 `vscode-languageclient` 로 `poi lsp` 에 연결(완전한 LSP).
+
 **소개 페이지** — 다른 언어를 언급하지 않도록 문구 정리 (POI 는 그 자체로).
 
 ## v1.15.0 — 2026-09-09  (대규모 업데이트 — 웹 최강 + 3D 웹)

@@ -1,0 +1,97 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "POI",
+  "scopeName": "source.poi",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#pyblock" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#function-def" },
+    { "include": "#function-call" },
+    { "include": "#numbers" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.number-sign.poi", "match": "(#|//).*$" },
+        { "name": "comment.block.poi", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.poi",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [{ "include": "#interpolation" }]
+        },
+        {
+          "name": "string.quoted.double.poi",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "name": "constant.character.escape.poi", "match": "\\\\." },
+            { "include": "#interpolation" }
+          ]
+        }
+      ]
+    },
+    "interpolation": {
+      "name": "meta.embedded.poi",
+      "begin": "(?<!\\{)\\{(?!\\{)",
+      "end": "\\}",
+      "beginCaptures": { "0": { "name": "punctuation.section.embedded.poi" } },
+      "endCaptures": { "0": { "name": "punctuation.section.embedded.poi" } },
+      "patterns": [{ "include": "$self" }]
+    },
+    "pyblock": {
+      "name": "meta.embedded.block.python",
+      "begin": "\\b(python|파이썬)\\s*\\{",
+      "end": "\\}",
+      "beginCaptures": { "1": { "name": "keyword.control.poi" } },
+      "patterns": [{ "include": "source.python" }]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.poi",
+          "match": "(?<![\\w.])(if|else|elif|for|in|while|repeat|match|when|break|continue|return|try|catch|raise|use|export|import|pass|background|every)(?![\\w])"
+        },
+        {
+          "name": "keyword.other.poi",
+          "match": "(?<![\\w.])(fn|def|func|function|fun|const|lambda|show|ask|assert|test|is|between|and|or|not|as|end|server|webapp|app|page|action|state|on|window)(?![\\w])"
+        },
+        {
+          "name": "keyword.other.korean.poi",
+          "match": "(?<![\\w.])(보여주기|출력|만약|아니면|반복|순회|각각|함수|기능|정의|돌려주기|반환|그리고|또는|아님|시도|잡기|끝|상수|사용|던지기|분기|경우|확인|사이)(?![\\w])"
+        }
+      ]
+    },
+    "constants": {
+      "name": "constant.language.poi",
+      "match": "(?<![\\w.])(true|false|null|True|False|None|참|거짓|없음|널)(?![\\w])"
+    },
+    "function-def": {
+      "match": "(?<![\\w.])(fn|def|func|function|fun)\\s+([^\\W\\d][\\w가-힣]*)",
+      "captures": {
+        "1": { "name": "keyword.other.poi" },
+        "2": { "name": "entity.name.function.poi" }
+      }
+    },
+    "function-call": {
+      "match": "([^\\W\\d][\\w가-힣]*)\\s*(?=\\()",
+      "name": "entity.name.function.call.poi"
+    },
+    "numbers": {
+      "name": "constant.numeric.poi",
+      "match": "(?<![\\w.])\\d+(\\.\\d+)?(x\\d+)?"
+    },
+    "operators": {
+      "name": "keyword.operator.poi",
+      "match": "(\\|>|\\?\\?|\\?\\.|=>|->|\\.\\.<|\\.\\.|==|!=|<=|>=|&&|\\|\\||[+\\-*/%<>=!])"
+    }
+  }
+}
