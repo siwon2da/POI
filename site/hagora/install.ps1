@@ -1,5 +1,5 @@
 <#
-  POI — 한 줄 설치 (Windows, 관리자 권한 불필요, 파이썬 불필요)
+  POI — 한 줄 설치 (Windows, 관리자 권한·준비물 불필요)
 
     powershell -c "irm https://hagora.kr/poi/install.ps1 | iex"
 

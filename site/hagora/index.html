@@ -442,7 +442,7 @@
       <a class="hide-sm" href="/poi/book/">입문서</a>
       <a class="hide-sm" href="#play">실행</a>
       <a class="hide-sm" href="#roadmap">로드맵</a>
-      <a class="hide-sm" href="https://github.com/siwon2da/POI">GitHub</a>
+      <a class="hide-sm" href="#start">받기</a>
       <button class="tog" id="tog" aria-label="테마 전환" title="테마 전환">◑</button>
     </nav>
   </div>
@@ -460,7 +460,7 @@
         실행은 세계에서 가장 검증된 런타임 위에서 합니다.</p>
       <div class="row">
         <a class="btn primary" href="#start">바로 시작하기</a>
-        <a class="btn soft" href="https://github.com/siwon2da/POI">GitHub 보기</a>
+        <a class="btn soft" href="/poi/book/">입문서 보기</a>
       </div>
       <p class="mini"><b>$</b> poi run hello.poi</p>
     </div>
@@ -526,9 +526,9 @@ nums |&gt; <span class="fn">filter</span>(<span class="s">"&gt; 0"</span>) |&gt;
           <p>새 언어인데 첫날부터 라이브러리 수십만 개. 데이터·머신러닝·이미지·네트워크 —
             <code>use</code> 한 줄이면 끝.</p>
         </div>
-<pre><span class="k">use</span> <span class="fn">py:numpy</span> <span class="k">as</span> np
-data = np.<span class="fn">array</span>([<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>, <span class="nu">4</span>])
-<span class="k">show</span> data.<span class="fn">mean</span>()      <span class="c"># 2.5</span></pre>
+<pre><span class="k">use</span> <span class="fn">stats</span>
+data = [<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>, <span class="nu">4</span>]
+<span class="k">show</span> stats.<span class="fn">mean</span>(data)   <span class="c"># 2.5</span></pre>
       </article>
     </div>
   </div>
@@ -538,7 +538,7 @@ data = np.<span class="fn">array</span>([<span class="nu">1</span>, <span class=
 <section class="band">
   <div class="wrap">
     <div class="rise"><h2 class="pixel">창 띄우기가 Hello World 다음 순서</h2>
-      <p class="lede prose">Tkinter·PyQt 없이. 선언형으로 쓰면 그대로 화면이 됩니다.</p></div>
+      <p class="lede prose">복잡한 설정 없이. 선언형으로 쓰면 그대로 화면이 됩니다.</p></div>
     <div class="gui">
 <pre class="rise"><span class="k">app</span> <span class="s">"로그인"</span> {
     <span class="k">window</span> { size: <span class="nu">380x320</span>  center: <span class="k">true</span> }
@@ -913,10 +913,12 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
         <ul><li><b>WSGI</b> — <code>poi wsgi app.poi</code> → gunicorn/waitress/uvicorn 로 실서비스</li><li><code>/healthz</code> · <code>POI_ENV=production</code> · <code>--host</code> · <code>poi doctor</code> · <code>poi new --web/--api/--cli</code></li><li><b><a href="https://hagora.kr/poi/webma/">webma</a></b> — POI 로 만든 웹사이트 제작기</li></ul></div>
       <div class="r done"><div class="v">v1.15</div><h3>웹 최강 · 3D 웹</h3>
         <ul><li><b><a href="https://hagora.kr/poi/3d/">scene3d</a></b> — 선언형 3D 씬 → 자체 완결 HTML (Three.js, 서버 불필요)</li><li><b>htmx-lite</b> — <code>data-poi-get/post</code> 로 새로고침 없는 부분 갱신</li><li><code>{% component %}</code> · 파일 업로드 · <code>poi build --site</code> 정적 굽기</li></ul></div>
-      <div class="r done now"><div class="v">1.9.9</div><h3>v2.0 앞의 대통합</h3>
-        <ul><li><b>생태계</b> — <code>poi.toml</code> · <code>poi init</code> · 레지스트리(<code>poi search/add</code>) · <code>poi migrate</code> · REPL 개편</li><li><b><code>game</code></b> 2D 게임 · <b>하온</b> ChatGPT 로그인 + 에이전트(<code>poi haon agent</code>)</li><li>EXE 난독화·비밀번호 잠금 (<code>poi build --obfuscate / --lock</code>)</li></ul></div>
-      <div class="r"><div class="v">v2.0</div><h3>문법 정리 · 생태계</h3>
-        <ul><li>블록은 <code>{ }</code>+들여쓰기만 정식 (<code>end</code>·콜론 정리)</li><li>POI Language Server · VS Code 확장 · <code>poi doctor</code></li><li>문법 고정 · play.poi.dev (브라우저 실행)</li></ul></div>
+      <div class="r done"><div class="v">1.9.9</div><h3>v2.0 앞의 대통합</h3>
+        <ul><li><b>생태계</b> — <code>poi.toml</code> · <code>poi init</code> · 레지스트리(<code>poi search/add</code>) · <code>poi migrate</code> · REPL 개편</li><li><b><code>game</code></b> 2D 게임 · <b>하온</b> ChatGPT 로그인 + 에이전트(<code>poi haon agent</code>)</li><li><b>LSP · VS Code 확장</b> · EXE 난독화·비밀번호 잠금·<code>poi decompile</code> · 외부 라이브러리 의존성 자동 포함·설치</li></ul></div>
+      <div class="r done now"><div class="v">1.16.0</div><h3>전자 · Arduino · 방어 보안 연구</h3>
+        <ul><li><b><code>electronics</code> / <code>arduino</code></b> — 직렬 포트·센서 ADC·PWM·디지털 제어 + 회로 계산 (옴의 법칙·전압 분배·직병렬)</li><li><b>가상 보드</b> <code>electronics.mock()</code> — 장치 없이도 수업·CI 에서 검증</li><li><b><code>security</code></b> — SHA-256·HMAC·상수시간 비교·엔트로피·비밀번호·보안 헤더 분석 (사설망 기본 제한)</li></ul></div>
+      <div class="r"><div class="v">v2.0</div><h3>문법 정리 · 브라우저 실행</h3>
+        <ul><li>블록은 <code>{ }</code>+들여쓰기만 정식 (<code>end</code>·콜론 정리)</li><li>문법 고정 · 표준 라이브러리 안정화</li><li>play.poi.dev (브라우저에서 바로 실행)</li></ul></div>
     </div>
   </div>
 </section>
@@ -928,9 +930,9 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <p class="lede prose">아무것도 미리 깔 필요 없습니다. <code>poi.exe</code> 하나로 끝.</p></div>
 
     <div class="dl rise">
-      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.9.9.exe">
+      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.16.0.exe">
         <span class="dl-k">Windows 설치 마법사</span>
-        <span class="dl-t">poi-setup-1.9.9.exe</span>
+        <span class="dl-t">poi-setup-1.16.0.exe</span>
         <span class="dl-s">더블클릭 → 다음 → 설치. 준비물 없음</span>
       </a>
       <div class="dl-alt">
@@ -947,8 +949,8 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
           <code>더블클릭 → 예제가 열린 채로 실행 · F5</code>
         </div>
         <div class="dl-row">
-          <div class="dl-label">저장소에서 (개발자용)</div>
-          <code>git clone https://github.com/siwon2da/POI.git  ·  python -m poi run ...</code>
+          <div class="dl-label">묶음 — <a href="https://hagora.kr/poi/poi-1.16.0.zip">poi-1.16.0.zip</a> (엔진 · 예제 · 문서)</div>
+          <code>압축 풀고  ·  poi.exe run 파일.poi</code>
         </div>
       </div>
     </div>
@@ -965,7 +967,7 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
     </div>
     <div class="updnote rise">
       🔔 새 버전이 나오면 <code>poi run</code> 이 터미널에서 알려줍니다.
-      (<code>hagora.kr/poi/VERSION</code> · GitHub 확인, 하루 1회, <code>POI_NO_UPDATE_CHECK=1</code> 로 끔)
+      (<code>hagora.kr/poi/VERSION</code> 확인, 하루 1회, <code>POI_NO_UPDATE_CHECK=1</code> 로 끔)
     </div>
   </div>
 </section>
@@ -991,11 +993,9 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <span class="p">poi&gt;</span> show pp청춘<span class="o">   # → 청춘</span>
     </div>
     <div class="meta">
-      <span>MIT License</span><span>·</span>
-      <a href="https://github.com/siwon2da/POI">github.com/siwon2da/POI</a><span>·</span>
       <a href="https://hagora.kr/poi/privacy/">개인정보처리방침</a><span>·</span>
       <a href="https://hagora.kr/poi/terms/">이용약관</a><span>·</span>
-      <span>한생 (HANSAENG)</span><span>·</span><span>v1.9.9</span>
+      <span>한생 (HANSAENG)</span><span>·</span><span>v1.16.0</span>
     </div>
   </div>
 </footer>

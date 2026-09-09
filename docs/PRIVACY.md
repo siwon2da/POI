@@ -61,7 +61,7 @@ POI 는 **설치형 도구**이며, 코드는 이용자의 컴퓨터에서 실�
 ## 7. 개인정보 보호책임자 및 연락처
 
 - 운영자: **한생 (HANSAENG)** — `https://hagora.kr`
-- 문의: `hagora.kr/poi` 안내 페이지의 연락처 또는 GitHub 저장소(`github.com/siwon2da/POI`) 이슈
+- 문의: `hagora.kr/poi` 안내 페이지의 연락처
 - 사업자 정보는 한생 대표 사이트(`hagora.kr`)에 고지된 바를 따릅니다.
 
 ## 8. 고지의 의무
