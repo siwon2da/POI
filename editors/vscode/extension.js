@@ -62,7 +62,8 @@ const KEYWORDS = ["if", "else", "elif", "for", "in", "while", "repeat", "fn", "r
 const STDLIB = ["math", "file", "json", "time", "regex", "csv", "datetime", "random",
   "stats", "crypto", "password", "jwt", "path", "url", "html", "cache", "bench", "uuid",
   "database", "env", "shell", "system", "ai", "uikit", "task", "http", "net", "scene3d",
-  "game", "render", "respond", "auth"];
+  "game", "render", "respond", "auth", "electronics", "arduino", "hardware", "security",
+  "security_lab"];
 const HOVER = {
   fn: "함수 정의.  `fn 이름(인자) { ... }`  또는  `fn 이름(인자) => 식`",
   show: "값 출력.  `show \"안녕 {name}\"` — 보간은 `\"{식}\"`",
@@ -71,7 +72,9 @@ const HOVER = {
   scene3d: "3D 웹.  `scene3d.scene({})` · `scene3d.box(s, {spin:true})` · `scene3d.render(s)`",
   game: "2D 게임.  `game.window(...)` · `game.sprite(w, {...})` · `game.run(w)`",
   task: "동시성.  `task.run` · `task.all(fn, 목록)` · `task.channel()` · `task.every`",
-  render: "템플릿.  `render(\"home.html\", { title: \"x\" })` — `{{ }}` `{% for %}` `{% if %}`"
+  render: "템플릿.  `render(\"home.html\", { title: \"x\" })` — `{{ }}` `{% for %}` `{% if %}`",
+  electronics: "전자·Arduino. `electronics.ports()` · `.arduino(\"COM3\")` · `.mock()` · `.voltage(raw)`",
+  security: "방어 보안 연구. 해시·엔트로피·헤더 분석·허가된 로컬/사설망 포트 점검"
 };
 
 function activate(context) {

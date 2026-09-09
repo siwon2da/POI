@@ -1,6 +1,4 @@
-1.9.9
-POI 1.9.9 — v2.0 앞의 대통합. 생태계: poi.toml [project], poi init(대화형), poi search/add(레지스트리),
-poi publish, poi migrate(v2.0 스타일 정리). 게임: game 모듈(sprite·on_key·every_frame·hits). 3D 웹:
-scene3d. 웹: htmx-lite(data-poi-get/post), {% component %}, 파일 업로드, poi build --site, WSGI. 도구:
-poi doctor, REPL 개편(:type/:vars/:clear). 하온: ChatGPT 로그인(poi haon login), 에이전트(poi haon agent).
-EXE: poi build --obfuscate / --lock <비번>. 올리기:  poi update
+1.16.0
+POI 1.16.0 — 전자·Arduino·방어 보안 연구. electronics 모듈은 직렬 포트·센서·PWM·회로 계산과
+가상 보드를 제공하고, security 모듈은 해시·HMAC·엔트로피·보안 헤더·허가된 사설망 점검을 제공한다.
+공개망 점검은 이중 안전 해제가 필요하다. 예제와 Arduino 브리지 펌웨어, 연구실 문서 포함.

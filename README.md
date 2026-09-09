@@ -78,7 +78,11 @@ poi run examples/basics.poi
 12. **표준 라이브러리 · 백엔드/보안 · IDLE (v1.7)** — `crypto`·`password`·`jwt`·`path`·`url`·`html`·`compress`·`log`·`cache`·`bench`·`dotenv`·`system`·`uuid` ·
     `database(...)` SQLite 0설정 · 서명 쿠키/세션·레이트리밋·gzip · `poi idle` / `poi build --app idle`
 13. **언어 안정화 (v1.8)** — `break`/`continue`/`while` · 진짜 `const` · 범위 `1..10` · `match` 식 · `catch ValueError as e` + `raise Error(...)` ·
-    `export` · 반환 타입 검사 · `poi fmt` · `poi lint` · `poi check .` · `elif`→`else if` 같은 오류 안내
+   `export` · 반환 타입 검사 · `poi fmt` · `poi lint` · `poi check .` · `elif`→`else if` 같은 오류 안내
+14. **전자·Arduino·보안 연구 (v1.16)** — `electronics`로 직렬 포트·센서·PWM·회로 계산·가상 보드를 사용하고,
+    `security`로 해시·HMAC·엔트로피·보안 헤더와 허가된 로컬/사설망 포트를 점검. 공개망은 이중 안전 해제가 필요
+14. **전자·Arduino·보안 연구 (v1.16)** — `electronics`로 직렬 포트·센서·PWM·회로 계산·가상 보드를 사용하고,
+    `security`로 해시·HMAC·엔트로피·보안 헤더와 허가된 로컬/사설망 포트를 점검. 공개망은 이중 안전 해제가 필요
 
 ## 예제
 
@@ -90,6 +94,10 @@ poi run examples/basics.poi
 - `pyinterop.poi` — 파이썬 모듈/코드 섞어쓰기
 - `errors_demo.poi` — 사람 친화 오류 메시지
 - `gui_hello.poi`, `gui_login.poi` — 선언형 GUI (tkinter)
+- `arduino_serial.poi` — Arduino 직렬 프로토콜·ADC·PWM (가상 보드로 즉시 실행)
+- `security_lab.poi` — 해시·엔트로피·보안 헤더·로컬 포트 방어 연구
+- `arduino_serial.poi` — Arduino 직렬 프로토콜·ADC·PWM (가상 보드로 즉시 실행)
+- `security_lab.poi` — 해시·엔트로피·보안 헤더·로컬 포트 방어 연구
 
 ## 문서
 
@@ -99,6 +107,8 @@ poi run examples/basics.poi
 - [디버깅 (docs/DEBUGGING.md)](docs/DEBUGGING.md)
 - [오류 코드표 (docs/ERRORS.md)](docs/ERRORS.md)
 - [로드맵 (docs/ROADMAP.md)](docs/ROADMAP.md)
+- [전자·Arduino·보안 연구실 (docs/LABS.md)](docs/LABS.md)
+- [전자·Arduino·보안 연구실 (docs/LABS.md)](docs/LABS.md)
 - [변경 이력 (CHANGELOG.md)](CHANGELOG.md)
 
 ## 랜딩 페이지
@@ -109,10 +119,10 @@ poi run examples/basics.poi
 
 ## 상태
 
-**v1.9.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + 디버깅 도구 + 선택적 정적 타입 +
+**v1.16.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + 디버깅 도구 + 선택적 정적 타입 +
 **내장 웹서버/선언형 페이지** + **백엔드·보안 표준 라이브러리** + **`database(...)` SQLite** +
 **POI IDLE** (POI 로 작성) + **언어 안정화**(break/continue·진짜 const·범위·match 식·타입 catch·export·poi fmt/lint) +
-CLI + 회귀 테스트 30개 + 연습문제 300제.
+CLI + 전자·Arduino·방어 보안 연구 모듈 + 회귀 테스트 + 연습문제 300제.
 패키지 매니저, async, 네이티브 빌드, LSP 는 [로드맵](docs/ROADMAP.md) 참고.
 
 ## 내려받기

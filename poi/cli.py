@@ -53,6 +53,10 @@ POI v{ver}  -  Power Of Imagination
   poi version                        버전 출력
   poi help                          이 도움말
 
+연구 표준 모듈:
+  electronics / arduino              직렬 포트·센서·PWM·회로 계산·가상 보드
+  security                           해시·엔트로피·보안 헤더·허가된 사설망 점검
+
 코드 안에서 쓰는 디버깅 함수:
   inspect(x)   값의 타입·구조·길이를 예쁘게 출력 (x 를 그대로 반환)
   watch(x)     inspect 하고 그대로 반환 — 흐름을 안 끊음
@@ -399,6 +403,11 @@ def cmd_doctor(_args: list[str]) -> int:
         rows.append((True, "Pillow  (poi photo)"))
     except Exception:
         rows.append((False, "Pillow 없음 — poi photo 는 'poi add pillow'"))
+    try:
+        import serial  # noqa: F401
+        rows.append((True, "pyserial  (Arduino · 직렬 전자 실험)"))
+    except Exception:
+        rows.append((False, "pyserial 없음 — 실제 보드는 'pip install pyserial' (mock은 가능)"))
     from . import cache as _cache
     ci = _cache.info()
     rows.append((os.access(os.path.dirname(ci["dir"]) or ".", os.W_OK),

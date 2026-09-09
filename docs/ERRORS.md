@@ -54,6 +54,8 @@ POI Error P103
 | P199 | 그밖의 파이썬 예외 (원문 표시) | |
 | P200 | tkinter 없음 | |
 | P201 | 디스플레이 못 엶 | TclError |
+| P370~P374 | Arduino 직렬 연결·센서 응답·회로 계산 오류 | `electronics` |
+| P380~P385 | 보안 연구 입력·대상·점검 범위 오류 | `security` |
 
 ## 타입 검사 (P4xx — `poi check --types` / `poi run --types`)
 

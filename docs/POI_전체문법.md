@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.9.9**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
+> 버전 기준: **POI v1.16.0**. 공식: https://hagora.kr/poi/ · 저장소: https://github.com/siwon2da/POI
 
 ---
 
@@ -351,6 +351,8 @@ show ver
 | `stats` | `mean median mode stdev variance sum min max range` — 모두 `(xs)` |
 | `env` | `get(name, default) set(name,v) has(name) all()` — 안전 모드 차단 |
 | `shell` | `run(cmd, stdin, timeout)` → `{out,err,code,ok}` · `text(cmd)` — 안전 모드 차단 |
+| `electronics` / `arduino` | `ports connect/arduino mock voltage adc ohm series parallel divider sample` — 전자·직렬 연구 |
+| `security` | `hash sha256 file_hash hmac constant_equal entropy password_report analyze_headers port_open scan_ports` — 허가된 방어 연구 |
 
 ### 백엔드 · 보안 (v1.7)
 

@@ -1,0 +1,18 @@
+# Arduino/전자 연구 — 보드 없이 먼저 실행 가능한 예제
+# 실제 보드: examples/arduino/poi_bridge.ino 업로드 후 아래 mock 줄을
+# board = electronics.arduino("COM3", 115200) 로 바꾸세요.
+
+board = electronics.mock()
+board.set_analog(0, 512)
+
+sensor = board.analog_read(0)
+volts = electronics.voltage(sensor, 5.0, 10)
+board.digital_write(13, sensor >= 500)
+board.pwm_write(9, 128)
+
+show "A0 원시값: {sensor}"
+show "A0 전압: {math.round(volts, 3)} V"
+show "LED 상태: {board.digital[13]}"
+show "100Ω + 220Ω 직렬: {electronics.series([100, 220])}Ω"
+
+board.close()

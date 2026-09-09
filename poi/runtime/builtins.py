@@ -467,6 +467,13 @@ def poi_std(name):
         "env": stdmods.env,
         "shell": stdmods.shell,
     }
+    if name in ("electronics", "arduino", "hardware"):
+        from .electronics import electronics as _electronics
+        mapping.update({"electronics": _electronics, "arduino": _electronics,
+                        "hardware": _electronics})
+    if name in ("security", "security_lab"):
+        from .security_lab import security as _security
+        mapping.update({"security": _security, "security_lab": _security})
     if name in ("ui", "gui"):
         from . import gui as _guimod
         mapping["ui"] = _guimod

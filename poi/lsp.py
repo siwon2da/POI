@@ -27,7 +27,8 @@ _STDLIB = [
     "stats", "crypto", "password", "jwt", "path", "url", "html", "cache",
     "bench", "uuid", "database", "env", "shell", "system", "dotenv", "compress",
     "ai", "uikit", "task", "http", "net", "scene3d", "game", "render", "respond",
-    "auth", "on_request", "on_response",
+    "auth", "on_request", "on_response", "electronics", "arduino", "hardware",
+    "security", "security_lab",
 ]
 _HOVER = {
     "fn": "함수 정의.  `fn 이름(인자) { ... }`  또는 한 줄  `fn 이름(인자) => 식`",
@@ -43,6 +44,9 @@ _HOVER = {
     "game": "2D 게임.  `game.window(...)` · `game.sprite(win, {...})` · `game.on_key` · `game.run(win)`",
     "render": "템플릿 렌더.  `render(\"home.html\", { title: \"POI\" })`  — `{{ }}` `{% for %}` `{% if %}`",
     "auth": "서명 쿠키 로그인.  `auth.issue(claims)` · `auth.current(headers)` · `auth.guard(to)`",
+    "electronics": "전자·Arduino. `electronics.ports()` · `.arduino(\"COM3\")` · `.mock()` · `.voltage(raw)`",
+    "arduino": "`electronics` 별칭. 직렬 센서·digital/PWM 연구용.",
+    "security": "방어 보안 연구. 해시·엔트로피·헤더 분석·허가된 로컬/사설망 포트 점검.",
 }
 
 # ── JSON-RPC over stdio ──────────────────────────────────────────────

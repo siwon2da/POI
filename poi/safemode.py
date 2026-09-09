@@ -43,7 +43,9 @@ _FORBIDDEN_STD = {"file", "web", "gui", "ui", "env", "shell",
                   "ai", "uikit", "유아이", "지유아이",
                   # v1.12 — 네트워크 · 백그라운드 스레드
                   "http", "net", "task", "game", "게임",
-                  "요청", "망", "네트워크", "작업", "동시성"}
+                  "요청", "망", "네트워크", "작업", "동시성",
+                  # v1.16 — 직렬 장치와 포트 점검
+                  "electronics", "arduino", "hardware", "security", "security_lab"}
 
 
 def safe_builtins() -> dict:
@@ -79,6 +81,11 @@ def harden_globals(g: dict) -> dict:
     g["ai"] = _Denied("AI(외부 LLM) 호출")
     g["http"] = _Denied("네트워크 요청")
     g["net"] = _Denied("네트워크")
+    g["electronics"] = _Denied("전자 장치/직렬 포트")
+    g["arduino"] = _Denied("Arduino/직렬 포트")
+    g["hardware"] = _Denied("전자 장치/직렬 포트")
+    g["security"] = _Denied("보안 네트워크 연구")
+    g["security_lab"] = _Denied("보안 네트워크 연구")
     g["task"] = _Denied("백그라운드 작업")
     g["game"] = _Denied("게임(GUI)")
     g["render"] = _denied("템플릿 렌더(파일 읽기)")

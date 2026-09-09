@@ -8,6 +8,8 @@ from . import gui as _gui
 from . import stdlib2 as _std2
 from . import stdmods as _std
 from . import webserver as _web
+from .electronics import electronics as _electronics
+from .security_lab import security as _security
 from .boxes import Box, boxify
 from .builtins import (_ERROR_MAKERS, boolean, number, poi_ask, poi_assert,
                        poi_coalesce, poi_error_is, poi_error_value, poi_fmt,
@@ -63,6 +65,12 @@ _RUNTIME = {
     "stats": _std.stats,
     "env": _std.env,
     "shell": _std.shell,
+    # v1.16 — 전자·Arduino / 허가된 방어 보안 연구
+    "electronics": _electronics,
+    "arduino": _electronics,
+    "hardware": _electronics,
+    "security": _security,
+    "security_lab": _security,
     # GUI
     "poi_app": _gui.poi_app,
     "poi_window": _gui.poi_window,

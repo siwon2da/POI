@@ -1,4 +1,4 @@
-# POI v1.9.9 문법 명세
+# POI v1.16.0 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -507,6 +507,8 @@ python {                     # 파이썬 코드 그대로
 | `stats` | `mean median mode stdev variance sum min max range` (모두 `(xs)`) |
 | `env` | `get(name, default) set(name, v) has(name) all()` (안전 모드 차단) |
 | `shell` | `run(cmd, stdin, timeout)` → `{out,err,code,ok}` · `text(cmd)` → stdout (안전 모드 차단) |
+| `electronics` / `arduino` | `ports connect/arduino mock voltage adc ohm series parallel divider sample` (실제 보드는 pyserial) |
+| `security` | `hash sha256 file_hash hmac constant_equal entropy password_report analyze_headers port_open scan_ports` (허가된 환경 전용) |
 
 ### 백엔드 · 보안 (v1.7)
 

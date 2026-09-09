@@ -1,5 +1,15 @@
 # 변경 이력
 
+## v1.16.0 — 2026-09-09  (전자·Arduino·방어 보안 연구)
+
+- **`electronics` / `arduino` / `hardware`** — 직렬 포트 검색·줄 단위 통신·센서 ADC·digital/PWM 제어.
+- **가상 보드** — `electronics.mock()`으로 장치가 없는 수업·CI에서도 전자 코드를 검증.
+- **회로 계산** — ADC↔전압, 옴의 법칙, 직렬·병렬 저항, 전압 분배, 반복 샘플링.
+- **`security`** — SHA-256/파일 해시/HMAC/상수시간 비교, 엔트로피·비밀번호·HTTP 보안 헤더 분석.
+- **안전한 포트 연구** — loopback·사설망 기본 제한, 호출당 256포트·2초·32작업 상한.
+  공개 주소는 `allow_public=true`와 `POI_SECURITY_ALLOW_PUBLIC=1`을 모두 지정해야 함.
+- Arduino 브리지 펌웨어, POI 실습 예제 2개, `docs/LABS.md`, LSP/VS Code 자동완성, 테스트 추가.
+
 ## v1.9.9 — 2026-09-09  (v2.0 앞의 대통합 — 생태계 · 게임 · 3D · 하온 에이전트)
 
 > v1.14 · v1.15 의 내용(WSGI · 프로덕션 · scene3d · htmx-lite · 정적 굽기 등)을 포함해

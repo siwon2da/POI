@@ -1,0 +1,19 @@
+# 방어 보안 연구 — 오프라인 분석 + 로컬호스트 점검
+# 반드시 본인 소유 또는 명시적으로 허가받은 시스템에서만 사용하세요.
+
+message = "POI security lab"
+show "SHA-256: {security.sha256(message)}"
+show "엔트로피: {security.entropy(message)} bits/byte"
+
+report = security.password_report("study-only-example!42")
+show "비밀번호 점수: {report.score}/100"
+
+headers = security.analyze_headers({
+    "Content-Security-Policy": "default-src 'self'",
+    "X-Content-Type-Options": "nosniff"
+})
+show "보안 헤더 점수: {headers.score}/100"
+
+# 기본값은 loopback/사설망만 허용하며 한 번에 최대 256개 포트만 점검합니다.
+ports = security.scan_ports("127.0.0.1", [22, 80, 443, 8080])
+show "열린 로컬 포트: {ports.open}"
