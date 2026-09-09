@@ -333,14 +333,22 @@ python {
     _HAON_Q = queue.Queue()
     try:
         from poi.apps import haon as _haon
+        from poi.apps import haon_gpt as _haon_gpt
         _HAON = _haon.detect()
     except Exception:
         _haon = None
+        _haon_gpt = None
         _HAON = {"mode": "none", "gpu": None}
 
     def _haon_badge():
         if not _haon:
             return "하온 — 사용 불가"
+        if _haon_gpt:
+            st = _haon_gpt.status()
+            if st.get("logged_in") and not st.get("expired"):
+                who = st.get("email") or "ChatGPT 계정"
+                return "하온 · ChatGPT (%s)" % who
+            return "하온 · ChatGPT 로그인 필요"
         m = _HAON.get("mode")
         if m == "groq":
             left, wait = _haon.rate_state()
@@ -371,6 +379,35 @@ python {
         threading.Thread(target=job, daemon=True).start()
 
     _HAON_BUSY = {"v": False}
+    _HAON_LOGIN = {"started": False, "busy": False}
+
+    def _haon_login(force=False):
+        """하온을 처음 열면 ChatGPT OAuth를 즉시 시작한다."""
+        if not _haon_gpt or _HAON_LOGIN["busy"]:
+            return False
+        st = _haon_gpt.status()
+        if st.get("logged_in") and not st.get("expired"):
+            return False
+        if _HAON_LOGIN["started"] and not force:
+            return False
+        # GUI 자체 점검에서는 실제 브라우저/OAuth 서버를 열지 않는다.
+        if os.environ.get("POI_IDLE_SELFTEST") == "1":
+            return False
+        _HAON_LOGIN["started"] = True
+        _HAON_LOGIN["busy"] = True
+
+        def job():
+            try:
+                ok = _haon_gpt.login(
+                    lambda s: _HAON_Q.put(("auth-log", str(s))))
+                _HAON_Q.put(("auth-done", bool(ok)))
+            except Exception as e:
+                _HAON_Q.put(("auth-log", "ChatGPT 로그인 오류: %s" % e))
+                _HAON_Q.put(("auth-done", False))
+            finally:
+                _HAON_LOGIN["busy"] = False
+        threading.Thread(target=job, daemon=True).start()
+        return True
 
     def _haon_install():
         if _HAON_BUSY["v"] or not _haon:
@@ -952,6 +989,17 @@ fn 하온토글()
         W.haon_frame.pack(side: "right", fill: "y")
         S.haon_open = true
         W.haon_in.focus_set()
+        if _haon_login(false)
+            하온시스템("ChatGPT 로그인이 필요해요. 브라우저 로그인 창을 열었습니다.")
+
+fn 하온로그인()
+    if not S.haon_open
+        하온토글()
+    if not _haon_login(true)
+        if _haon_gpt and _haon_gpt.status().get("logged_in") and not _haon_gpt.status().get("expired")
+            하온시스템("ChatGPT에 이미 로그인되어 있어요.")
+        else if _HAON_LOGIN["busy"]
+            하온시스템("ChatGPT 로그인을 기다리고 있어요.")
 
 fn 하온맥락()
     최근 = S.haon_history
@@ -1007,6 +1055,14 @@ fn 하온펌프()
         else if 갈래 == "badge"
             W.haon_sub.config(text: _haon_badge())
             하온답("이제 로컬 LLM 으로 답합니다.")
+        else if 갈래 == "auth-log"
+            하온시스템(항목[1])
+        else if 갈래 == "auth-done"
+            W.haon_sub.config(text: _haon_badge())
+            if 항목[1]
+                하온시스템("ChatGPT 로그인 완료. 이제 하온이 GPT로 답합니다.")
+            else
+                하온시스템("ChatGPT 로그인을 완료하지 못했어요. 'GPT 로그인'으로 다시 시도할 수 있어요.")
         else if 갈래 == "fix"
             본문설정(항목[1])
             S.dirty = true
@@ -1373,10 +1429,14 @@ W.haon_fix = tk.Button(W.haon_actions, text: "🔧 오류 자동수정", command
                        bg: T.bg2, fg: T.ink2, relief: "flat", font: ui,
                        borderwidth: 0, cursor: "hand2")
 W.haon_fix.pack(side: "left", padx: 8)
+W.haon_gpt = tk.Button(W.haon_actions, text: "GPT 로그인", command: 하온로그인,
+                       bg: T.bg2, fg: T.blue, relief: "flat", font: ui,
+                       borderwidth: 0, cursor: "hand2")
+W.haon_gpt.pack(side: "left")
 W.haon_llm = tk.Button(W.haon_actions, text: "⬇ 로컬 LLM", command: 하온설치,
                        bg: T.bg2, fg: T.ink2, relief: "flat", font: ui,
                        borderwidth: 0, cursor: "hand2")
-W.haon_llm.pack(side: "left")
+W.haon_llm.pack(side: "left", padx: 8)
 
 W.haon_inwrap = tk.Frame(W.haon_frame, bg: T.bg)
 W.haon_in = tk.Text(W.haon_inwrap, font: ui, relief: "flat", bg: T.bg, fg: T.ink,

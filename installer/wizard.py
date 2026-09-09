@@ -16,7 +16,6 @@ import tkinter as tk
 from tkinter import ttk
 
 APP = "POI"
-VERSION = "1.2.0"
 BLUE = "#3182F6"
 INK = "#191F28"
 BG = "#FFFFFF"
@@ -26,6 +25,26 @@ SOFT = "#F2F4F6"
 def _res(name: str) -> str:
     base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base, name)
+
+
+def _version() -> str:
+    """코어와 같은 VERSION 파일을 써서 설치 UI 버전이 어긋나지 않게 한다."""
+    candidates = [
+        _res("VERSION"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "VERSION"),
+    ]
+    for path in candidates:
+        try:
+            with open(path, encoding="utf-8") as f:
+                value = f.readline().strip()
+            if value:
+                return value
+        except OSError:
+            pass
+    return "개발판"
+
+
+VERSION = _version()
 
 
 def broadcast_env_change():

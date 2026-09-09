@@ -66,6 +66,7 @@ def main() -> int:
           "--add-binary", f"{idle_exe}{os.pathsep}.",
           "--add-data", f"{os.path.join(ROOT, 'examples')}{os.pathsep}examples",
           "--add-data", f"{os.path.join(ROOT, 'README.md')}{os.pathsep}.",
+          "--add-data", f"{os.path.join(ROOT, 'VERSION')}{os.pathsep}.",
           "--add-data", f"{os.path.join(ROOT, 'LICENSE')}{os.pathsep}."] +
          (["--add-data", f"{ico}{os.pathsep}."] if os.path.exists(ico) else []) +
          [os.path.join(HERE, "wizard.py")])

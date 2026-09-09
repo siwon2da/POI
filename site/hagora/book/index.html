@@ -142,12 +142,12 @@
     <h2 id="c1"><span class="no">1.</span> POI 세우기</h2>
     <p>설치 마법사나 <code>poi.exe</code> 하나면 됩니다. 준비물 없음.</p>
     <pre><span class="c"># Windows — 설치 마법사</span>
-poi-setup-1.16.0.exe
+poi-setup-1.16.1.exe
 
 <span class="c"># 포터블 — poi.exe 하나만</span>
 poi.exe run 파일.poi
 
-<span class="c"># 묶음 — poi-1.16.0.zip 을 풀어서</span>
+<span class="c"># 묶음 — poi-1.16.1.zip 을 풀어서</span>
 poi.exe run examples/basics.poi</pre>
     <p>모두 <code>hagora.kr/poi</code> 에서 받습니다. 새 버전이 나오면 <code>poi run</code> 이
       알려주고, <code>poi update</code> 로 올립니다.</p>
@@ -301,7 +301,7 @@ json.write(<span class="s">"설정.json"</span>, { theme: <span class="s">"dark"
     <h2 id="c13"><span class="no">13.</span> 웹</h2>
     <pre>res = web.get(<span class="s">"https://hagora.kr/poi/VERSION"</span>)
 <span class="k">show</span> res.status          <span class="c"># 200</span>
-<span class="k">show</span> res.text            <span class="c"># 1.16.0 …</span>
+<span class="k">show</span> res.text            <span class="c"># 1.16.1 …</span>
 
 web.post(<span class="s">"https://example.com/login"</span>, { id: <span class="s">"test"</span>, pw: <span class="s">"1234"</span> })</pre>
     <p><code>requests</code> 가 필요하면 <code>use py:requests</code> 로 진짜 requests 를 쓰면 됩니다.</p>
@@ -375,7 +375,7 @@ poi exercises --show 042    <span class="c"># 문제와 정답 보기</span></pr
       <b>하나의 우주</b> — 쉽고, 넓고, 끝까지 가는 언어입니다.</p>
 
     <div class="foot">
-      POI 입문서 · v1.16.0 · <a href="/poi/">소개</a> · <a href="/poi/terms/">이용약관</a> · 한생 (HANSAENG)
+      POI 입문서 · v1.16.1 · <a href="/poi/">소개</a> · <a href="/poi/terms/">이용약관</a> · 한생 (HANSAENG)
     </div>
   </main>
 </div>
