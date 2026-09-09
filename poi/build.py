@@ -15,6 +15,37 @@ import sys
 import tempfile
 
 
+def _write_version_file(work: str, name: str, meta: dict) -> str:
+    """Windows 버전 리소스 파일 (--version-file 용)."""
+    ver = (meta.get("version") or "1.0.0").strip()
+    nums = [int(x) for x in (ver.split(".") + ["0", "0", "0", "0"])[:4]
+            if x.isdigit()][:4] or [1, 0, 0, 0]
+    while len(nums) < 4:
+        nums.append(0)
+    author = (meta.get("author") or "").replace('"', "'")
+    product = (meta.get("product") or name).replace('"', "'")
+    txt = f"""VSVersionInfo(
+  ffi=FixedFileInfo(filevers={tuple(nums)}, prodvers={tuple(nums)},
+    mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)),
+  kids=[
+    StringFileInfo([StringTable('040904B0', [
+      StringStruct('CompanyName', '{author}'),
+      StringStruct('FileDescription', '{product}'),
+      StringStruct('FileVersion', '{ver}'),
+      StringStruct('ProductName', '{product}'),
+      StringStruct('ProductVersion', '{ver}'),
+      StringStruct('OriginalFilename', '{name}.exe'),
+    ])]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])]),
+  ],
+)
+"""
+    p = os.path.join(work, "version_info.txt")
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(txt)
+    return p
+
+
 def _have_pyinstaller() -> bool:
     try:
         import PyInstaller  # noqa: F401
@@ -32,6 +63,7 @@ def build(args: list[str]) -> int:
     obfuscate = False
     lock_pw = None
     ask_pw = False
+    meta = {}   # author / product / version / icon
     it = iter(args)
     for a in it:
         if a in ("-o", "--out", "--name"):
@@ -46,6 +78,11 @@ def build(args: list[str]) -> int:
             lock_pw = a.split("=", 1)[1]
         elif a == "--ask-password":
             ask_pw = True
+        elif a in ("--author", "--product", "--file-version", "--icon"):
+            meta[a.lstrip("-").replace("file-version", "version")] = next(it, "")
+        elif a.startswith(("--author=", "--product=", "--file-version=", "--icon=")):
+            k, v = a[2:].split("=", 1)
+            meta[k.replace("file-version", "version")] = v
         elif a == "--app":
             name = next(it, None)
             if name:
@@ -132,9 +169,15 @@ def build(args: list[str]) -> int:
         cmd[3:3] = ["--collect-submodules", "tkinter"]
     if "PIL" in py_src or "Pillow" in py_src:
         cmd[3:3] = ["--collect-all", "PIL"]
-    ico = os.path.join(repo, "installer", "poi.ico")
-    if os.path.isfile(ico):
+    ico = meta.get("icon") or os.path.join(repo, "installer", "poi.ico")
+    if ico and os.path.isfile(ico):
         cmd[3:3] = ["--icon", ico]
+
+    if os.name == "nt" and (meta.get("author") or meta.get("product") or meta.get("version")):
+        vf = _write_version_file(work, name, meta)
+        cmd[3:3] = ["--version-file", vf]
+        print(f"메타데이터: 제품={meta.get('product') or name} · 작자={meta.get('author') or '-'}"
+              f" · 버전={meta.get('version') or '1.0.0'}")
 
     print(f"빌드 중: {name}  (PyInstaller)  — 처음엔 1~2분 걸립니다")
     rc = subprocess.run(cmd, cwd=work,

@@ -24,6 +24,10 @@ POI v{ver}  -  Power Of Imagination
   poi debug <파일.poi>                 = poi run --debug
   poi test [파일.poi]                  파일 안의 test 블록 실행
   poi build <파일.poi> [-o 이름]        단일 실행파일(.exe) 로 빌드
+       build --obfuscate                난독화해서 빌드 (쉽게 못 읽게)
+       build --lock <비번> [--ask-password]   비밀번호로 잠가서 빌드
+       build --author · --product · --file-version · --icon   exe 메타데이터
+  poi decompile <파일.exe> [-o 폴더]    POI exe 에서 소스 되찾기 (난독화·잠금이면 안 나옴)
   poi idle [파일.poi]                  POI IDLE — POI 로 만든 코드 편집기
   poi photo [사진]                     POI 로 만든 사진 편집기 (Pillow 필요)
   poi add / remove / install          프로젝트 의존성 (.venv + poi.toml + poi.lock)
@@ -775,6 +779,43 @@ def cmd_build(args: list[str]) -> int:
     return build(args)
 
 
+def cmd_decompile(args: list[str]) -> int:
+    """poi decompile <exe> [-o 폴더] — PyInstaller/POI exe 에서 되찾을 수 있는 만큼 복원."""
+    rest = [a for a in args if not a.startswith("-")]
+    if not rest:
+        print("poi decompile <파일.exe> [-o 폴더]", file=sys.stderr)
+        return 1
+    exe = rest[0]
+    out = "decompiled"
+    if "-o" in args:
+        i = args.index("-o")
+        if i + 1 < len(args):
+            out = args[i + 1]
+    if not os.path.isfile(exe):
+        print(f"파일이 없습니다: {exe}", file=sys.stderr)
+        return 1
+    from .protect import decompile_exe
+    try:
+        r = decompile_exe(exe, out)
+    except Exception as e:  # noqa: BLE001
+        print(f"디컴파일 실패: {e}", file=sys.stderr)
+        return 1
+    print(f"엔트리 {r['entries']}개 중 {len(r['files'])}개를 {out}/ 에 풀었어요.")
+    apprec = [f for f in r["files"] if "poi_app" in f.lower() or f.endswith("app.recovered.py")]
+    if apprec:
+        txt = open(apprec[0], encoding="utf-8", errors="replace").read()
+        if txt.lstrip().startswith("import base64") and "_z.decompress" in txt:
+            print("→ 앱 코드는 난독화돼 있어 사람이 읽기 어렵습니다 (핵심 목적 달성).")
+        elif "_unlock" in txt or "_BLOB" in txt:
+            print("→ 앱 코드는 비밀번호로 잠겨 있어 비번 없이는 복원할 수 없습니다.")
+        else:
+            print("→ 앱의 변환된 소스가 그대로 복원됐습니다. 보호하려면"
+                  " poi build --obfuscate 또는 --lock <비번>.")
+    for note in r["notes"][:6]:
+        print("  · " + note)
+    return 0
+
+
 def _build_site(args: list[str]) -> int:
     """poi build --site 앱.poi [-o dist]  —  GET 라우트를 정적 HTML 로 굽는다."""
     import shutil
@@ -1081,7 +1122,7 @@ def main(argv: list[str] | None = None) -> int:
         "rm": lambda a: __import__("poi.pkg", fromlist=["cmd_remove"]).cmd_remove(a),
         "install": lambda a: __import__("poi.pkg", fromlist=["cmd_install"]).cmd_install(a),
         "cache": lambda a: __import__("poi.cache", fromlist=["cmd_cache"]).cmd_cache(a),
-        "doctor": cmd_doctor, "wsgi": cmd_wsgi,
+        "doctor": cmd_doctor, "wsgi": cmd_wsgi, "decompile": cmd_decompile,
         "lsp": lambda a: __import__("poi.lsp", fromlist=["main"]).main(),
         "init": lambda a: _eco("cmd_init")(a),
         "search": lambda a: _eco("cmd_search")(a),

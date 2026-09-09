@@ -193,3 +193,107 @@ def make_locked_entry(code_obj, password: str, embed: bool) -> str:
         blob[i:i + 200] for i in range(0, len(blob), 200)))
     src = src.replace("__EMBED_PW__", pw_line)
     return src
+
+
+# ── 디컴파일 (반대 방향) — exe 에서 되찾을 수 있는 만큼 복원 ──────────
+
+_CA_MAGIC = b"MEI\014\013\012\013\016"
+
+
+def _extract_carchive(path: str) -> dict:
+    """PyInstaller onefile exe → { 이름: 원본 바이트 }."""
+    import struct
+    import zlib
+    data = open(path, "rb").read()
+    pos = data.rfind(_CA_MAGIC)
+    if pos < 0:
+        raise ValueError("PyInstaller CArchive 를 못 찾았어요 (PyInstaller exe 가 아닐 수 있음).")
+    # cookie: magic(8) + pkglen(I) + toc(I) + toclen(I) + pyvers(I) + [pylibname(64)]
+    cookie = data[pos:pos + 88]
+    pkg_len, toc_off, toc_len, _pyv = struct.unpack("!IIII", cookie[8:24])
+    end = pos + len(_CA_MAGIC) + 4 * 4
+    # pylibname 필드(64B) 유무는 버전마다 다름 — TOC 위치를 절대오프셋으로 계산
+    pkg_start = (pos + 24 + (64 if data[end:end + 3].isalpha() else 0)) - pkg_len \
+        if False else (len(data) - pkg_len if pos >= len(data) - pkg_len else pos + 24 - pkg_len)
+    # 더 튼튼하게: 파일 끝에서 pkg_len 만큼 앞이 패키지 시작
+    pkg_start = len(data) - pkg_len
+    toc_start = pkg_start + toc_off
+    toc = data[toc_start:toc_start + toc_len]
+    out = {}
+    i = 0
+    while i + 18 <= len(toc):
+        (elen, dpos, dlen, ulen, flag) = struct.unpack("!IIIIB", toc[i:i + 17])
+        typecode = toc[i + 17:i + 18].decode("latin-1")
+        name = toc[i + 18:i + elen].rstrip(b"\x00").decode("utf-8", "replace")
+        raw = data[pkg_start + dpos: pkg_start + dpos + dlen]
+        if flag & 1:
+            try:
+                raw = zlib.decompress(raw)
+            except Exception:
+                pass
+        out[name or f"_e{i}"] = (typecode, raw)
+        i += elen
+        if elen == 0:
+            break
+    return out
+
+
+def _pyc_to_code(raw: bytes):
+    """PYSOURCE 엔트리(마셜된 코드) 또는 .pyc → code object."""
+    import marshal
+    for skip in (0, 16, 12, 8):
+        try:
+            return marshal.loads(raw[skip:])
+        except Exception:
+            continue
+    raise ValueError("코드 객체를 못 읽었어요.")
+
+
+def _harvest_source(code, found):
+    """co_consts 에서 파이썬 소스처럼 보이는 문자열을 모은다 (재귀)."""
+    import types
+    for c in getattr(code, "co_consts", ()):
+        if isinstance(c, str) and len(c) > 40 and (
+                "def " in c or "poi_show" in c or "make_globals" in c
+                or "exec(" in c or "\n" in c and "=" in c):
+            found.append(c)
+        elif isinstance(c, types.CodeType):
+            _harvest_source(c, found)
+
+
+def decompile_exe(exe_path: str, out_dir: str = "decompiled") -> dict:
+    """POI/PyInstaller exe 에서 되찾을 수 있는 만큼 복원한다."""
+    import os
+    os.makedirs(out_dir, exist_ok=True)
+    entries = _extract_carchive(exe_path)
+    saved, notes = [], []
+    for name, (tc, raw) in entries.items():
+        safe = name.replace("/", "_").replace("\\", "_").replace("..", "_") or "entry"
+        if tc in ("s", "m", "M"):
+            try:
+                code = _pyc_to_code(raw)
+                src = []
+                _harvest_source(code, src)
+                if src:
+                    body = max(src, key=len)
+                    p = os.path.join(out_dir, safe + ".recovered.py")
+                    with open(p, "w", encoding="utf-8", newline="\n") as f:
+                        f.write(body)
+                    saved.append(p)
+                    if "_unlock" in body or "make_locked_entry" in body \
+                            or "_BLOB" in body:
+                        notes.append(f"{name}: 비밀번호 잠금 — 원본 코드는 비번 없이 복원 불가")
+                else:
+                    p = os.path.join(out_dir, safe + ".marshal")
+                    with open(p, "wb") as f:
+                        f.write(raw)
+                    saved.append(p)
+            except Exception as e:  # noqa: BLE001
+                notes.append(f"{name}: {e}")
+        elif tc in ("x", "b") and not name.endswith((".dll", ".pyd", ".so")):
+            p = os.path.join(out_dir, safe)
+            with open(p, "wb") as f:
+                f.write(raw)
+            saved.append(p)
+    return {"out": out_dir, "files": saved, "notes": notes,
+            "entries": len(entries)}

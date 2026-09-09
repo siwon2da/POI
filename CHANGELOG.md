@@ -48,7 +48,12 @@ multipart 업로드(`body.files`), `poi build --site`(정적 굽기), `auth`·�
 - **`--obfuscate`** — 트랜스파일 결과의 이름 치환·문자열 인코딩·marshal 포장 (쉽게 못 읽게).
 - **`--lock <비번>`** — 코드 객체를 비번으로 암호화(PBKDF2 + Fernet, 없으면 stdlib 스트림). 기본은
   비번을 exe 안에 숨겨 넣고, **`--ask-password`** 를 붙이면 실행할 때 물어본다 (비번을 모르면 코드가 안 풀림).
-- IDLE 툴바 **`📦 EXE`** 버튼 — 난독화·콘솔·비밀번호를 골라 빌드.
+- **exe 메타데이터** — `--author` · `--product` · `--file-version` · `--icon`. Windows 는
+  버전 리소스(VSVersionInfo)까지 새긴다 — 속성 창에 회사·제품·버전이 뜬다.
+- **`poi decompile <파일.exe> [-o 폴더]`** — POI 로 만든 exe 에서 소스를 되찾는다(PyInstaller CArchive 파싱
+  → `.pyc` → 소스). 난독화·비번 잠금이 걸린 exe 는 앱 코드가 안 풀리는 걸 눈으로 확인시켜 준다.
+- IDLE 툴바 **`📦 EXE`** 버튼 — 창이 떠서 이름·작자·버전·비밀번호를 적고 "난독화 후 패키징" 체크박스로 고른 뒤
+  **실시간 패키징 로그**를 보며 빌드. 팔레트에 **난독화 미리보기**·**EXE 디컴파일(되찾기)** 도 추가.
 
 **LSP + VS Code 확장 (프리뷰)**
 - **`poi lsp`** — stdio Language Server (표준 라이브러리만). 진단(문법 P-코드·린트·타입) ·
