@@ -364,6 +364,79 @@ def poi_import_pkg(name):
                         "\n poi_modules/ 폴더에 두거나 POI_PATH 를 설정하세요.")
 
 
+# pip 이름이 import 이름과 다른 흔한 것들
+_PIP_NAME = {
+    "cv2": "opencv-python", "PIL": "Pillow", "sklearn": "scikit-learn",
+    "yaml": "PyYAML", "bs4": "beautifulsoup4", "serial": "pyserial",
+    "dotenv": "python-dotenv", "OpenSSL": "pyOpenSSL", "Crypto": "pycryptodome",
+    "jwt": "PyJWT", "dateutil": "python-dateutil", "win32api": "pywin32",
+    "win32con": "pywin32", "win32gui": "pywin32", "docx": "python-docx",
+    "pptx": "python-pptx", "fitz": "PyMuPDF", "psycopg2": "psycopg2-binary",
+}
+_ENSURED_PYMOD: set = set()
+
+
+def _pymod_installed(root: str) -> bool:
+    try:
+        return importlib.util.find_spec(root) is not None
+    except (ImportError, ValueError, ModuleNotFoundError):
+        return False
+
+
+def poi_ensure_pymod(root: str):
+    """`use py:이름` 이 부를 파이썬 모듈이 없으면 물어보고 설치한다.
+
+    - 이미 있으면 아무것도 안 함 (거의 모든 경우 — 오버헤드 없음).
+    - exe 로 묶인 상태(sys.frozen): 빌드 때 자동 포함되므로 없으면 그냥 오류.
+    - POI_AUTO_PIP=1  : 묻지 않고 바로 설치
+    - POI_AUTO_PIP=0  : 묻지 않고 바로 오류
+    - 그 밖에 터미널이면 y/n 로 물어본다.
+    """
+    import os
+    import sys as _sys
+    if not root or root in _ENSURED_PYMOD:
+        return
+    if _pymod_installed(root):
+        _ENSURED_PYMOD.add(root)
+        return
+
+    pkg = _PIP_NAME.get(root, root)
+    frozen = getattr(_sys, "frozen", False)
+    mode = os.environ.get("POI_AUTO_PIP", "").strip().lower()
+
+    if frozen:
+        raise POIError(
+            f"'{root}' 파이썬 라이브러리가 이 실행파일에 없습니다.", "P131",
+            hint=f"이 exe 를 다시 빌드할 때 자동 포함됩니다:  poi build <파일>.poi\n"
+                 f"(임시로는 옆에 '{root}' 를 설치한 파이썬을 두세요.)")
+
+    want = mode in ("1", "y", "yes", "true", "on")
+    if not want and mode not in ("0", "n", "no", "false", "off"):
+        try:
+            if _sys.stdin and _sys.stdin.isatty():
+                ans = input(f"필요한 라이브러리 '{pkg}' 가 없습니다. 지금 설치할까요? [Y/n] ")
+                want = ans.strip().lower() in ("", "y", "yes", "ㅇ")
+        except (EOFError, OSError):
+            want = False
+
+    if not want:
+        raise POIError(
+            f"'{root}' 파이썬 라이브러리가 없습니다.", "P131",
+            hint=f"설치:  pip install {pkg}\n"
+                 f"또는 묻지 않고 자동 설치하려면  POI_AUTO_PIP=1")
+
+    import subprocess
+    print(f"⏳  pip install {pkg} …")
+    rc = subprocess.run([_sys.executable, "-m", "pip", "install", pkg]).returncode
+    importlib.invalidate_caches()
+    if rc != 0 or not _pymod_installed(root):
+        raise POIError(
+            f"'{pkg}' 설치에 실패했습니다.", "P131",
+            hint=f"직접 해보세요:  {_sys.executable} -m pip install {pkg}")
+    _ENSURED_PYMOD.add(root)
+    print(f"✓  {pkg} 준비 완료")
+
+
 def poi_import_pyfile(path):
     spec = importlib.util.spec_from_file_location("_poi_pyfile", path)
     if spec is None or spec.loader is None:

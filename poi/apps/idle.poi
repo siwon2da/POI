@@ -1294,7 +1294,11 @@ W.run_btn = 버튼(W.bar, "▶  실행  (F5)", 실행, true)
 구분선()
 버튼(W.bar, "🐙 하온", 하온토글, false)
 버튼(W.bar, "⌘ 팔레트", 팔레트, false)
+구분선()
 버튼(W.bar, "📦 EXE", EXE빌드, false)
+버튼(W.bar, "🌫 난독화", 난독화보기, false)
+버튼(W.bar, "🔓 디컴파일", 디컴파일, false)
+구분선()
 버튼(W.bar, "◐ 테마", 테마토글, false)
 W.mode_lbl = tk.Label(W.bar, text: "", bg: T.bg2, fg: T.blue, font: ui)
 W.mode_lbl.pack(side: "right", padx: 12)
@@ -1443,7 +1447,19 @@ fn 자체점검()
     show "  send   {W.haon_send.winfo_width()}x{W.haon_send.winfo_height()} map={W.haon_send.winfo_ismapped()}"
     입력높이 = W.haon_in.winfo_height()
     입력너비 = W.haon_in.winfo_width()
-    ok = W.haon_in.winfo_ismapped() and W.haon_send.winfo_ismapped() and 입력높이 >= 40 and 입력너비 >= 150
+    바라벨 = []
+    for 자 in W.bar.winfo_children()
+        if 자.winfo_class() == "Button"
+            바라벨.add(자.cget("text"))
+    난독버튼 = false
+    디컴버튼 = false
+    for 라 in 바라벨
+        if 라.contains("난독화")
+            난독버튼 = true
+        if 라.contains("디컴파일")
+            디컴버튼 = true
+    show "  toolbar 난독화={난독버튼} 디컴파일={디컴버튼}"
+    ok = W.haon_in.winfo_ismapped() and W.haon_send.winfo_ismapped() and 입력높이 >= 40 and 입력너비 >= 150 and 난독버튼 and 디컴버튼
     상태 = "PASS"
     if not ok
         상태 = "FAIL"

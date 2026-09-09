@@ -11,7 +11,8 @@ from . import webserver as _web
 from .boxes import Box, boxify
 from .builtins import (_ERROR_MAKERS, boolean, number, poi_ask, poi_assert,
                        poi_coalesce, poi_error_is, poi_error_value, poi_fmt,
-                       poi_getattr, poi_getattr_safe, poi_import_module,
+                       poi_ensure_pymod, poi_getattr, poi_getattr_safe,
+                       poi_import_module,
                        poi_import_pkg, poi_import_pyfile, poi_make_error, poi_range,
                        poi_print, poi_register_test, poi_run_tests, poi_show,
                        poi_setattr, poi_std, text)
@@ -34,6 +35,7 @@ _RUNTIME = {
     "poi_import_pyfile": poi_import_pyfile,
     "poi_import_module": poi_import_module,
     "poi_import_pkg": poi_import_pkg,
+    "poi_ensure_pymod": poi_ensure_pymod,
     "poi_std": poi_std,
     # 전문 (v1.3)
     "poi_make_error": poi_make_error,

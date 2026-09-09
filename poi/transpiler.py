@@ -246,6 +246,8 @@ class Transpiler:
 
     def _use(self, n):
         if n.use_kind == "py":
+            root = n.target.split(".")[0]
+            self.emit(f"poi_ensure_pymod({root!r})", n.line)
             self.emit(f"import {n.target}" + (f" as {n.alias}" if n.alias else ""), n.line)
         elif n.use_kind == "pyfile":
             self.emit(f"{n.alias} = poi_import_pyfile({n.target!r})", n.line)

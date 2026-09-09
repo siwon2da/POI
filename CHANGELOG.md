@@ -44,6 +44,15 @@ multipart 업로드(`body.files`), `poi build --site`(정적 굽기), `auth`·�
   검증하며 반복 (Claude Code / Codex 처럼). GPT 는 번들된 POI 레퍼런스를 시스템 프롬프트로 받는다.
 - `poi haon fix <파일> [--write]` — 규칙 기반 자동 수정(실제 컴파일러 구동).
 
+**의존성 — 자동 포함 · 자동 설치**
+- **`poi build` 가 `use py:` 라이브러리를 전부 exe 에 통째로 담는다** — 트랜스파일 결과의 import 를
+  스캔해 3rd-party 루트마다 `--collect-all` 을 붙인다. `six` 하나만 쓰든 `numpy` 를 쓰든 exe 옆에
+  아무것도 안 둬도 돈다. 아직 설치 안 된 라이브러리는 빌드 로그에 `pip install …` 로 알려준다.
+- **실행 중 없는 라이브러리는 물어보고 설치** — `use py:cv2` 인데 opencv 가 없으면
+  `필요한 라이브러리 'opencv-python' 가 없습니다. 지금 설치할까요? [Y/n]`. `POI_AUTO_PIP=1` 이면 안 묻고
+  바로, `POI_AUTO_PIP=0` 이면 안 묻고 오류. exe 안에서는(이미 포함되므로) 그냥 명확한 오류.
+  import 이름↔pip 이름 매핑 내장(cv2→opencv-python, PIL→Pillow, sklearn→scikit-learn …).
+
 **EXE 보호 — `poi build`**
 - **`--obfuscate`** — 트랜스파일 결과의 이름 치환·문자열 인코딩·marshal 포장 (쉽게 못 읽게).
 - **`--lock <비번>`** — 코드 객체를 비번으로 암호화(PBKDF2 + Fernet, 없으면 stdlib 스트림). 기본은
@@ -52,8 +61,9 @@ multipart 업로드(`body.files`), `poi build --site`(정적 굽기), `auth`·�
   버전 리소스(VSVersionInfo)까지 새긴다 — 속성 창에 회사·제품·버전이 뜬다.
 - **`poi decompile <파일.exe> [-o 폴더]`** — POI 로 만든 exe 에서 소스를 되찾는다(PyInstaller CArchive 파싱
   → `.pyc` → 소스). 난독화·비번 잠금이 걸린 exe 는 앱 코드가 안 풀리는 걸 눈으로 확인시켜 준다.
-- IDLE 툴바 **`📦 EXE`** 버튼 — 창이 떠서 이름·작자·버전·비밀번호를 적고 "난독화 후 패키징" 체크박스로 고른 뒤
-  **실시간 패키징 로그**를 보며 빌드. 팔레트에 **난독화 미리보기**·**EXE 디컴파일(되찾기)** 도 추가.
+- IDLE 툴바 **`📦 EXE` · `🌫 난독화` · `🔓 디컴파일`** 버튼 — EXE 는 창이 떠서 이름·작자·버전·비밀번호를 적고
+  "난독화 후 패키징" 체크박스로 고른 뒤 **실시간 패키징 로그**를 보며 빌드. 난독화는 현재 파일이 exe 에
+  어떤 모습으로 들어가는지 콘솔에 미리보기. 디컴파일은 exe 를 골라 되찾기 + 보호 여부 판정.
 
 **LSP + VS Code 확장 (프리뷰)**
 - **`poi lsp`** — stdio Language Server (표준 라이브러리만). 진단(문법 P-코드·린트·타입) ·

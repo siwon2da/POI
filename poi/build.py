@@ -46,6 +46,40 @@ def _write_version_file(work: str, name: str, meta: dict) -> str:
     return p
 
 
+_STDLIB_ROOTS = set(getattr(__import__("sys"), "stdlib_module_names", ()))
+
+
+def _third_party_imports(py_src: str) -> list[str]:
+    """트랜스파일된 파이썬에서 외부(3rd-party) import 루트 이름을 뽑는다.
+
+    `use py:numpy as np` → `import numpy as np` 로 낮춰지므로 여기서 다 보인다.
+    표준 라이브러리와 poi 자신은 뺀다 → 남는 건 exe 에 통째로 담아야 하는 것들.
+    """
+    import ast
+    roots: set[str] = set()
+    try:
+        tree = ast.parse(py_src)
+    except SyntaxError:
+        return []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                roots.add(a.name.split(".")[0])
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0 and node.module:
+                roots.add(node.module.split(".")[0])
+    drop = _STDLIB_ROOTS | {"poi", "_poi_app", "__future__"}
+    return sorted(r for r in roots if r and r not in drop and not r.startswith("_"))
+
+
+def _module_present(root: str) -> bool:
+    import importlib.util
+    try:
+        return importlib.util.find_spec(root) is not None
+    except (ImportError, ValueError, ModuleNotFoundError):
+        return False
+
+
 def _have_pyinstaller() -> bool:
     try:
         import PyInstaller  # noqa: F401
@@ -118,6 +152,9 @@ def build(args: list[str]) -> int:
     work = tempfile.mkdtemp(prefix="poi_build_")
     boot = os.path.join(work, "_poi_app.py")
 
+    # 이 앱이 부르는 외부 파이썬 라이브러리 — 난독화 전에 뽑아 통째로 담는다
+    deps = _third_party_imports(py_src)
+
     if lock_pw is not None:
         # 비밀번호 잠금 — 코드 객체를 암호화, 로더만 exe 에
         from .protect import make_locked_entry
@@ -165,10 +202,20 @@ def build(args: list[str]) -> int:
            "--workpath", os.path.join(work, "b"),
            "--specpath", work,
            "--console" if console else "--noconsole", boot]
-    if "tkinter" in py_src:      # GUI 앱 — tkinter 하위 모듈까지 챙긴다
+    if "tkinter" in py_src or "tkinter" in poi_src:   # GUI 앱 — 하위 모듈까지
         cmd[3:3] = ["--collect-submodules", "tkinter"]
-    if "PIL" in py_src or "Pillow" in py_src:
-        cmd[3:3] = ["--collect-all", "PIL"]
+
+    # use py:<라이브러리> 로 부른 것들 — 전부 --collect-all 로 통째 포함
+    for mod in deps:
+        if mod == "tkinter":
+            continue
+        cmd[3:3] = ["--collect-all", mod]
+    if deps:
+        print("포함할 라이브러리: " + ", ".join(deps))
+        missing = [m for m in deps if not _module_present(m)]
+        if missing:
+            print("⚠️  아직 설치 안 된 것: " + ", ".join(missing)
+                  + "  →  pip install " + " ".join(missing))
     ico = meta.get("icon") or os.path.join(repo, "installer", "poi.ico")
     if ico and os.path.isfile(ico):
         cmd[3:3] = ["--icon", ico]
