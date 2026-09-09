@@ -91,6 +91,15 @@ def _have_pyinstaller() -> bool:
 def build(args: list[str]) -> int:
     from .interpreter import compile_source
 
+    if getattr(sys, "frozen", False):
+        print("poi build 는 파이썬이 설치된 환경에서 실행해야 합니다 "
+              "(PyInstaller 로 묶기 때문).\n"
+              "  1) python -m pip install poi-lang pyinstaller\n"
+              "  2) python -m poi build <파일>.poi\n"
+              "설치본만 있다면 소스(zip)를 받아서 그 폴더에서 하세요: "
+              "https://hagora.kr/poi/", file=sys.stderr)
+        return 1
+
     src_path = None
     out_name = None
     console = False
