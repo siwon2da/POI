@@ -1450,7 +1450,28 @@ fn 자체점검()
     show "SELFTEST {상태}"
     W.root.destroy()
 
+fn 자체점검_난독()
+    대상 = system.env("POI_IDLE_OBF_FILE") or "examples/basics.poi"
+    S.file = 대상
+    S.dirty = false
+    난독화보기()
+    W.root.after(4500, _난독결과)
+
+fn _난독결과()
+    본문 = W.out.get("1.0", "end")
+    포장됨 = 본문.contains("import base64") and (본문.contains("_m.loads") or 본문.contains("marshal"))
+    실패없음 = not 본문.contains("난독화 실패")
+    show "  OBF console chars: {len(본문)}"
+    show "  포장됨={포장됨}  실패없음={실패없음}"
+    상태 = "PASS"
+    if not (포장됨 and 실패없음 and len(본문) > 300)
+        상태 = "FAIL"
+    show "OBFTEST {상태}"
+    W.root.destroy()
+
 if system.env("POI_IDLE_SELFTEST") == "1"
     W.root.after(700, 자체점검)
+else if system.env("POI_IDLE_SELFTEST") == "obf"
+    W.root.after(500, 자체점검_난독)
 
 W.root.mainloop()
