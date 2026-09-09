@@ -94,7 +94,7 @@ def main() -> int:
          newline="\n").write(bfrag)
     open(os.path.join(hd, "book", "index.html"), "w", encoding="utf-8",
          newline="\n").write(
-        _wrap(bfrag, "POI 입문서 — 설치부터 GUI·디버깅·파이썬 우주까지.",
+        _wrap(bfrag, "POI 입문서 — 설치부터 GUI·디버깅·외부 라이브러리까지.",
               "https://hagora.kr/poi/book/"))
     done += [("book.html", bfrag), ("hagora/book/index.html", bfrag)]
 
