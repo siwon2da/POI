@@ -801,16 +801,25 @@ def cmd_decompile(args: list[str]) -> int:
         print(f"디컴파일 실패: {e}", file=sys.stderr)
         return 1
     print(f"엔트리 {r['entries']}개 중 {len(r['files'])}개를 {out}/ 에 풀었어요.")
-    apprec = [f for f in r["files"] if "poi_app" in f.lower() or f.endswith("app.recovered.py")]
+    app = [f for f in r["files"]
+           if os.path.basename(f).lower().startswith("_poi_app")
+           or os.path.basename(f).lower().endswith("app.recovered.py")]
+    apprec = [f for f in app if f.lower().endswith(".py")]
     if apprec:
         txt = open(apprec[0], encoding="utf-8", errors="replace").read()
         if txt.lstrip().startswith("import base64") and "_z.decompress" in txt:
             print("→ 앱 코드는 난독화돼 있어 사람이 읽기 어렵습니다 (핵심 목적 달성).")
-        elif "_unlock" in txt or "_BLOB" in txt:
+        elif "_unlock" in txt or "_locked_entry" in txt or "make_locked_entry" in txt:
             print("→ 앱 코드는 비밀번호로 잠겨 있어 비번 없이는 복원할 수 없습니다.")
         else:
             print("→ 앱의 변환된 소스가 그대로 복원됐습니다. 보호하려면"
                   " poi build --obfuscate 또는 --lock <비번>.")
+    elif app:
+        print("→ 앱 진입점은 " + os.path.basename(app[0]) + " 로만 나왔습니다 (소스로 못 되돌림)."
+              " --lock 으로 만든 exe 는 비번 없이 앱 코드가 안 풀립니다.")
+    else:
+        print("→ 이 exe 에는 POI 앱 진입 모듈이 없습니다 (일반 PyInstaller 번들)."
+              " 위 폴더에서 복원된 .py 를 확인하세요.")
     for note in r["notes"][:6]:
         print("  · " + note)
     return 0

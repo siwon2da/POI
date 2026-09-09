@@ -218,16 +218,23 @@ python {
                 r = decompile_exe(exe_path, out)
                 _Q.put("엔트리 %d개 중 %d개를 복원 → %s\n" %
                        (r["entries"], len(r["files"]), out))
-                app = [f for f in r["files"] if "poi_app" in f.lower()]
-                if app:
-                    t = open(app[0], encoding="utf-8", errors="replace").read()
+                app = [f for f in r["files"]
+                       if os.path.basename(f).lower().startswith("_poi_app")
+                       or os.path.basename(f).lower().endswith("app.recovered.py")]
+                apppy = [f for f in app if f.lower().endswith(".py")]
+                if apppy:
+                    t = open(apppy[0], encoding="utf-8", errors="replace").read()
                     if t.lstrip().startswith("import base64") and "_z.decompress" in t:
                         _Q.put("→ 앱 코드가 난독화돼 있어 읽기 어렵습니다 (보호 성공).\n")
-                    elif "_unlock" in t or "_BLOB" in t:
+                    elif "_unlock" in t or "make_locked_entry" in t:
                         _Q.put("→ 앱 코드가 비밀번호로 잠겨 있어 비번 없이는 못 엽니다.\n")
                     else:
                         _Q.put("→ 변환된 소스가 그대로 복원됐습니다.\n"
                                "   보호하려면 EXE 빌드에서 '난독화' 나 '비밀번호' 를 켜세요.\n")
+                elif app:
+                    _Q.put("→ 앱 진입점이 %s 로만 나왔습니다 — 비번 잠금 exe 는 "
+                           "비번 없이 앱 코드가 안 풀립니다 (보호 성공).\n"
+                           % os.path.basename(app[0]))
                 for n in r["notes"][:6]:
                     _Q.put("  · %s\n" % n)
             except Exception as e:

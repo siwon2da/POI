@@ -60,8 +60,15 @@ def _read_msg():
             k, v = line.split(":", 1)
             headers[k.strip().lower()] = v.strip()
     n = int(headers.get("content-length", 0))
+    if n <= 0:
+        return None
     body = sys.stdin.buffer.read(n)
-    return json.loads(body.decode("utf-8"))
+    if not body:
+        return None
+    try:
+        return json.loads(body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return None
 
 
 def _send(obj):
