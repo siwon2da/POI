@@ -64,9 +64,20 @@ python {
 
     def _kill_worker():
         tid = _worker.get("tid")
-        if tid:
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(
-                ctypes.c_long(tid), ctypes.py_object(KeyboardInterrupt))
+        if not tid:
+            return False
+        api = ctypes.pythonapi.PyThreadState_SetAsyncExc
+        changed = api(ctypes.c_long(tid), ctypes.py_object(KeyboardInterrupt))
+        if changed == 1:
+            return True
+        # CPython 문서 규칙: 둘 이상의 스레드가 바뀌었다면 즉시 되돌린다.
+        # 그렇지 않으면 IDLE 프로세스 전체가 불안정해질 수 있다.
+        if changed > 1:
+            api(ctypes.c_long(tid), None)
+            _Q.put("\n[중단 요청을 안전하게 취소했습니다 — IDLE은 계속 실행됩니다]\n")
+        else:
+            _worker["tid"] = None
+        return False
 
     def _drain():
         out = []
