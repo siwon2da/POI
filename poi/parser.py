@@ -372,15 +372,23 @@ class Parser:
         name = self.expect("IDENT", what="함수 이름").value
         self.expect("OP", "(")
         params = []
+        saw_default = False
         self.skip_nl()
         while not self.check("OP", ")"):
-            pname = self.expect("IDENT", what="매개변수 이름").value
+            param_token = self.expect("IDENT", what="매개변수 이름")
+            pname = param_token.value
             ptype = None
             if self.match("OP", ":"):
                 ptype = self.read_type()
             default = None
             if self.match("OP", "="):
                 default = self.expression()
+                saw_default = True
+            elif saw_default:
+                raise POIError(
+                    f"기본값이 있는 인자 뒤에는 필수 인자 '{pname}' 을 둘 수 없습니다.",
+                    "P023", param_token.line, param_token.col,
+                    hint=f"'{pname}' 에도 기본값을 주거나, 기본값이 있는 인자보다 앞으로 옮기세요.")
             params.append((pname, default, ptype))
             self.skip_nl()
             if not self.match("OP", ","):

@@ -6,7 +6,7 @@
 ; Python 3.10+ 이 있어야 하며, 없으면 안내 후 python.org 를 연다.
 
 #define AppName "POI"
-#define AppVer  "1.16.6"  ; 루트 VERSION과 동일하게 유지
+#define AppVer  "1.16.7"  ; 루트 VERSION과 동일하게 유지
 #define AppPub  "siwon2da"
 #define AppURL  "https://github.com/siwon2da/POI"
 #define AppSite "https://hagora.kr/poi/"
