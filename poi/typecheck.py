@@ -281,6 +281,17 @@ class Checker:
             self._set(n.target.id, dt or vt)
 
     def _fn(self, n):
+        for param in n.params:
+            pname, default = param[0], param[1]
+            ptype = param[2] if len(param) > 2 else None
+            if default is not None and ptype:
+                actual = self.infer(default)
+                if not compat(actual, ptype):
+                    self._err("P412",
+                              f"'{n.name}' 의 '{pname}' 기본값은 {_base(ptype)} 여야 하는데 "
+                              f"{_base(actual)} 입니다.",
+                              default.line or n.line,
+                              "기본값을 선언한 타입에 맞추거나 타입 표기를 고치세요.")
         self.scopes.append({})
         for p in n.params:
             pname = p[0]

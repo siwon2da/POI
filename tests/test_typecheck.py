@@ -63,6 +63,14 @@ class FunctionCallTypeTests(unittest.TestCase):
         source = 'fn greet(name: Text) { show name }\ngreet("POI", name: "again")'
         self.assertIn("P411", _codes(source))
 
+    def test_default_value_must_match_parameter_type(self):
+        source = 'fn greet(count: Int = "once") { show count }'
+        self.assertIn("P412", _codes(source))
+
+    def test_nullable_default_accepts_null(self):
+        source = 'fn find(limit: Int? = null) { show limit }'
+        self.assertNotIn("P412", _codes(source))
+
 
 if __name__ == "__main__":
     unittest.main()

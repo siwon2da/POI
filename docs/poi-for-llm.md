@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.16.5**. 공식: https://hagora.kr/poi/
+> 버전 기준: **POI v1.16.6**. 공식: https://hagora.kr/poi/
 
 ---
 
@@ -313,6 +313,7 @@ test "덧셈" {
 `poi check --types` 는 assert 조건이 `Bool`, 실패 설명이 `Text`인지 검사한다(P406/P407).
 `if`, `while`, 삼항식의 조건도 `Bool`인지 검사한다(P408).
 사용자 함수 호출은 필수 인자 누락(P409), 잘못된 이름 인자(P410), 중복 인자(P411)와 이름 인자의 타입(P403)도 검사한다.
+매개변수 기본값도 선언 타입과 맞는지 검사한다(P412). nullable 타입(`Int?` 등)은 `null` 기본값을 허용한다.
 
 ---
 
