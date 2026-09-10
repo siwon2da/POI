@@ -29,7 +29,7 @@ POI v{ver}  -  Power Of Imagination
        build --lock <비번> [--ask-password]   비밀번호로 잠가서 빌드
        build --author · --product · --file-version · --icon   exe 메타데이터
   poi verify <파일.exe>                 전용 EXE 형식·코드·SHA-256 무결성 검사
-  poi decompile <파일.exe> [-o 폴더]    POI exe 에서 소스 되찾기 (난독화·잠금이면 안 나옴)
+  poi decompile <파일.exe> [-o 폴더]    EXE 검사·복구 가능한 코드/정보 추출
   poi idle [파일.poi]                  POI IDLE — POI 로 만든 코드 편집기
   poi photo [사진]                     POI 로 만든 사진 편집기 (Pillow 필요)
   poi add / remove / install          프로젝트 의존성 (.venv + poi.toml + poi.lock)
@@ -841,6 +841,11 @@ def cmd_decompile(args: list[str]) -> int:
         print(f"디컴파일 실패: {e}", file=sys.stderr)
         return 1
     print(f"엔트리 {r['entries']}개 중 {len(r['files'])}개를 {out}/ 에 풀었어요.")
+    if r.get("native"):
+        print(f"→ POI 전용 EXE입니다. 보호 방식: {r.get('mode', '-')}")
+        for note in r["notes"][:6]:
+            print("  · " + note)
+        return 0
     app = [f for f in r["files"]
            if os.path.basename(f).lower().startswith("_poi_app")
            or os.path.basename(f).lower().endswith("app.recovered.py")]

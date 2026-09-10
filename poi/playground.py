@@ -25,6 +25,16 @@ OUT_CAP = 64_000
 _sema = threading.Semaphore(4)  # 동시 실행 제한
 
 
+def _isolated_env() -> dict:
+    """자식에 비밀·토큰을 넘기지 않는 최소 환경."""
+    keep = ("SystemRoot", "WINDIR", "TEMP", "TMP", "PATH", "PATHEXT",
+            "COMSPEC", "LANG", "LC_ALL")
+    env = {k: os.environ[k] for k in keep if k in os.environ}
+    env.update({"POI_NO_UPDATE_CHECK": "1", "POI_NO_BANNER": "1",
+                "POI_SAFE_MODE": "1", "PYTHONIOENCODING": "utf-8"})
+    return env
+
+
 def _run_snippet(code: str, stdin: str = "") -> dict:
     if len(code) > MAX_CODE:
         return {"ok": False, "stdout": "", "stderr": "코드가 너무 깁니다.", "exit": 1}
@@ -39,8 +49,7 @@ def _run_snippet(code: str, stdin: str = "") -> dict:
                  "--no-banner", "--time", str(RUN_TIMEOUT - 1), path],
                 input=stdin, capture_output=True,
                 encoding="utf-8", errors="replace", timeout=RUN_TIMEOUT,
-                cwd=d, env={**os.environ, "POI_NO_UPDATE_CHECK": "1",
-                            "POI_NO_BANNER": "1", "PYTHONIOENCODING": "utf-8"},
+                cwd=d, env=_isolated_env(),
             )
             out = proc.stdout or ""
             err = proc.stderr or ""
@@ -72,16 +81,11 @@ def make_handler(root: str):
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(body)
 
         def do_OPTIONS(self):
-            self.send_response(204)
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            self.end_headers()
+            self._send(403, b'{"error":"cross-origin disabled"}')
 
         def do_POST(self):
             if self.path.split("?", 1)[0].rstrip("/") not in ("/run", "/run.php"):

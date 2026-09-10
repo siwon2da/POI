@@ -4,14 +4,28 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "poi-lang"
-version = "1.17.0"
+version = "1.18.0"
 description = "POI - Power Of Imagination. 우리가 만든 언어."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://hagora.kr/poi/"
+Repository = "https://github.com/siwon2da/POI"
+Documentation = "https://hagora.kr/poi/book/"
+
 [project.scripts]
 poi = "poi.cli:main"
 
-[tool.setuptools]
-packages = ["poi", "poi.runtime"]
+[tool.setuptools.packages.find]
+include = ["poi*"]
+
+[tool.setuptools.package-data]
+poi = ["apps/*.poi"]

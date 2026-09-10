@@ -196,7 +196,11 @@ def cmd_remove(args: list[str]) -> int:
     if not names:
         print("제거할 패키지를 알려주세요:  poi remove numpy", file=sys.stderr)
         return 1
-    _pip(root, ["uninstall", "-y", *names])
+    rc = _pip(root, ["uninstall", "-y", *names])
+    if rc != 0:
+        print("pip 제거에 실패해 poi.toml/poi.lock을 바꾸지 않았습니다.",
+              file=sys.stderr)
+        return rc
     deps = _read_deps(root)
     for n in names:
         deps.pop(n.split("==")[0], None)
@@ -211,6 +215,10 @@ def cmd_install(args: list[str]) -> int:
     frozen = "--frozen" in args or "--locked" in args
     lock = _read_lock(root)
     deps = _read_deps(root)
+    if frozen and not lock:
+        print("--frozen에는 poi.lock이 필요합니다. 먼저 poi add 또는 poi install을 실행하세요.",
+              file=sys.stderr)
+        return 1
     if lock and (frozen or not deps):
         spec = [f"{k}=={v}" for k, v in lock.items()]
         print(f"poi.lock 에서 정확한 버전 {len(spec)}개 설치")

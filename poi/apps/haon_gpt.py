@@ -244,9 +244,10 @@ POI 코드로 직접 만든다 (Claude Code / Codex 처럼).
 actions:
   {"tool":"write","path":"src/main.poi","content":"<파일 전체>"}
   {"tool":"read","path":"src/main.poi"}
-  {"tool":"list","path":"."}
-  {"tool":"check","path":"src/main.poi"}   # poi 문법 검사
-  {"tool":"run","path":"src/main.poi"}     # 잠깐 실행(웹/GUI는 자동 스킵)
+  {"tool":"list","path":"."}               # 하위 폴더까지
+  {"tool":"check","path":"."}              # 프로젝트 전체 검사
+  {"tool":"run","path":"."}                # src/main.poi 또는 main.poi 실행
+  {"tool":"read","path":"src/lib.poi"}    # 여러 POI 파일을 함께 읽기
 
 끝나면 {"thought":"...","actions":[],"done":true,"message":"완료 요약"}.
 
@@ -258,9 +259,50 @@ print→show, f"{x}"→"{x}", d["k"]→d.k. 변수는 x = 1 (let/var 없음). �
 
 def _safe(folder, p):
     full = os.path.normpath(os.path.join(folder, p or "."))
-    if not full.startswith(os.path.normpath(folder)):
+    if os.path.commonpath((os.path.abspath(folder), os.path.abspath(full))) != os.path.abspath(folder):
         raise ValueError("폴더 밖 경로")
     return full
+
+
+def _poi_files(folder):
+    found = []
+    for base, dirs, files in os.walk(folder):
+        dirs[:] = [d for d in dirs if d not in (".git", ".venv", "__pycache__", "dist", "build")]
+        for name in sorted(files):
+            if name.endswith(".poi"):
+                found.append(os.path.join(base, name))
+    return sorted(found)
+
+
+def _project_check(folder):
+    from ..interpreter import compile_source
+    files = _poi_files(folder)
+    if not files:
+        return "ERROR: .poi 파일이 없습니다."
+    errors = []
+    for fp in files:
+        try:
+            with open(fp, encoding="utf-8") as f:
+                src = f.read()
+            compile_source(src, os.path.relpath(fp, folder))
+            for target in re.findall(r'use\s+["\'](\.[^"\']+\.poi)["\']', src):
+                if not os.path.isfile(os.path.normpath(os.path.join(os.path.dirname(fp), target))):
+                    errors.append(f"{os.path.relpath(fp, folder)}: 모듈 없음 {target}")
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{os.path.relpath(fp, folder)}: {getattr(e, 'message', str(e))}")
+    return ("OK: POI 파일 %d개와 상대 모듈 경로를 검사했습니다." % len(files)
+            if not errors else "ERROR:\n" + "\n".join(errors))
+
+
+def _project_entry(folder, requested):
+    if os.path.isdir(requested):
+        for candidate in (os.path.join(requested, "src", "main.poi"),
+                          os.path.join(requested, "main.poi"),
+                          os.path.join(requested, "app.poi")):
+            if os.path.isfile(candidate):
+                return candidate
+        return ""
+    return requested
 
 
 def _run_tool(folder, act, log):
@@ -276,9 +318,17 @@ def _run_tool(folder, act, log):
         if t == "read":
             return open(_safe(folder, p), encoding="utf-8").read()[:8000]
         if t == "list":
-            return "\n".join(sorted(os.listdir(_safe(folder, p)))) or "(빈 폴더)"
+            root = _safe(folder, p)
+            rows = [os.path.relpath(fp, folder).replace("\\", "/")
+                    for fp in _poi_files(root)]
+            return "\n".join(rows) or "(POI 파일 없음)"
         if t in ("check", "run"):
-            fp = _safe(folder, p)
+            requested = _safe(folder, p)
+            if t == "check" and os.path.isdir(requested):
+                return _project_check(requested)
+            fp = _project_entry(folder, requested)
+            if not fp or not os.path.isfile(fp):
+                return "ERROR: 실행 진입 파일을 찾지 못했습니다 (src/main.poi/main.poi/app.poi)."
             src = open(fp, encoding="utf-8").read()
             from ..interpreter import compile_source, run_source
             if t == "check":
@@ -291,7 +341,8 @@ def _run_tool(folder, act, log):
                 return "SKIP: 웹/GUI 코드라 실행 생략 (check 로 검증됨)"
             buf = _io.StringIO()
             with _ctx.redirect_stdout(buf), _ctx.redirect_stderr(buf):
-                rc = run_source(src, os.path.basename(fp), safe=True, time_limit=4)
+                rc = run_source(src, os.path.basename(fp), safe=True, time_limit=4,
+                                base_dir=os.path.dirname(fp))
             return f"exit={rc}\n{buf.getvalue()[:4000]}"
     except Exception as e:  # noqa: BLE001
         return "ERROR: " + str(e)
@@ -356,7 +407,7 @@ def agent(task: str, folder: str, log=print, max_rounds: int = 14, info=None):
     msgs = [{"role": "system", "content": _AGENT_SYS},
             {"role": "user",
              "content": f"폴더: {folder}\n요청: {task}\n"
-             f"현재 파일: {', '.join(sorted(os.listdir(folder))) or '(비어있음)'}"}]
+             f"현재 POI 프로젝트 파일:\n{chr(10).join(os.path.relpath(p, folder) for p in _poi_files(folder)) or '(비어있음)'}"}]
     seen = []
     for rnd in range(1, max_rounds + 1):
         raw = _llm(msgs, info)

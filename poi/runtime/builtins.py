@@ -277,21 +277,28 @@ def poi_run_tests() -> int:
     return 1 if bad else 0
 
 
-def poi_import_module(path):
+def poi_import_module(path, _safe=False, _base=None):
     """use \"./다른파일.poi\"  →  그 파일의 함수·변수를 담은 객체."""
     import os
     import sys as _sys
     from ..interpreter import compile_source
 
     frame = _sys._getframe(1)
-    base = frame.f_globals.get("__poi_dir__") or os.getcwd()
+    base = _base or frame.f_globals.get("__poi_dir__") or os.getcwd()
+    if not isinstance(path, str) or not path.endswith(".poi") or os.path.isabs(path):
+        raise POIError("POI 모듈은 상대 .poi 파일만 불러올 수 있습니다.", "P302")
     full = os.path.normpath(os.path.join(base, path))
+    try:
+        if os.path.commonpath([os.path.abspath(base), os.path.abspath(full)]) != os.path.abspath(base):
+            raise ValueError
+    except ValueError:
+        raise POIError("POI 모듈 경로가 프로젝트 폴더 밖을 가리킵니다.", "P302")
     if not os.path.isfile(full):
         raise POIError(f"POI 모듈을 찾을 수 없습니다: {path}", "P302",
                        hint=f"찾은 경로: {full}")
     with open(full, encoding="utf-8") as f:
         src = f.read()
-    py, linemap, cname = compile_source(src, os.path.basename(full))
+    py, linemap, cname = compile_source(src, os.path.basename(full), safe=_safe)
 
     from . import make_globals
     g2 = make_globals()
@@ -301,6 +308,10 @@ def poi_import_module(path):
     g2["__poi_dir__"] = os.path.dirname(full)
     g2["__poi_source__"] = src
     g2["__poi_linemap__"] = linemap
+    g2["__poi_safe__"] = _safe
+    if _safe:
+        from ..safemode import harden_globals
+        harden_globals(g2)
     exec(compile(py, cname, "exec"), g2)  # noqa: S102
     exports = g2.get("__poi_exports__")
     if exports:  # export 를 하나라도 쓴 파일 → 명시된 것만 공개
@@ -317,13 +328,13 @@ def poi_range(a, b, inclusive=True):
     return list(range(a, max(a, stop)))
 
 
-def _load_poi_file(full):
+def _load_poi_file(full, _safe=False):
     import os
     from ..interpreter import compile_source
     from . import make_globals
     with open(full, encoding="utf-8") as f:
         src = f.read()
-    py, linemap, cname = compile_source(src, os.path.basename(full))
+    py, linemap, cname = compile_source(src, os.path.basename(full), safe=_safe)
     g2 = make_globals()
     base_keys = set(g2)
     g2["__name__"] = "__poi_module__"
@@ -331,6 +342,10 @@ def _load_poi_file(full):
     g2["__poi_dir__"] = os.path.dirname(full)
     g2["__poi_source__"] = src
     g2["__poi_linemap__"] = linemap
+    g2["__poi_safe__"] = _safe
+    if _safe:
+        from ..safemode import harden_globals
+        harden_globals(g2)
     exec(compile(py, cname, "exec"), g2)  # noqa: S102
     exports = g2.get("__poi_exports__")
     if exports:

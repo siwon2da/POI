@@ -218,6 +218,12 @@ python {
                 r = decompile_exe(exe_path, out)
                 _Q.put("엔트리 %d개 중 %d개를 복원 → %s\n" %
                        (r["entries"], len(r["files"]), out))
+                if r.get("native"):
+                    _Q.put("→ POI 전용 EXE 검사 완료 · 보호 방식: %s\n" % r.get("mode", "-"))
+                    for n in r["notes"][:6]:
+                        _Q.put("  · %s\n" % n)
+                    _Q.put("<<<idle-done>>>")
+                    return
                 app = [f for f in r["files"]
                        if os.path.basename(f).lower().startswith("_poi_app")
                        or os.path.basename(f).lower().endswith("app.recovered.py")]
@@ -898,11 +904,11 @@ fn 난독화보기()
     W.root.after(60, 펌프)
 
 fn 디컴파일()
-    경로 = fd.askopenfilename(title: "디컴파일할 exe", filetypes: [["실행파일", "*.exe"], ["모든 파일", "*.*"]])
+    경로 = fd.askopenfilename(title: "검사·복구할 exe", filetypes: [["실행파일", "*.exe"], ["모든 파일", "*.*"]])
     if not 경로
         return
     콘솔지우기()
-    로그("🔓  " + path.base(경로) + " 디컴파일 중…")
+    로그("🔎  " + path.base(경로) + " 검사·복구 중…")
     로그("────────────────────────────────────────")
     _decompile_bg(경로)
     S.running = true
@@ -1093,7 +1099,7 @@ fn 팔레트()
         ["터미널에서 실행", 터미널실행], ["웹 폴더 열기", 웹폴더],
         ["EXE 로 빌드 (이름·작자·난독화·비번)", EXE빌드],
         ["난독화 미리보기", 난독화보기],
-        ["EXE 디컴파일 (되찾기)", 디컴파일],
+        ["EXE 검사·복구", 디컴파일],
         ["예제 코드 넣기", 예제넣기],
         ["하온 채팅 열기 / 닫기", 하온토글],
         ["하온: 이 파일 오류 자동수정", 하온고치기],
@@ -1353,7 +1359,7 @@ W.run_btn = 버튼(W.bar, "▶  실행  (F5)", 실행, true)
 구분선()
 버튼(W.bar, "📦 EXE", EXE빌드, false)
 버튼(W.bar, "🌫 난독화", 난독화보기, false)
-버튼(W.bar, "🔓 디컴파일", 디컴파일, false)
+버튼(W.bar, "🔎 EXE 검사", 디컴파일, false)
 구분선()
 버튼(W.bar, "◐ 테마", 테마토글, false)
 W.mode_lbl = tk.Label(W.bar, text: "", bg: T.bg2, fg: T.blue, font: ui)

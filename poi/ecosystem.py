@@ -9,10 +9,14 @@
 from __future__ import annotations
 
 import io
+import hashlib
+import hmac
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 import urllib.request
 import zipfile
 
@@ -21,6 +25,10 @@ from . import __version__
 INDEX_URL = os.environ.get(
     "POI_REGISTRY", "https://hagora.kr/poi/registry/index.json")
 _UA = {"User-Agent": f"POI/{__version__}"}
+_MAX_DOWNLOAD = 16 * 1024 * 1024
+_MAX_EXTRACTED = 64 * 1024 * 1024
+_MAX_MEMBER = 16 * 1024 * 1024
+_MAX_FILES = 512
 
 
 # ── 레지스트리 ─────────────────────────────────────────────────────────
@@ -53,50 +61,137 @@ def cmd_search(args: list[str]) -> int:
 
 def registry_add(name: str, root: str = ".") -> bool:
     """인덱스에 있으면 poi_modules/<name>/ 로 받아 온다. 성공하면 True."""
+    if not re.fullmatch(r"[\w가-힣.-]+", name) or name in (".", ".."):
+        print("  안전하지 않은 패키지 이름입니다.", file=sys.stderr)
+        return False
     pkgs = fetch_index()
     meta = pkgs.get(name)
     if not meta:
         return False
     url = meta.get("url", "")
+    expected_hash = str(meta.get("sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_hash):
+        print("  설치 거부: 레지스트리 항목에 유효한 sha256이 없습니다.", file=sys.stderr)
+        return False
     dest = os.path.join(root, "poi_modules", name)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     print(f"  받는 중: {name} {meta.get('version','')}  ({url})")
     try:
         req = urllib.request.Request(url, headers=_UA)
         with urllib.request.urlopen(req, timeout=30) as r:
-            data = r.read()
+            final_url = r.geturl()
+            if not final_url.lower().startswith("https://"):
+                raise ValueError("HTTPS 다운로드만 허용합니다.")
+            declared = int(r.headers.get("Content-Length") or 0)
+            if declared > _MAX_DOWNLOAD:
+                raise ValueError("패키지가 다운로드 제한(16MB)을 넘습니다.")
+            data = r.read(_MAX_DOWNLOAD + 1)
+            if len(data) > _MAX_DOWNLOAD:
+                raise ValueError("패키지가 다운로드 제한(16MB)을 넘습니다.")
     except Exception as e:  # noqa: BLE001
         print(f"  내려받기 실패: {e}", file=sys.stderr)
         return False
-    import shutil
-    if os.path.isdir(dest):
-        shutil.rmtree(dest)
-    os.makedirs(dest, exist_ok=True)
-    if data[:2] == b"PK":
-        with zipfile.ZipFile(io.BytesIO(data)) as z:
-            names = z.namelist()
-            root_prefix = os.path.commonprefix([n for n in names if "/" in n]) \
-                if any("/" in n for n in names) else ""
-            for n in names:
-                if n.endswith("/"):
-                    continue
-                rel = n[len(root_prefix):] if root_prefix and n.startswith(root_prefix) else n
-                if not rel:
-                    continue
-                tgt = os.path.join(dest, rel)
-                os.makedirs(os.path.dirname(tgt) or dest, exist_ok=True)
-                with open(tgt, "wb") as f:
-                    f.write(z.read(n))
-    elif b"\x1f\x8b" == data[:2] or url.endswith((".tar.gz", ".tgz")):
-        import tarfile
-        with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as t:
-            t.extractall(dest, filter="data")
-    else:
-        with open(os.path.join(dest, name + ".poi"), "wb") as f:
-            f.write(data)
+    actual_hash = hashlib.sha256(data).hexdigest()
+    if not hmac.compare_digest(actual_hash, expected_hash):
+        print("  설치 거부: SHA-256이 레지스트리 정보와 다릅니다.", file=sys.stderr)
+        return False
+    parent = os.path.dirname(dest)
+    stage = tempfile.mkdtemp(prefix=f".{name}-", dir=parent)
+    backup = ""
+    try:
+        _extract_package(data, url, stage, name)
+        if os.path.isdir(dest):
+            backup = tempfile.mkdtemp(prefix=f".{name}-old-", dir=parent)
+            os.rmdir(backup)
+            os.replace(dest, backup)
+        os.replace(stage, dest)
+        stage = ""
+        if backup:
+            shutil.rmtree(backup)
+    except Exception as e:  # noqa: BLE001
+        if stage:
+            shutil.rmtree(stage, ignore_errors=True)
+        if backup and not os.path.exists(dest):
+            os.replace(backup, dest)
+        print(f"  설치 거부: {e}", file=sys.stderr)
+        return False
     _record_pkg(root, name, meta.get("version", "*"))
     print(f"  설치됨:  poi_modules/{name}/   →  use pkg:{name}")
     return True
+
+
+def _safe_target(root: str, rel: str) -> str:
+    rel = rel.replace("\\", "/")
+    if not rel or rel.startswith("/") or re.match(r"^[A-Za-z]:", rel):
+        raise ValueError("절대 경로 항목이 들어 있습니다.")
+    target = os.path.abspath(os.path.join(root, *rel.split("/")))
+    base = os.path.abspath(root)
+    if os.path.commonpath((base, target)) != base:
+        raise ValueError("패키지 경로가 설치 폴더 밖으로 나갑니다.")
+    return target
+
+
+def _strip_single_root(names: list[str]) -> list[tuple[str, str]]:
+    files = [n.replace("\\", "/") for n in names if not n.endswith("/")]
+    first = {n.split("/", 1)[0] for n in files if "/" in n}
+    strip = next(iter(first)) + "/" if len(first) == 1 and all("/" in n for n in files) else ""
+    return [(n, n[len(strip):] if strip and n.startswith(strip) else n) for n in files]
+
+
+def _extract_package(data: bytes, url: str, stage: str, name: str) -> None:
+    total = 0
+    if data[:2] == b"PK":
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            for raw_name in archive.namelist():
+                _safe_target(stage, raw_name)
+            members = _strip_single_root(archive.namelist())
+            if len(members) > _MAX_FILES:
+                raise ValueError("파일 개수 제한(512개)을 넘습니다.")
+            for original, rel in members:
+                info = archive.getinfo(original)
+                mode = (info.external_attr >> 16) & 0o170000
+                if mode == 0o120000:
+                    raise ValueError("심볼릭 링크는 허용하지 않습니다.")
+                if info.file_size > _MAX_MEMBER:
+                    raise ValueError("개별 파일 크기 제한(16MB)을 넘습니다.")
+                total += info.file_size
+                if total > _MAX_EXTRACTED:
+                    raise ValueError("압축 해제 크기 제한(64MB)을 넘습니다.")
+                target = _safe_target(stage, rel)
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                with archive.open(info) as src, open(target, "wb") as dst:
+                    shutil.copyfileobj(src, dst, _MAX_MEMBER + 1)
+    elif data[:2] == b"\x1f\x8b" or url.endswith((".tar.gz", ".tgz")):
+        import tarfile
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+            all_members = archive.getmembers()
+            if any(m.issym() or m.islnk() for m in all_members):
+                raise ValueError("심볼릭 링크는 허용하지 않습니다.")
+            for member in all_members:
+                _safe_target(stage, member.name)
+            members = [m for m in all_members if m.isfile()]
+            if len(members) > _MAX_FILES:
+                raise ValueError("파일 개수 제한(512개)을 넘습니다.")
+            pairs = _strip_single_root([m.name for m in members])
+            rels = {original: rel for original, rel in pairs}
+            for member in members:
+                if member.issym() or member.islnk() or member.size > _MAX_MEMBER:
+                    raise ValueError("링크 또는 너무 큰 파일은 허용하지 않습니다.")
+                total += member.size
+                if total > _MAX_EXTRACTED:
+                    raise ValueError("압축 해제 크기 제한(64MB)을 넘습니다.")
+                target = _safe_target(stage, rels[member.name])
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                src = archive.extractfile(member)
+                if src is None:
+                    raise ValueError("압축 항목을 읽을 수 없습니다.")
+                with src, open(target, "wb") as dst:
+                    shutil.copyfileobj(src, dst, _MAX_MEMBER + 1)
+    else:
+        if len(data) > _MAX_MEMBER:
+            raise ValueError("파일 크기 제한(16MB)을 넘습니다.")
+        with open(_safe_target(stage, name + ".poi"), "wb") as f:
+            f.write(data)
 
 
 def _record_pkg(root: str, name: str, version: str) -> None:

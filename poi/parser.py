@@ -1148,7 +1148,11 @@ class Parser:
     }
 
     def read_type(self) -> str:
-        """타입 표기를 읽어 정규화된 이름을 돌려준다. 검사(typecheck)에만 쓰인다."""
+        """타입 표기를 읽어 정규화된 이름을 돌려준다. 검사(typecheck)에만 쓰인다.
+
+        제네릭 인자를 버리지 않고 보존해 `List<Int>`와 `List<Text>`를
+        구분할 수 있게 한다.
+        """
         t = self.peek()
         if t.type in ("IDENT", "KEYWORD"):
             self.advance()
@@ -1158,21 +1162,25 @@ class Parser:
         while self.match("OP", "."):
             if self.check("IDENT"):
                 name = self.advance().value
-        # 제네릭 파라미터는 읽고 버린다:  List<T>  /  List[T]  /  Map<K, V>
+        generic_args = []
         for op_open, op_close in (("<", ">"), ("[", "]")):
             if self.check("OP", op_open):
                 self.advance()
-                depth = 1
-                while depth and not self.at_end():
-                    if self.check("OP", op_open):
-                        depth += 1
-                    elif self.check("OP", op_close):
-                        depth -= 1
-                    self.advance()
+                if not self.check("OP", op_close):
+                    while not self.at_end() and not self.check("OP", op_close):
+                        generic_args.append(self.read_type())
+                        if not self.match("OP", ","):
+                            break
+                if not self.match("OP", op_close):
+                    t = self.peek()
+                    raise POIError(f"타입의 {op_close}가 필요합니다.", "P011",
+                                   t.line, t.col)
         nullable = bool(self.match("OP", "?"))
         base = self._KOREAN_TYPES.get(name) or self._TYPE_NORM.get(name) or name
         if base in ("Int", "Float", "Number", "Text", "Bool", "List", "Map",
                     "Fn", "Any", "Null") or base[:1].isupper():
+            if generic_args:
+                base += "<" + ",".join(generic_args) + ">"
             return base + ("?" if nullable else "")
         return "Any"
 

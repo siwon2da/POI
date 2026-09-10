@@ -263,8 +263,35 @@ def _harvest_source(code, found):
 
 def decompile_exe(exe_path: str, out_dir: str = "decompiled") -> dict:
     """POI/PyInstaller exe 에서 되찾을 수 있는 만큼 복원한다."""
+    from .packager import read_package
     import os
     os.makedirs(out_dir, exist_ok=True)
+    native = read_package(exe_path)
+    if native is not None:
+        code, manifest = native
+        import dis
+        import io
+        import json
+        clean_manifest = {k: v for k, v in manifest.items() if not k.startswith("_")}
+        meta_path = os.path.join(out_dir, "poi-package.json")
+        with open(meta_path, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(clean_manifest, f, ensure_ascii=False, indent=2, sort_keys=True)
+            f.write("\n")
+        saved = [meta_path]
+        notes = []
+        mode = str(manifest.get("mode", "compiled"))
+        if mode == "compiled":
+            buf = io.StringIO()
+            dis.dis(code, file=buf)
+            bytecode_path = os.path.join(out_dir, "_poi_app.bytecode.txt")
+            with open(bytecode_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(buf.getvalue())
+            saved.append(bytecode_path)
+            notes.append("원본 POI 소스는 포함되지 않아 바이트코드 분석본을 저장했습니다.")
+        else:
+            notes.append(f"보호 방식이 {mode}라 앱 코드는 복원하지 않았습니다.")
+        return {"out": out_dir, "files": saved, "notes": notes,
+                "entries": 1, "native": True, "mode": mode}
     entries = _extract_carchive(exe_path)
     saved, notes = [], []
     for name, (tc, raw) in entries.items():
@@ -296,4 +323,4 @@ def decompile_exe(exe_path: str, out_dir: str = "decompiled") -> dict:
                 f.write(raw)
             saved.append(p)
     return {"out": out_dir, "files": saved, "notes": notes,
-            "entries": len(entries)}
+            "entries": len(entries), "native": False}

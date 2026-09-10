@@ -25,9 +25,9 @@ _SAFE_NAMES = {
     "abs", "all", "any", "ascii", "bin", "bool", "bytearray", "bytes",
     "callable", "chr", "complex", "dict", "divmod", "enumerate", "filter",
     "float", "format", "frozenset", "hash", "hex", "int", "isinstance",
-    "issubclass", "iter", "len", "list", "map", "max", "min", "next", "object",
+    "issubclass", "iter", "len", "list", "map", "max", "min", "next",
     "oct", "ord", "pow", "print", "range", "repr", "reversed", "round", "set",
-    "slice", "sorted", "str", "sum", "tuple", "type", "zip", "True", "False",
+    "slice", "sorted", "str", "sum", "tuple", "zip", "True", "False",
     "None", "NotImplemented", "Ellipsis",
     # 예외 계열 (try/catch 가 잡을 수 있게)
     "Exception", "ValueError", "TypeError", "KeyError", "IndexError",
@@ -74,6 +74,28 @@ class _Denied:
 def harden_globals(g: dict) -> dict:
     """make_globals() 결과를 안전 모드용으로 조인다."""
     g["__builtins__"] = safe_builtins()
+    original_getattr = g.get("poi_getattr")
+    original_getattr_safe = g.get("poi_getattr_safe")
+    original_setattr = g.get("poi_setattr")
+
+    def guarded_getattr(obj, name):
+        if str(name).startswith("_"):
+            raise POIError("안전 모드에서는 내부 속성에 접근할 수 없습니다.", "P213")
+        return original_getattr(obj, name)
+
+    def guarded_getattr_safe(obj, name):
+        if str(name).startswith("_"):
+            raise POIError("안전 모드에서는 내부 속성에 접근할 수 없습니다.", "P213")
+        return original_getattr_safe(obj, name)
+
+    def guarded_setattr(obj, name, value):
+        if str(name).startswith("_"):
+            raise POIError("안전 모드에서는 내부 속성을 바꿀 수 없습니다.", "P213")
+        return original_setattr(obj, name, value)
+
+    g["poi_getattr"] = guarded_getattr
+    g["poi_getattr_safe"] = guarded_getattr_safe
+    g["poi_setattr"] = guarded_setattr
     g["file"] = _Denied("파일")
     g["web"] = _Denied("네트워크")
     g["shell"] = _Denied("셸/외부 명령")
@@ -97,7 +119,12 @@ def harden_globals(g: dict) -> dict:
     g["compress"] = _Denied("압축")
     g["pause"] = lambda *_a, **_kw: None          # 서버에선 멈출 수 없음
     g["poi_import_pyfile"] = _denied("다른 파일 불러오기")
-    g["poi_import_module"] = _denied("다른 파일 불러오기")
+    # 상대 경로 POI 모듈은 허용한다.  모듈도 같은 안전 모드로 재컴파일되며
+    # 프로젝트 루트 밖으로 나가는 경로는 runtime에서 차단한다.
+    original_import_module = g.get("poi_import_module")
+    def guarded_import_module(path):
+        return original_import_module(path, _safe=True, _base=g.get("__poi_dir__"))
+    g["poi_import_module"] = guarded_import_module
     g["poi_import_pkg"] = _denied("패키지 모듈 불러오기")
     g["poi_std"] = _guard_std(g.get("poi_std"))
     g["database"] = _denied("데이터베이스 열기")
@@ -128,9 +155,13 @@ def assert_safe(program) -> None:
             raise POIError("안전 모드에서는 python { ... } 블록을 쓸 수 없습니다.",
                            "P211", getattr(node, "line", None),
                            hint="POI 문법과 표준 모듈(math·time·json)만 쓰세요.")
+        if k == "Member" and str(getattr(node, "name", "")).startswith("_"):
+            raise POIError("안전 모드에서는 '_'로 시작하는 내부 속성에 접근할 수 없습니다.",
+                           "P213", getattr(node, "line", None),
+                           hint="공개된 POI 기능과 속성만 사용하세요.")
         if k == "Use":
             uk = getattr(node, "use_kind", "")
-            if uk in ("py", "pyfile", "poimod", "pkgmod"):
+            if uk in ("py", "pyfile", "pkgmod"):
                 raise POIError("안전 모드에서는 다른 파일·라이브러리를 불러올 수 없습니다.",
                                "P211", getattr(node, "line", None))
             if uk == "std" and getattr(node, "target", "") in _FORBIDDEN_STD:

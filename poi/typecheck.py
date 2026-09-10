@@ -28,13 +28,25 @@ def _nullable(t):
     return bool(t) and t.endswith("?")
 
 
+def _parts(t):
+    t = _base(t)
+    if "<" not in t or not t.endswith(">"):
+        return t, []
+    base, args = t[:-1].split("<", 1)
+    return base, [x.strip() for x in args.split(",") if x.strip()]
+
+
 def compat(actual: str, expected: str) -> bool:
     """actual 값을 expected 자리에 넣어도 되는가? 모르면 True (관대)."""
     a, e = _base(actual), _base(expected)
     if "Any" in (a, e) or a == "" or e == "":
         return True
-    if a == e:
-        return True
+    ab, aa = _parts(a)
+    eb, ea = _parts(e)
+    if ab == eb:
+        if not ea or not aa:
+            return True
+        return len(aa) == len(ea) and all(compat(x, y) for x, y in zip(aa, ea))
     if a == "Null":
         return _nullable(expected) or e in ("Any",)
     if e in _NUMERIC and a in _NUMERIC:
@@ -75,9 +87,16 @@ class Checker:
         if k == "Null":
             return "Null"
         if k == "ArrayLit":
-            return "List"
+            types = [self.infer(x) for x in getattr(n, "elements", [])]
+            if not types:
+                return "List<Any>"
+            first = types[0]
+            return f"List<{first}>" if all(compat(x, first) and compat(first, x)
+                                             for x in types[1:]) else "List<Any>"
         if k == "ObjectLit":
-            return "Map"
+            vals = [self.infer(x) for _key, x in getattr(n, "pairs", [])]
+            value = vals[0] if vals and all(x == vals[0] for x in vals) else "Any"
+            return f"Map<Text,{value}>"
         if k == "Lambda":
             return "Fn"
         if k == "Name":
@@ -98,12 +117,28 @@ class Checker:
             a, b = self.infer(n.body), self.infer(n.alt)
             return a if _base(a) == _base(b) else "Any"
         if k == "Coalesce":
-            return "Any"
+            left, right = self.infer(n.left), self.infer(n.right)
+            return _base(left) if _nullable(left) else (right if _base(left) == "Null" else left)
         if k == "Ask":
             return "Text"
         if k == "Call":
             return self._infer_call(n)
-        if k in ("Member", "Index"):
+        if k == "Member":
+            typ = self.infer(n.obj)
+            base, args = _parts(typ)
+            if n.name == "length":
+                return "Int"
+            if base == "List" and n.name in ("first", "last") and args:
+                return args[0]
+            return "Any"
+        if k == "Index":
+            base, args = _parts(self.infer(n.obj))
+            if base == "List" and args:
+                return args[0]
+            if base == "Map" and len(args) > 1:
+                return args[1]
+            if base == "Text":
+                return "Text"
             return "Any"
         return "Any"
 
@@ -227,7 +262,9 @@ class Checker:
                 self._set(n.var, "Int")
             self._block(n.body)
         elif k == "ForIn":
-            self._set(n.var, "Any")
+            iterable = self.infer(n.iterable)
+            _base_type, args = _parts(iterable)
+            self._set(n.var, args[0] if args and _base_type == "List" else "Any")
             self._block(n.body)
         elif k == "TryCatch":
             self._block(n.body)
@@ -308,6 +345,11 @@ class Checker:
             for s in n.body:
                 self.stmt(s)
             if rt:
+                if _base(rt) != "Null" and not _always_returns(n.body):
+                    self._err("P413",
+                              f"'{n.name}' 는 {_base(rt)} 를 돌려준다고 했지만 모든 경로가 return 하지 않습니다.",
+                              n.line,
+                              "if/else의 모든 경로에서 return 하거나 반환 타입을 빼세요.")
                 for r in _returns_in(n.body):
                     if r.value is None:
                         continue
@@ -340,6 +382,30 @@ def _returns_in(body):
             for _p, b in getattr(s, "clauses", []):
                 yield from _returns_in(b)
             yield from _returns_in(getattr(s, "default", None))
+
+
+def _always_returns(body) -> bool:
+    """명백히 모든 경로가 반환하는지 보수적으로 판단한다."""
+    for s in body or []:
+        k = getattr(s, "kind", None)
+        if k == "Return":
+            return True
+        if k == "If":
+            branches = getattr(s, "branches", [])
+            if branches and getattr(s, "orelse", None) is not None \
+                    and all(_always_returns(b) for _c, b in branches) \
+                    and _always_returns(s.orelse):
+                return True
+        if k == "Match":
+            clauses = getattr(s, "clauses", [])
+            if clauses and getattr(s, "default", None) is not None \
+                    and all(_always_returns(b) for _p, b in clauses) \
+                    and _always_returns(s.default):
+                return True
+        if k == "TryCatch" and _always_returns(getattr(s, "body", None)) \
+                and _always_returns(getattr(s, "handler", None)):
+            return True
+    return False
 
 
 def check(program) -> list[Finding]:

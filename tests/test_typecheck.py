@@ -72,5 +72,18 @@ class FunctionCallTypeTests(unittest.TestCase):
         self.assertNotIn("P412", _codes(source))
 
 
+class GenericAndFlowTypeTests(unittest.TestCase):
+    def test_list_generic_checks_element_type(self):
+        self.assertIn("P400", _codes('xs: List<Int> = ["문자"]'))
+
+    def test_list_index_and_for_variable_keep_element_type(self):
+        source = 'xs: List<Int> = [1, 2]\nfn add(x: Int) -> Int => x + 1\nshow add(xs[0])\nfor x in xs { show add(x) }'
+        self.assertNotIn("P403", _codes(source))
+
+    def test_typed_function_requires_return_on_all_paths(self):
+        source = 'fn score(x: Int) -> Int { if x > 0 { return x } }'
+        self.assertIn("P413", _codes(source))
+
+
 if __name__ == "__main__":
     unittest.main()
