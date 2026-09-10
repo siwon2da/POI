@@ -78,6 +78,27 @@ python {
         return out
 
     _web_state = {"httpd": None, "url": None}
+    _run_issue = {"message": ""}
+
+    def _install_idle_crash_guard(root):
+        """Tk 콜백 예외가 IDLE 전체를 종료시키지 않게 기록하고 알린다."""
+        def report(exc_type, exc, tb):
+            detail = "".join(traceback.format_exception(exc_type, exc, tb))
+            try:
+                folder = os.path.join(os.path.expanduser("~"), ".poi")
+                os.makedirs(folder, exist_ok=True)
+                with open(os.path.join(folder, "idle-crash.log"), "a", encoding="utf-8") as f:
+                    f.write("\n" + detail)
+            except Exception:
+                pass
+            _Q.put("\n[IDLE 오류를 복구했습니다]\n" + detail + "\n")
+            try:
+                mb.showerror("POI IDLE 오류 복구",
+                             "작업 중 오류가 났지만 IDLE은 계속 실행됩니다.\n"
+                             "자세한 내용은 콘솔과 ~/.poi/idle-crash.log에 저장했어요.")
+            except Exception:
+                pass
+        root.report_callback_exception = report
 
     def _web_running():
         return _web_state["httpd"] is not None
@@ -131,7 +152,10 @@ python {
                 py, _lm, cn = compile_source(src, "<idle>")
                 code = compile(py, cn, "exec")
             except Exception as e:
-                _Q.put(getattr(e, "render", lambda _s: str(e))(src) + "\n")
+                rendered = getattr(e, "render", lambda _s: str(e))(src)
+                _run_issue["message"] = rendered
+                _Q.put(rendered + "\n")
+                _Q.put("<<<idle-error>>>")
             if code is not None:
                 cwd0 = os.getcwd()
                 try:
@@ -143,13 +167,18 @@ python {
                 except SystemExit:
                     pass
                 except KeyboardInterrupt:
-                    _Q.put("\n[중단됨 — 실행이 너무 오래 걸렸어요]\n")
+                    _Q.put("\n[사용자가 실행을 중단했습니다]\n")
                 except Exception as e:
                     from poi.errors import translate_exception
                     try:
-                        _Q.put("\n" + translate_exception(e, src, {}, "<idle>").render(src) + "\n")
+                        rendered = translate_exception(e, src, {}, "<idle>").render(src)
+                        _run_issue["message"] = rendered
+                        _Q.put("\n" + rendered + "\n")
                     except Exception:
-                        _Q.put("\n" + traceback.format_exc() + "\n")
+                        rendered = traceback.format_exc()
+                        _run_issue["message"] = rendered
+                        _Q.put("\n" + rendered + "\n")
+                    _Q.put("<<<idle-error>>>")
                 finally:
                     os.chdir(cwd0)
                 if g.get("__poi_has_web__"):
@@ -741,6 +770,8 @@ fn 펌프()
             실행끝()
         else if 조각 == "<<<idle-serving>>>"
             서버시작됨()
+        else if 조각 == "<<<idle-error>>>"
+            미니하온제안()
         else
             출력추가(조각)
     if S.running or S.serving
@@ -751,6 +782,14 @@ fn 실행끝()
     W.run_btn.config(bg: "#3182f6", fg: "#ffffff")
     모드표시()
     로그("────────────────────────────────────────")
+
+fn 미니하온제안()
+    if mb.askyesno("미니하온 자동 수정",
+        "실행 오류를 발견했어요.\n\n미니하온이 현재 파일을 검사하고 자동으로 고칠까요?\n수정은 편집기에 적용되며 Ctrl+Z로 되돌릴 수 있어요.")
+        if not S.haon_open
+            하온토글()
+        하온시스템("실행 오류를 받았어요. 미니하온이 컴파일러 기준으로 안전한 수정을 찾는 중…")
+        _haon_autofix(본문())
 
 fn 서버시작됨()
     S.running = false
@@ -790,8 +829,22 @@ fn 실행()
     W.run_btn.config(text: "■  중단", bg: "#e03131", fg: "#ffffff")
     _run_poi(글, 현재폴더(), S.port)
     W.root.after(40, 펌프)
-    if not _has_web(글)
-        W.root.after(8000, 시간초과)
+
+fn 종료()
+    if S.dirty
+        선택 = mb.askyesnocancel("POI IDLE 종료", "저장하지 않은 변경이 있어요. 저장하고 끝낼까요?")
+        if 선택 == null
+            return
+        if 선택
+            저장()
+            if S.dirty
+                return
+    if S.running and not mb.askyesno("실행 중", "프로그램이 실행 중입니다. 중단하고 IDLE을 끝낼까요?")
+        return
+    if S.running
+        _kill_worker()
+    _web_stop()
+    W.root.destroy()
 
 fn 모드표시()
     글 = 본문()
@@ -806,10 +859,6 @@ fn 모드표시()
     else
         W.run_btn.config(text: "▶  실행  (F5)")
         W.mode_lbl.config(text: "")
-
-fn 시간초과()
-    if S.running
-        _kill_worker()
 
 fn 터미널실행()
     if S.file == null or S.dirty
@@ -1269,6 +1318,7 @@ fn 스킨(b, 강조)
 
 # ── 창 만들기 ───────────────────────────────────────────────────────
 W.root = tk.Tk()
+_install_idle_crash_guard(W.root)
 W.root.title("POI IDLE")
 W.root.geometry("1080x720")
 W.root.minsize(820, 560)
@@ -1297,8 +1347,9 @@ W.m_file.add_command(label: "저장            Ctrl+S", command: 저장)
 W.m_file.add_command(label: "다른 이름으로   Ctrl+Shift+S", command: 다른이름저장)
 W.m_file.add_separator()
 W.m_file.add_command(label: "터미널에서 실행  Ctrl+R", command: 터미널실행)
-W.m_file.add_command(label: "끝내기", command: () => W.root.destroy())
+W.m_file.add_command(label: "끝내기", command: 종료)
 W.menu.add_cascade(label: "파일", menu: W.m_file)
+W.root.protocol("WM_DELETE_WINDOW", 종료)
 
 W.m_edit = tk.Menu(W.menu, tearoff: false)
 W.m_edit.add_command(label: "실행 취소  Ctrl+Z", command: () => W.editor.edit_undo())
@@ -1518,14 +1569,14 @@ fn 자체점검()
         if 자.winfo_class() == "Button"
             바라벨.add(자.cget("text"))
     난독버튼 = false
-    디컴버튼 = false
+    검사버튼 = false
     for 라 in 바라벨
         if 라.contains("난독화")
             난독버튼 = true
-        if 라.contains("디컴파일")
-            디컴버튼 = true
-    show "  toolbar 난독화={난독버튼} 디컴파일={디컴버튼}"
-    ok = W.haon_in.winfo_ismapped() and W.haon_send.winfo_ismapped() and 입력높이 >= 40 and 입력너비 >= 150 and 난독버튼 and 디컴버튼
+        if 라.contains("EXE 검사")
+            검사버튼 = true
+    show "  toolbar 난독화={난독버튼} EXE검사={검사버튼}"
+    ok = W.haon_in.winfo_ismapped() and W.haon_send.winfo_ismapped() and 입력높이 >= 40 and 입력너비 >= 150 and 난독버튼 and 검사버튼
     상태 = "PASS"
     if not ok
         상태 = "FAIL"

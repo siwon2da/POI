@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "poi-lang"
-version = "1.18.0"
+version = "1.18.2"
 description = "POI - Power Of Imagination. 우리가 만든 언어."
 readme = "README.md"
 requires-python = ">=3.10"
