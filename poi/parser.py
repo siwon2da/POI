@@ -372,11 +372,18 @@ class Parser:
         name = self.expect("IDENT", what="함수 이름").value
         self.expect("OP", "(")
         params = []
+        param_names = set()
         saw_default = False
         self.skip_nl()
         while not self.check("OP", ")"):
             param_token = self.expect("IDENT", what="매개변수 이름")
             pname = param_token.value
+            if pname in param_names:
+                raise POIError(
+                    f"'{pname}' 매개변수 이름을 두 번 선언했습니다.",
+                    "P024", param_token.line, param_token.col,
+                    hint="각 매개변수에는 서로 다른 이름을 사용하세요.")
+            param_names.add(pname)
             ptype = None
             if self.match("OP", ":"):
                 ptype = self.read_type()

@@ -24,6 +24,13 @@ class FunctionParameterTests(unittest.TestCase):
         program = _parse("fn greet(name, greeting = \"안녕\") { show name }")
         self.assertEqual("FnDecl", program.body[0].kind)
 
+    def test_duplicate_parameter_name_is_rejected(self):
+        with self.assertRaises(POIError) as caught:
+            _parse("fn greet(name, name) { show name }")
+        self.assertEqual("P024", caught.exception.code)
+        self.assertEqual(1, caught.exception.line)
+        self.assertIn("서로 다른 이름", caught.exception.hint)
+
 
 if __name__ == "__main__":
     unittest.main()
