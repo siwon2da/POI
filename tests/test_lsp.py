@@ -1,5 +1,9 @@
+import io
+import types
 import unittest
+from unittest.mock import patch
 
+from poi import lsp
 from poi.lsp import _diagnostics, _line_range
 
 
@@ -18,6 +22,20 @@ class LspTests(unittest.TestCase):
         for item in diagnostics:
             line = source.splitlines()[item["range"]["end"]["line"]]
             self.assertLessEqual(item["range"]["end"]["character"], len(line))
+
+    def test_bad_json_message_does_not_look_like_end_of_stream(self):
+        raw = b"Content-Length: 1\r\n\r\n{" \
+              b"Content-Length: 2\r\n\r\n{}"
+        fake_stdin = types.SimpleNamespace(buffer=io.BytesIO(raw))
+        with patch.object(lsp.sys, "stdin", fake_stdin):
+            self.assertIs(lsp._read_msg(), lsp._INVALID)
+            self.assertEqual(lsp._read_msg(), {})
+
+    def test_bad_content_length_is_recoverable(self):
+        fake_stdin = types.SimpleNamespace(
+            buffer=io.BytesIO(b"Content-Length: nope\r\n\r\n"))
+        with patch.object(lsp.sys, "stdin", fake_stdin):
+            self.assertIs(lsp._read_msg(), lsp._INVALID)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ import sys
 from . import __version__
 
 _DOCS = {}            # uri -> text
+_INVALID = object()   # 잘못된 한 메시지 때문에 서버 전체를 끝내지 않기 위한 표식
 
 _KEYWORDS = [
     "if", "else", "for", "in", "fn", "return", "const", "show", "ask", "use",
@@ -63,16 +64,19 @@ def _read_msg():
         if ":" in line:
             k, v = line.split(":", 1)
             headers[k.strip().lower()] = v.strip()
-    n = int(headers.get("content-length", 0))
+    try:
+        n = int(headers.get("content-length", 0))
+    except (TypeError, ValueError):
+        return _INVALID
     if n <= 0:
-        return None
+        return _INVALID
     body = sys.stdin.buffer.read(n)
     if not body:
         return None
     try:
         return json.loads(body.decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
-        return None
+        return _INVALID
 
 
 def _send(obj):
@@ -247,6 +251,8 @@ def main() -> int:
         msg = _read_msg()
         if msg is None:
             return 0
+        if msg is _INVALID:
+            continue
         method = msg.get("method")
         mid = msg.get("id")
         params = msg.get("params") or {}
