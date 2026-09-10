@@ -8,7 +8,7 @@ numpy/pandas/torch 같은 파이썬 라이브러리를 첫날부터 그대로 �
 -> compile() -> exec(). 오류는 내부 줄번호를 POI 줄번호로 되돌려 사람 말로 보여준다.
 """
 
-__version__ = "1.18.2"
-POI_SPEC_VERSION = "1.18.2"
+__version__ = "1.18.3"
+POI_SPEC_VERSION = "1.18.3"
 
 from .interpreter import run_source, run_file  # noqa: E402,F401

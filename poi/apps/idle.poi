@@ -408,7 +408,8 @@ python {
         def job():
             try:
                 new, log = _haon.autofix(src)
-                _HAON_Q.put(("fix", new, "\n".join(log)))
+                kind = "fix" if new != src else "fix-none"
+                _HAON_Q.put((kind, new, "\n".join(log)))
             except Exception as e:
                 _HAON_Q.put(("say", "자동 수정 오류: %s" % e))
         threading.Thread(target=job, daemon=True).start()
@@ -1123,6 +1124,8 @@ fn 하온펌프()
             S.dirty = true
             제목갱신()
             하온답("고쳤어요.\n" + 항목[2])
+        else if 갈래 == "fix-none"
+            하온답("자동으로 바꿀 수 있는 부분이 없어서 원본을 유지했어요.\n" + 항목[2])
     W.root.after(120, 하온펌프)
 
 fn 하온설치()
