@@ -89,6 +89,12 @@ class Checker:
         if k == "BinOp":
             return self._infer_binop(n)
         if k == "Ternary":
+            ct = self.infer(n.cond)
+            if _base(ct) not in ("Bool", "Any"):
+                self._err("P408",
+                          f"삼항식 조건은 Bool 이어야 하는데 {_base(ct)} 입니다.",
+                          n.cond.line or n.line,
+                          "비교식이나 true/false 값을 사용하세요.")
             a, b = self.infer(n.body), self.infer(n.alt)
             return a if _base(a) == _base(b) else "Any"
         if k == "Coalesce":
@@ -162,10 +168,24 @@ class Checker:
         elif k == "FnDecl":
             self._fn(n)
         elif k == "If":
-            for _c, body in n.branches:
+            for condition, body in n.branches:
+                actual = self.infer(condition)
+                if _base(actual) not in ("Bool", "Any"):
+                    self._err("P408",
+                              f"if 조건은 Bool 이어야 하는데 {_base(actual)} 입니다.",
+                              condition.line or n.line,
+                              "비교식이나 true/false 값을 사용하세요.")
                 self._block(body)
             if n.orelse:
                 self._block(n.orelse)
+        elif k == "While":
+            actual = self.infer(n.cond)
+            if _base(actual) not in ("Bool", "Any"):
+                self._err("P408",
+                          f"while 조건은 Bool 이어야 하는데 {_base(actual)} 입니다.",
+                          n.cond.line or n.line,
+                          "비교식이나 true/false 값을 사용하세요.")
+            self._block(n.body)
         elif k in ("Repeat",):
             if n.var:
                 self._set(n.var, "Int")

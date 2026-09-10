@@ -24,5 +24,23 @@ class AssertTypeTests(unittest.TestCase):
         self.assertIn("P407", _codes("assert true, 123"))
 
 
+class ConditionTypeTests(unittest.TestCase):
+    def test_valid_boolean_conditions(self):
+        source = """if 1 < 2 { show \"ok\" }
+while false { show \"never\" }
+값 = \"예\" if true else \"아니오\"
+"""
+        self.assertNotIn("P408", _codes(source))
+
+    def test_if_condition_must_be_bool(self):
+        self.assertIn("P408", _codes('if 123 { show "잘못된 조건" }'))
+
+    def test_while_condition_must_be_bool(self):
+        self.assertIn("P408", _codes('while "계속" { pass }'))
+
+    def test_ternary_condition_must_be_bool(self):
+        self.assertIn("P408", _codes('값 = "예" if 1 else "아니오"'))
+
+
 if __name__ == "__main__":
     unittest.main()
