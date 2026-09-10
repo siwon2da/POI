@@ -119,7 +119,7 @@ poi run examples/basics.poi
 
 ## 상태
 
-**v1.16.4.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + 디버깅 도구 + 선택적 정적 타입 +
+**v1.16.5.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + 디버깅 도구 + 선택적 정적 타입 +
 **내장 웹서버/선언형 페이지** + **백엔드·보안 표준 라이브러리** + **`database(...)` SQLite** +
 **POI IDLE** (POI 로 작성) + **언어 안정화**(break/continue·진짜 const·범위·match 식·타입 catch·export·poi fmt/lint) +
 CLI + 전자·Arduino·방어 보안 연구 모듈 + 회귀 테스트 + 연습문제 300제.

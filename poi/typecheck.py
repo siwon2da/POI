@@ -47,7 +47,7 @@ def compat(actual: str, expected: str) -> bool:
 class Checker:
     def __init__(self):
         self.findings: list[Finding] = []
-        self.fns: dict[str, tuple] = {}   # name -> (param_types, ret_type)
+        self.fns: dict[str, tuple] = {}   # name -> (params, ret_type)
         self.scopes: list[dict] = [{}]
 
     # env
@@ -131,19 +131,56 @@ class Checker:
     def _infer_call(self, n):
         fn = n.func
         if fn.kind == "Name" and fn.id in self.fns:
-            ptypes, ret = self.fns[fn.id]
+            params, ret = self.fns[fn.id]
             pos = [a for a in n.args]
-            if len(pos) > len(ptypes):
+            if len(pos) > len(params):
                 self._err("P404",
-                          f"'{fn.id}' 함수는 인자 {len(ptypes)}개인데 {len(pos)}개를 줬습니다.",
+                          f"'{fn.id}' 함수는 인자 {len(params)}개인데 {len(pos)}개를 줬습니다.",
                           n.line)
-            for arg, pt in zip(pos, ptypes):
+            for arg, param in zip(pos, params):
+                pt = param[2] if len(param) > 2 else None
                 if pt:
                     at = self.infer(arg)
                     if not compat(at, pt):
                         self._err("P403",
                                   f"'{fn.id}' 의 인자 자리에는 {_base(pt)} 가 와야 하는데 "
                                   f"{_base(at)} 를 줬습니다.", arg.line or n.line)
+
+            by_name = {param[0]: (i, param) for i, param in enumerate(params)}
+            supplied = {param[0] for param in params[:len(pos)]}
+            seen_kwargs = set()
+            for key, arg in n.kwargs:
+                if key not in by_name:
+                    self._err("P410",
+                              f"'{fn.id}' 함수에는 '{key}' 인자가 없습니다.",
+                              arg.line or n.line,
+                              "함수 선언의 인자 이름을 확인하세요.")
+                    self.infer(arg)
+                    continue
+                index, param = by_name[key]
+                if key in seen_kwargs or index < len(pos):
+                    self._err("P411",
+                              f"'{fn.id}' 의 '{key}' 인자를 두 번 줬습니다.",
+                              arg.line or n.line,
+                              "같은 인자는 한 번만 전달하세요.")
+                seen_kwargs.add(key)
+                supplied.add(key)
+                pt = param[2] if len(param) > 2 else None
+                if pt:
+                    at = self.infer(arg)
+                    if not compat(at, pt):
+                        self._err("P403",
+                                  f"'{fn.id}' 의 '{key}' 인자는 {_base(pt)} 여야 하는데 "
+                                  f"{_base(at)} 를 줬습니다.", arg.line or n.line)
+
+            missing = [param[0] for param in params
+                       if param[1] is None and param[0] not in supplied]
+            if missing:
+                names = ", ".join(missing)
+                self._err("P409",
+                          f"'{fn.id}' 함수에 필수 인자가 빠졌습니다: {names}",
+                          n.line,
+                          "빠진 인자를 위치 또는 이름 인자로 전달하세요.")
             return ret or "Any"
         return "Any"
 
@@ -158,8 +195,7 @@ class Checker:
         return self.findings
 
     def _collect_fn(self, n):
-        ptypes = [p[2] if len(p) > 2 else None for p in n.params]
-        self.fns[n.name] = (ptypes, getattr(n, "ret_type", None))
+        self.fns[n.name] = (n.params, getattr(n, "ret_type", None))
 
     def stmt(self, n):
         k = n.kind
