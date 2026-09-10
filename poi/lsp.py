@@ -115,8 +115,7 @@ def _diagnostics(text):
         for w in lint_source(text, "lsp.poi"):
             ln = max(0, (w.line or 1) - 1)
             out.append({
-                "range": {"start": {"line": ln, "character": 0},
-                          "end": {"line": ln, "character": 200}},
+                "range": _line_range(text, ln),
                 "severity": 2, "code": w.code, "source": "poi", "message": w.msg,
             })
     except Exception:
@@ -131,8 +130,7 @@ def _diagnostics(text):
                 continue
             ln = max(0, f.line - 1)
             out.append({
-                "range": {"start": {"line": ln, "character": 0},
-                          "end": {"line": ln, "character": 200}},
+                "range": _line_range(text, ln),
                 "severity": 2 if f.level == "warning" else 1,
                 "code": f.code, "source": "poi-types", "message": f.msg,
             })
@@ -186,6 +184,18 @@ def _symbols(text):
 def _rng(ln, col, length):
     return {"start": {"line": ln, "character": col},
             "end": {"line": ln, "character": col + length}}
+
+
+def _line_range(text, ln):
+    """LSP 범위를 실제 줄 길이 안으로 제한하고 앞쪽 들여쓰기는 제외한다."""
+    lines = text.splitlines()
+    if not (0 <= ln < len(lines)):
+        return _rng(max(0, ln), 0, 0)
+    line = lines[ln]
+    start = len(line) - len(line.lstrip())
+    end = len(line)
+    return {"start": {"line": ln, "character": start},
+            "end": {"line": ln, "character": max(start, end)}}
 
 
 def _completions(text, line, char):
@@ -244,7 +254,11 @@ def main() -> int:
         if method == "initialize":
             _reply(mid, {
                 "capabilities": {
-                    "textDocumentSync": 1,          # full
+                    "textDocumentSync": {
+                        "openClose": True,
+                        "change": 1,                 # full
+                        "save": {"includeText": True},
+                    },
                     "hoverProvider": True,
                     "completionProvider": {"triggerCharacters": [".", " "]},
                     "definitionProvider": True,
@@ -269,7 +283,14 @@ def main() -> int:
             _DOCS[uri] = changes[-1]["text"]
             _publish(uri)
         elif method == "textDocument/didClose":
-            _DOCS.pop(params["textDocument"]["uri"], None)
+            uri = params["textDocument"]["uri"]
+            _DOCS.pop(uri, None)
+            _notify("textDocument/publishDiagnostics", {"uri": uri, "diagnostics": []})
+        elif method == "textDocument/didSave":
+            uri = params["textDocument"]["uri"]
+            if "text" in params:
+                _DOCS[uri] = params["text"]
+            _publish(uri)
         elif method == "textDocument/hover":
             uri = params["textDocument"]["uri"]
             p = params["position"]
