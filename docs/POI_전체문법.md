@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.16.8**. 공식: https://hagora.kr/poi/
+> 버전 기준: **POI v1.17.0**. 공식: https://hagora.kr/poi/
 
 ---
 
@@ -635,7 +635,8 @@ every on bind_key run close`.  안전 모드 차단.
 | `poi check 파일 [--types]` | 문법(+선택적 타입) 검사, 실행 안 함 |
 | `poi test 파일` | test 블록 실행·채점 |
 | `poi debug 파일` | trace + vars + explain 한 번에 |
-| `poi build 파일 [-o 이름]` | 단일 실행파일(.exe) 로 (PyInstaller) |
+| `poi build 파일 [-o 이름]` | 설치본에서 Python 없이 POI 전용 단일 EXE로 |
+| `poi verify 파일.exe` | 전용 EXE 형식·코드·SHA-256 무결성 검사 |
 | `poi build --app idle` | POI IDLE 을 `poi-idle.exe` 로 |
 | `poi idle [파일]` | POI IDLE — POI 로 만든 편집기 (문법 강조·F5 실행) |
 | `poi fmt [파일\|.] [--check]` | 소스 정리 (탭·공백·들여쓰기) |

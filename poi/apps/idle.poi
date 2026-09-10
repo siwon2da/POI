@@ -875,7 +875,7 @@ fn EXE빌드()
                 인자 = 인자 + ["--ask-password"]
         top.destroy()
         콘솔지우기()
-        로그("EXE 빌드 시작… (처음엔 1~2분)")
+        로그("EXE 빌드 시작… (POI 전용 패키저 · Python 설치 불필요)")
         S.running = true
         W.run_btn.config(text: "■  빌드 중", bg: "#e03131", fg: "#ffffff")
         _build_exe_bg(인자, 현재폴더())

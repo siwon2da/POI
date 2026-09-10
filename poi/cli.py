@@ -24,9 +24,11 @@ POI v{ver}  -  Power Of Imagination
   poi debug <파일.poi>                 = poi run --debug
   poi test [파일.poi]                  파일 안의 test 블록 실행
   poi build <파일.poi> [-o 이름]        단일 실행파일(.exe) 로 빌드
+       설치본은 POI 전용 패키저 사용 (Python/PyInstaller 불필요)
        build --obfuscate                난독화해서 빌드 (쉽게 못 읽게)
        build --lock <비번> [--ask-password]   비밀번호로 잠가서 빌드
        build --author · --product · --file-version · --icon   exe 메타데이터
+  poi verify <파일.exe>                 전용 EXE 형식·코드·SHA-256 무결성 검사
   poi decompile <파일.exe> [-o 폴더]    POI exe 에서 소스 되찾기 (난독화·잠금이면 안 나옴)
   poi idle [파일.poi]                  POI IDLE — POI 로 만든 코드 편집기
   poi photo [사진]                     POI 로 만든 사진 편집기 (Pillow 필요)
@@ -788,6 +790,35 @@ def cmd_build(args: list[str]) -> int:
     return build(args)
 
 
+def cmd_verify(args: list[str]) -> int:
+    """poi verify <exe> — POI 전용 컨테이너와 코드 무결성을 검사한다."""
+    rest = [a for a in args if not a.startswith("-")]
+    if not rest:
+        print("poi verify <파일.exe>", file=sys.stderr)
+        return 1
+    path = rest[0]
+    if not os.path.isfile(path):
+        print(f"파일이 없습니다: {path}", file=sys.stderr)
+        return 1
+    from .packager import PackageError, _file_hash, read_package
+    try:
+        packaged = read_package(path)
+    except (OSError, PackageError) as exc:
+        print(f"검증 실패: {exc}", file=sys.stderr)
+        return 1
+    if packaged is None:
+        print("검증 실패: POI 전용 패키저로 만든 EXE가 아닙니다.", file=sys.stderr)
+        return 1
+    _code, info = packaged
+    print("POI EXE 무결성 검증 완료")
+    print(f"  앱: {info.get('name') or '-'}")
+    print(f"  앱 버전: {info.get('app_version') or '-'}")
+    print(f"  POI 엔진: {info.get('engine_version') or '-'}")
+    print(f"  보호 방식: {info.get('mode') or '-'}")
+    print(f"  SHA-256: {_file_hash(path)}")
+    return 0
+
+
 def cmd_decompile(args: list[str]) -> int:
     """poi decompile <exe> [-o 폴더] — PyInstaller/POI exe 에서 되찾을 수 있는 만큼 복원."""
     rest = [a for a in args if not a.startswith("-")]
@@ -1140,7 +1171,8 @@ def main(argv: list[str] | None = None) -> int:
         "rm": lambda a: __import__("poi.pkg", fromlist=["cmd_remove"]).cmd_remove(a),
         "install": lambda a: __import__("poi.pkg", fromlist=["cmd_install"]).cmd_install(a),
         "cache": lambda a: __import__("poi.cache", fromlist=["cmd_cache"]).cmd_cache(a),
-        "doctor": cmd_doctor, "wsgi": cmd_wsgi, "decompile": cmd_decompile,
+        "doctor": cmd_doctor, "wsgi": cmd_wsgi, "verify": cmd_verify,
+        "decompile": cmd_decompile,
         "lsp": lambda a: __import__("poi.lsp", fromlist=["main"]).main(),
         "init": lambda a: _eco("cmd_init")(a),
         "search": lambda a: _eco("cmd_search")(a),

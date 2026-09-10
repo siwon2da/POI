@@ -126,7 +126,7 @@ POI 의 포지션: **우리가 만든 독립 언어.** 자체 문법 · 자체 �
 - [x] **test 블록 + `poi test`** · `assert` (실패 시 소스와 함께)
 - [x] **`use "./파일.poi"`** POI 모듈 임포트 · **`raise`**
 - [x] **표준 모듈** regex · csv · datetime · random · stats · env
-- [x] **`poi build`** → 단일 실행파일 (PyInstaller)
+- [x] **`poi build`** → 설치본에서 Python/PyInstaller 없이 POI 전용 단일 실행파일
 - [x] `.` 뒤 예약어 허용, 보간이 `{3}` 정규식 수량자 안 건드림
 
 ## v1.2 — 파이썬보다 자유롭게  ✅

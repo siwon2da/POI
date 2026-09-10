@@ -1,4 +1,4 @@
-# POI v1.16.8 문법 명세
+# POI v1.17.0 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -655,7 +655,8 @@ poi debug x.poi            # 위 전부
 | `poi run 파일 --safe [--time N]` | 샌드박스 실행 (python{}·use py·파일·네트워크 차단, 시간 제한) |
 | `poi debug 파일` | 추적 + 변수 + 사후 분석 |
 | `poi test 파일` | 파일 안의 `test` 블록 실행·채점 |
-| `poi build 파일 [-o 이름]` | 단일 실행파일로 (PyInstaller 필요) |
+| `poi build 파일 [-o 이름]` | 설치본에서 Python 없이 POI 전용 단일 EXE 생성 |
+| `poi verify 파일.exe` | 전용 EXE 형식·코드·SHA-256 무결성 검사 |
 | `poi build --app idle` | POI IDLE 을 `poi-idle.exe` 로 빌드 |
 | `poi idle [파일]` | POI IDLE — 라이트 모드·메뉴바·웹서버 임시 켜기·하온(로컬 에이전트) |
 | `poi photo [사진]` | POI 로 작성한 사진 편집기 (Pillow 필요) |

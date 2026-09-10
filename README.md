@@ -48,7 +48,8 @@ poi run examples/basics.poi
 | `poi run 파일.poi --emit-python` | 낮춰진 중간 표현만 출력 |
 | `poi debug 파일.poi` | 추적 + 변수 + 사후 분석 |
 | `poi test 파일.poi` | test 블록 실행·채점 |
-| `poi build 파일.poi` | 단일 실행파일로 |
+| `poi build 파일.poi` | Python 없이 POI 전용 패키저로 단일 EXE 생성 |
+| `poi verify 파일.exe` | 전용 EXE 형식·코드·SHA-256 무결성 검사 |
 | `poi build --app idle` | POI IDLE 을 `poi-idle.exe` 로 |
 | `poi idle [파일]` | POI 로 만든 코드 편집기 (문법 강조·F5 실행) |
 | `poi fmt [파일\|.]` · `poi lint [파일\|.]` | 소스 정리 · 가벼운 점검 |
@@ -81,6 +82,8 @@ poi run examples/basics.poi
    `export` · 반환 타입 검사 · `poi fmt` · `poi lint` · `poi check .` · `elif`→`else if` 같은 오류 안내
 14. **전자·Arduino·보안 연구 (v1.16)** — `electronics`로 직렬 포트·센서·PWM·회로 계산·가상 보드를 사용하고,
     `security`로 해시·HMAC·엔트로피·보안 헤더와 허가된 로컬/사설망 포트를 점검. 공개망은 이중 안전 해제가 필요
+15. **전용 EXE 패키저 (v1.17)** — 설치본의 안전한 실행 스텁에 최적화된 바이트코드를 직접 담아 수초 안에 EXE 생성 ·
+    Python/PyInstaller/셸 호출 불필요 · SHA-256 검증 · 원자적 출력 · 난독화·비밀번호 잠금
 14. **전자·Arduino·보안 연구 (v1.16)** — `electronics`로 직렬 포트·센서·PWM·회로 계산·가상 보드를 사용하고,
     `security`로 해시·HMAC·엔트로피·보안 헤더와 허가된 로컬/사설망 포트를 점검. 공개망은 이중 안전 해제가 필요
 
@@ -108,6 +111,7 @@ poi run examples/basics.poi
 - [오류 코드표 (docs/ERRORS.md)](docs/ERRORS.md)
 - [로드맵 (docs/ROADMAP.md)](docs/ROADMAP.md)
 - [전자·Arduino·보안 연구실 (docs/LABS.md)](docs/LABS.md)
+- [POI 전용 EXE 패키저 (docs/PACKAGING.md)](docs/PACKAGING.md)
 - [전자·Arduino·보안 연구실 (docs/LABS.md)](docs/LABS.md)
 - [변경 이력 (CHANGELOG.md)](CHANGELOG.md)
 
@@ -119,11 +123,11 @@ poi run examples/basics.poi
 
 ## 상태
 
-**v1.16.8.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + 디버깅 도구 + 선택적 정적 타입 +
+**v1.17.0.** 코어 문법 + 파이썬 인터롭 + GUI + 사람 친화 오류 + 디버깅 도구 + 선택적 정적 타입 +
 **내장 웹서버/선언형 페이지** + **백엔드·보안 표준 라이브러리** + **`database(...)` SQLite** +
 **POI IDLE** (POI 로 작성) + **언어 안정화**(break/continue·진짜 const·범위·match 식·타입 catch·export·poi fmt/lint) +
-CLI + 전자·Arduino·방어 보안 연구 모듈 + 회귀 테스트 + 연습문제 300제.
-패키지 매니저, async, 네이티브 빌드, LSP 는 [로드맵](docs/ROADMAP.md) 참고.
+CLI + 전자·Arduino·방어 보안 연구 모듈 + POI 전용 EXE 패키저 + 회귀 테스트 + 연습문제 300제.
+패키지 매니저, async, LSP 는 [로드맵](docs/ROADMAP.md) 참고.
 
 ## 내려받기
 

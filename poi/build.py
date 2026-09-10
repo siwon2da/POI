@@ -1,8 +1,9 @@
-"""poi build — POI 프로그램을 단일 실행파일로 (v1.3).
+"""poi build — POI 프로그램을 단일 실행파일로.
 
     poi build app.poi [-o 이름] [--console]
 
-PyInstaller 로 묶는다. 파이썬이 없는 컴퓨터에서도 돈다.
+설치본에서는 POI 전용 패키저를 사용한다. 소스 환경에서는 PyInstaller를
+개발용 대체 경로로 사용한다. 완성 파일은 파이썬이 없는 컴퓨터에서도 돈다.
 한계: use pyfile / use "./x.poi" 로 부르는 파일은 자동 포함되지 않는다
       (필요하면 만든 exe 옆에 같이 두거나 --add-data 로).
 """
@@ -88,17 +89,97 @@ def _have_pyinstaller() -> bool:
         return False
 
 
+def _native_build(src_path: str, name: str, py_src: str, console: bool,
+                  obfuscate: bool, lock_pw: str | None, ask_pw: bool,
+                  meta: dict, deps: list[str], linemap: dict) -> int:
+    """설치본 자체를 스텁으로 쓰는 POI 전용 패키징 경로."""
+    from . import __version__
+    from .packager import PackageError, package_executable
+
+    if name.lower().endswith(".exe"):
+        name = name[:-4]
+    reserved = {"CON", "PRN", "AUX", "NUL",
+                *(f"COM{i}" for i in range(1, 10)),
+                *(f"LPT{i}" for i in range(1, 10))}
+    if (not name or os.path.basename(name) != name
+            or any(ch in name for ch in '<>:"/\\|?*')
+            or any(ord(ch) < 32 for ch in name)
+            or name.rstrip(" .").split(".", 1)[0].upper() in reserved
+            or name != name.rstrip(" .")):
+        print("출력 이름에는 폴더 경로나 Windows 금지 문자를 쓸 수 없습니다.",
+              file=sys.stderr)
+        return 1
+
+    missing = [mod for mod in deps if not _module_present(mod)]
+    if missing:
+        print("전용 패키저가 앱의 외부 라이브러리를 찾지 못했습니다: "
+              + ", ".join(missing), file=sys.stderr)
+        print("POI 설치본에 포함된 라이브러리만 단일 EXE에 사용할 수 있습니다.",
+              file=sys.stderr)
+        return 1
+
+    try:
+        mode = "compiled"
+        if lock_pw is not None:
+            from .protect import make_locked_entry
+            if not lock_pw and not ask_pw:
+                import getpass
+                lock_pw = getpass.getpass("exe 비밀번호: ")
+            inner = compile(py_src, "<poi app>", "exec", optimize=2)
+            entry = make_locked_entry(inner, lock_pw or "poi", embed=not ask_pw)
+            entry = (
+                "import os, sys\nfrom poi.runtime import make_globals\n"
+                + entry.replace(
+                    'g = {"__name__": "__main__"}',
+                    "g = make_globals(); g['__name__']='__main__';"
+                    " g['__poi_dir__']=os.path.dirname(sys.executable);"
+                    " g['poi_argv']=sys.argv[1:]"))
+            code = compile(entry, "<poi locked app>", "exec", optimize=2)
+            mode = "locked-prompt" if ask_pw else "locked-embedded"
+            if ask_pw and not console:
+                console = True
+                print("비밀번호 입력을 위해 콘솔 실행파일로 만듭니다.")
+        elif obfuscate:
+            from .protect import obfuscate_py
+            code = compile(obfuscate_py(py_src), "<poi app>", "exec", optimize=2)
+            mode = "obfuscated"
+        else:
+            code = compile(py_src, "<poi app>", "exec", optimize=2)
+
+        install_dir = os.path.dirname(os.path.abspath(sys.executable))
+        stub = sys.executable if console else os.path.join(install_dir, "poi-idle.exe")
+        if not os.path.isfile(stub):
+            stub = sys.executable
+            console = True
+            print("GUI 스텁이 없어 콘솔 실행파일로 만듭니다.")
+        out_dir = os.path.join(os.getcwd(), "dist")
+        output = os.path.join(out_dir, name + ".exe")
+        info = package_executable(stub, output, code, {
+            "engine_version": __version__,
+            "name": meta.get("product") or name,
+            "source_file": os.path.basename(src_path),
+            "mode": mode,
+            "console": console,
+            "author": meta.get("author") or "",
+            "app_version": meta.get("version") or "1.0.0",
+            "linemap": linemap,
+        })
+    except (OSError, ValueError, PackageError) as exc:
+        print(f"POI 전용 패키징 실패: {exc}", file=sys.stderr)
+        return 1
+
+    print("POI 전용 패키저: 외부 Python/PyInstaller 불필요")
+    if meta.get("icon"):
+        print("참고: 전용 패키저는 스텁 아이콘을 유지합니다. "
+              "아이콘 교체는 소스/PyInstaller 빌드에서 지원합니다.")
+    print(f"보호: {mode} · SHA-256 무결성 검사 · 원자적 출력")
+    print(f"완성:  {output}  ({info['size'] / 1e6:.1f} MB)")
+    print(f"SHA-256: {info['file_sha256']}")
+    return 0
+
+
 def build(args: list[str]) -> int:
     from .interpreter import compile_source
-
-    if getattr(sys, "frozen", False):
-        print("poi build 는 파이썬이 설치된 환경에서 실행해야 합니다 "
-              "(PyInstaller 로 묶기 때문).\n"
-              "  1) python -m pip install poi-lang pyinstaller\n"
-              "  2) python -m poi build <파일>.poi\n"
-              "설치본만 있다면 소스(zip)를 받아서 그 폴더에서 하세요: "
-              "https://hagora.kr/poi/", file=sys.stderr)
-        return 1
 
     src_path = None
     out_name = None
@@ -139,7 +220,7 @@ def build(args: list[str]) -> int:
         print("빌드할 .poi 파일을 지정하세요:  poi build app.poi\n"
               "               또는:  poi build --app idle", file=sys.stderr)
         return 1
-    if not _have_pyinstaller():
+    if not getattr(sys, "frozen", False) and not _have_pyinstaller():
         print("PyInstaller 가 필요합니다:  python -m pip install pyinstaller")
         print("(설치 후 다시 poi build)")
         return 1
@@ -157,12 +238,16 @@ def build(args: list[str]) -> int:
         return 1
 
     name = out_name or os.path.splitext(os.path.basename(src_path))[0]
+    # 이 앱이 부르는 외부 파이썬 라이브러리 — 난독화 전에 뽑아 통째로 담는다
+    deps = _third_party_imports(py_src)
+
+    if getattr(sys, "frozen", False):
+        return _native_build(src_path, name, py_src, console, obfuscate,
+                             lock_pw, ask_pw, meta, deps, _lm)
+
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     work = tempfile.mkdtemp(prefix="poi_build_")
     boot = os.path.join(work, "_poi_app.py")
-
-    # 이 앱이 부르는 외부 파이썬 라이브러리 — 난독화 전에 뽑아 통째로 담는다
-    deps = _third_party_imports(py_src)
 
     if lock_pw is not None:
         # 비밀번호 잠금 — 코드 객체를 암호화, 로더만 exe 에

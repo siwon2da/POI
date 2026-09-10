@@ -762,10 +762,11 @@ avg  = rows |&gt; <span class="fn">map</span>(r =&gt; number(r.score)) |&gt; <sp
 <span class="k">show</span> stats.<span class="fn">median</span>([<span class="nu">3</span>, <span class="nu">1</span>, <span class="nu">4</span>, <span class="nu">1</span>, <span class="nu">5</span>])</pre>
       </article>
       <article class="promise rise">
-        <div><div class="n">배포</div><h3>poi build → 단일 실행파일</h3>
-          <p>만든 프로그램을 아무것도 안 깔린 컴퓨터에서도. 한 방에 실행파일.</p></div>
+        <div><div class="n">배포</div><h3>poi build → POI 전용 단일 EXE</h3>
+          <p>Python·pip·PyInstaller 없이 빠르게 생성. 최적화 바이트코드·SHA-256 검증·원자적 출력까지 기본입니다.</p></div>
 <pre><span class="c">$</span> poi build 리포트.poi -o report
-<span class="c">→ dist/report.exe  (15 MB, 단독 실행)</span></pre>
+<span class="c">→ dist/report.exe  (단독 실행)</span>
+<span class="c">$</span> poi verify dist/report.exe</pre>
       </article>
     </div>
   </div>
@@ -891,8 +892,8 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
         <ul><li><b><a href="https://hagora.kr/poi/3d/">scene3d</a></b> — 선언형 3D 씬 → 자체 완결 HTML (Three.js, 서버 불필요)</li><li><b>htmx-lite</b> — <code>data-poi-get/post</code> 로 새로고침 없는 부분 갱신</li><li><code>{% component %}</code> · 파일 업로드 · <code>poi build --site</code> 정적 굽기</li></ul></div>
       <div class="r done"><div class="v">1.9.9</div><h3>v2.0 앞의 대통합</h3>
         <ul><li><b>생태계</b> — <code>poi.toml</code> · <code>poi init</code> · 레지스트리(<code>poi search/add</code>) · <code>poi migrate</code> · REPL 개편</li><li><b><code>game</code></b> 2D 게임 · <b>하온</b> ChatGPT 로그인 + 에이전트(<code>poi haon agent</code>)</li><li><b>LSP · VS Code 확장</b> · EXE 난독화·비밀번호 잠금·<code>poi decompile</code> · 외부 라이브러리 의존성 자동 포함·설치</li></ul></div>
-      <div class="r done now"><div class="v">1.16.8</div><h3>더 정확한 함수 선언</h3>
-        <ul><li><b>중복 이름 진단</b> — 같은 매개변수 이름을 두 번 쓰면 P024로 즉시 확인</li><li><b>정확한 수정 힌트</b> — 각 매개변수에 서로 다른 이름을 쓰도록 안내</li><li><b>순서·기본값 검사</b> — 잘못된 인자 순서(P023)와 기본값 타입(P412)도 확인</li></ul></div>
+      <div class="r done now"><div class="v">1.17.0</div><h3>POI 전용 EXE 패키저</h3>
+        <ul><li><b>Python 설치 불필요</b> — 설치본과 IDLE에서 바로 단일 EXE 생성</li><li><b>안전한 컨테이너</b> — SHA-256 이중 검증·크기 제한·원자적 출력</li><li><b>보호·검증</b> — 최적화 바이트코드·난독화·비밀번호 잠금·<code>poi verify</code></li></ul></div>
       <div class="r"><div class="v">v2.0</div><h3>문법 정리 · 브라우저 실행</h3>
         <ul><li>블록은 <code>{ }</code>+들여쓰기만 정식 (<code>end</code>·콜론 정리)</li><li>문법 고정 · 표준 라이브러리 안정화</li><li>play.poi.dev (브라우저에서 바로 실행)</li></ul></div>
     </div>
@@ -906,9 +907,9 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <p class="lede prose">아무것도 미리 깔 필요 없습니다. <code>poi.exe</code> 하나로 끝.</p></div>
 
     <div class="dl rise">
-      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.16.8.exe">
+      <a class="dl-main" href="https://hagora.kr/poi/poi-setup-1.17.0.exe">
         <span class="dl-k">Windows 설치 마법사</span>
-        <span class="dl-t">poi-setup-1.16.8.exe</span>
+        <span class="dl-t">poi-setup-1.17.0.exe</span>
         <span class="dl-s">더블클릭 → 다음 → 설치. 준비물 없음</span>
       </a>
       <div class="dl-alt">
@@ -925,7 +926,7 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
           <code>더블클릭 → 예제가 열린 채로 실행 · F5</code>
         </div>
         <div class="dl-row">
-          <div class="dl-label">묶음 — <a href="https://hagora.kr/poi/poi-1.16.8.zip">poi-1.16.8.zip</a> (엔진 · 예제 · 문서)</div>
+          <div class="dl-label">묶음 — <a href="https://hagora.kr/poi/poi-1.17.0.zip">poi-1.17.0.zip</a> (엔진 · 예제 · 문서)</div>
           <code>압축 풀고  ·  poi.exe run 파일.poi</code>
         </div>
       </div>
@@ -972,7 +973,7 @@ db.<span class="fn">query</span>(<span class="s">"select * from note"</span>)   
       <a href="https://github.com/siwon2da/POI" target="_blank" rel="noopener noreferrer">GitHub 저장소</a><span>·</span>
       <a href="https://hagora.kr/poi/privacy/">개인정보처리방침</a><span>·</span>
       <a href="https://hagora.kr/poi/terms/">이용약관</a><span>·</span>
-      <span>한생 (HANSAENG)</span><span>·</span><span>v1.16.8</span>
+      <span>한생 (HANSAENG)</span><span>·</span><span>v1.17.0</span>
     </div>
   </div>
 </footer>
