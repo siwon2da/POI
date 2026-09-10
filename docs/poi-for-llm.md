@@ -2,7 +2,7 @@
 
 > 이 문서 하나를 그대로 붙여넣으면 ChatGPT / Claude 등이 **POI 코드를 정확히** 쓸 수 있습니다.
 > POI = **Power Of Imagination**. 파이썬 위에서 도는, 자체 문법·타입·오류·GUI·웹 모델을 가진 독립 언어.
-> 버전 기준: **POI v1.16.1**. 공식: https://hagora.kr/poi/
+> 버전 기준: **POI v1.16.2**. 공식: https://hagora.kr/poi/
 
 ---
 
@@ -305,6 +305,7 @@ fn add(a, b) => a + b
 test "덧셈" {
     assert add(2, 3) == 5
     assert add(0, 0) == 0
+    assert add(2, 2) == 4, "덧셈 결과가 잘못됐습니다"
 }
 ```
 
@@ -664,7 +665,7 @@ every on bind_key run close`.  안전 모드 차단.
 | `x = []` 후 함수 안에서 `x.append` **그리고 재대입** | 재대입 금지 — `상태.목록.add(v)` 처럼 필드 변경 |
 | `try: ... except E as e:` | `try { ... } catch e { ... }` |
 | `raise ValueError("msg")` | `raise "msg"`  또는  `raise ValueError("msg")` |
-| `assert x == y, "msg"` | `assert x == y`  (test 블록 안) |
+| `assert x == y, "msg"` | 그대로 지원 (설명 식은 실패할 때만 평가) |
 | `switch` / `case` | `match` / `when` |
 
 작성 순서 권장: ① 블록 스타일 하나 고정(중괄호 또는 들여쓰기) → ② 공유 상태는 객체 필드로 →

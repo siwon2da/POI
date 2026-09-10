@@ -142,7 +142,13 @@ class Transpiler:
         elif k == "Raise":
             self.emit(f"raise poi_make_error({self.ex(n.value)})", n.line)
         elif k == "Assert":
-            self.emit(f"poi_assert({self.ex(n.test)}, {n.src!r})", n.line)
+            message = getattr(n, "message", None)
+            if message is None:
+                self.emit(f"poi_assert({self.ex(n.test)}, {n.src!r})", n.line)
+            else:
+                self.emit(
+                    f"poi_assert({self.ex(n.test)}, {n.src!r}, "
+                    f"lambda: {self.ex(message)})", n.line)
         elif k == "TestBlock":
             self._testblock(n)
         elif k == "Match":

@@ -1,4 +1,4 @@
-# POI v1.16.1 문법 명세
+# POI v1.16.2 문법 명세
 
 > **POI = Power Of Imagination.** 우리가 만든 독립 언어.
 
@@ -308,10 +308,12 @@ fn add(a, b) => a + b
 test "덧셈"
 assert add(2, 3) == 5
 assert add(0, 0) == 0
+assert add(2, 2) == 4, "덧셈 결과가 잘못됐습니다"
 end
 ```
 
 `poi test 파일.poi` 로 실행 → 통과/실패 요약, 실패 시 exit 1.
+쉼표 뒤에 실패 설명을 붙일 수 있으며, 조건이 실패할 때만 설명 식을 평가한다.
 `poi run` 에서는 `test` 블록을 정의만 하고 실행하지 않는다.
 
 ## 10.7 다른 POI 파일 불러오기

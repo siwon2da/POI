@@ -208,7 +208,11 @@ class Parser:
                 start = self.i
                 ex = self.expression()
                 src = _join_tokens(self.toks[start:self.i])
-                return Node("Assert", line=t.line, test=ex, src=src)
+                message = None
+                if self.match("OP", ","):
+                    message = self.expression()
+                return Node("Assert", line=t.line, test=ex, src=src,
+                            message=message)
             if t.value == "test" and self.peek(1).type == "STRING":
                 self.advance()
                 name = self.advance().value

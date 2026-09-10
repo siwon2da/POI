@@ -237,9 +237,14 @@ def poi_make_error(value):
     return _PoiRaise(str(value), "Error")
 
 
-def poi_assert(cond, src=""):
+def poi_assert(cond, src="", message=None):
     if not cond:
-        raise POIError(f"확인(assert) 실패: {src}".rstrip(": "), "P301",
+        if callable(message):
+            message = message()
+        detail = str(message) if message is not None else src
+        if message is not None and src:
+            detail += f"  (조건: {src})"
+        raise POIError(f"확인(assert) 실패: {detail}".rstrip(": "), "P301",
                        hint="이 조건이 참이어야 하는데 거짓입니다.")
 
 
