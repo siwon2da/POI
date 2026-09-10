@@ -2,7 +2,7 @@
 
 ## 방법 A — 설치 마법사 (.exe, 파이썬 불필요)
 
-hagora.kr/poi/ 에서 **poi-setup-1.16.2.exe** 를 받아 더블클릭.
+hagora.kr/poi/ 에서 **poi-setup-1.16.3.exe** 를 받아 더블클릭.
 창에서 다음 → (옵션 선택) → 설치 → 닫기.
 
 ## 방법 B — 명령 한 줄 (PowerShell)

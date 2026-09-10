@@ -192,6 +192,22 @@ class Checker:
         elif k == "Return":
             if n.value is not None:
                 self.infer(n.value)
+        elif k == "Assert":
+            actual = self.infer(n.test)
+            if _base(actual) not in ("Bool", "Any"):
+                self._err("P406",
+                          f"assert 조건은 Bool 이어야 하는데 {_base(actual)} 입니다.",
+                          n.line,
+                          "비교식(==, !=, <, > 등)이나 true/false 값을 사용하세요.")
+            message = getattr(n, "message", None)
+            if message is not None:
+                message_type = self.infer(message)
+                if _base(message_type) not in ("Text", "Any"):
+                    self._err("P407",
+                              "assert 실패 설명은 Text 이어야 하는데 "
+                              f"{_base(message_type)} 입니다.",
+                              n.line,
+                              "text(...) 로 설명을 문자로 바꾸세요.")
 
     def _block(self, body):
         for s in body:
